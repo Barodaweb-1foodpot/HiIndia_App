@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     width: "85%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 4,
     zIndex: 10,

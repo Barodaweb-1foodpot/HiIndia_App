@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  SafeAreaView,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
@@ -18,7 +19,7 @@ const Onboarding = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
@@ -62,18 +63,22 @@ const Onboarding = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#E3000F', // Match background color with your theme
+  },
   container: {
     flex: 1,
   },
   backgroundImage: {
     position: "absolute",
     width: width,
-    height: height,
+    height: height + (Platform.OS === 'android' ? 50 : 0), // Add extra height for Android
     top: 0,
     left: 0,
   },
@@ -81,7 +86,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     paddingTop: Platform.OS === "ios" ? 60 : 50,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === "ios" ? 40 : 70, // Increased bottom padding
   },
   logoContainer: {
     alignItems: "center",
@@ -93,6 +98,7 @@ const styles = StyleSheet.create({
   },
   textContent: {
     paddingHorizontal: 25,
+    marginBottom: Platform.OS === "ios" ? 0 : 20, // Add margin bottom for Android
   },
   title: {
     fontSize: 28,

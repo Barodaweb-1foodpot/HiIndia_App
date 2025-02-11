@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,21 @@ import * as Yup from "yup";
 
 const VerifyOtp = ({ navigation }) => {
   const inputRefs = useRef([]);
+  const [timeLeft, setTimeLeft] = useState(90); // Set 90 seconds for the timer
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 0) {
+          clearInterval(timer); // Stop the timer when it reaches 0
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer); // Cleanup the interval on component unmount
+  }, []);
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
@@ -28,12 +43,18 @@ const VerifyOtp = ({ navigation }) => {
       .matches(/^\d{6}$/, "OTP must be exactly 6 digits"),
   });
 
+  const formatTime = () => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
   return (
     <View style={styles.rootContainer}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView
-        style={styles.container}
-      >
+      <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
             <View style={styles.topSection}>
@@ -122,12 +143,16 @@ const VerifyOtp = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.otp}</Text>
                       )}
                       <TouchableOpacity
-                        onPress={() => navigation.navigate("ForgotPassword")}
+                        onPress={() => {
+                          if (timeLeft === 0) {
+                            setTimeLeft(90); // Reset the timer when it has expired
+                          }
+                        }}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.timerText}>
                           Didn’t receive code?{" "}
-                          <Text style={styles.timer}>01:30</Text>
+                          <Text style={styles.timer}>{formatTime()}</Text>
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -191,7 +216,7 @@ const styles = StyleSheet.create({
     width: "85%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 4,
     zIndex: 10,
