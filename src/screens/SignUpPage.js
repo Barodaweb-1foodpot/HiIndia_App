@@ -375,6 +375,7 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
     borderRadius: 8,
     textAlign: "center",
+    textAlignVertical: "center",
     fontSize: 18,
     fontFamily: "Poppins-Regular",
     backgroundColor: "#FFFFFF",

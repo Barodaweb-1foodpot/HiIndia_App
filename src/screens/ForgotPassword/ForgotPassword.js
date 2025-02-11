@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -10,54 +10,26 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   StatusBar,
-  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
 
-const countryCodes = [
-  { label: "+91 (India)", value: "+91" },
-  { label: "+1 (USA)", value: "+1" },
-  { label: "+44 (UK)", value: "+44" },
-  { label: "+61 (Australia)", value: "+61" },
-];
-
 const ForgotPassword = ({ navigation }) => {
-  const [dropdownVisible, setDropdownVisible] = useState(false);
-
   const dismissKeyboard = () => {
     Keyboard.dismiss();
-    setDropdownVisible(false);
   };
 
   const validationSchema = Yup.object().shape({
-    countryCode: Yup.string().required("Country code is required"),
-    phoneNumber: Yup.string()
-      .required("Phone number is required")
-      .matches(/^[0-9]+$/, "Enter a valid phone number")
-      .length(10, "Phone number must be exactly 10 digits"),
+    email: Yup.string()
+      .email("Enter a valid email")
+      .required("Email is required"),
   });
 
   const handleSendOTP = (values) => {
-    console.log(
-      "Sending OTP to:",
-      `${values.countryCode}${values.phoneNumber}`
-    );
+    console.log("Sending OTP to email:", values.email);
     navigation.navigate("VerifyOtp");
   };
-
-  const renderCountryCodeItem = (item, setFieldValue) => (
-    <TouchableOpacity
-      style={styles.countryCodeItem}
-      onPress={() => {
-        setFieldValue("countryCode", item.value);
-        setDropdownVisible(false);
-      }}
-    >
-      <Text style={styles.countryCodeText}>{item.label}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.rootContainer}>
@@ -79,9 +51,9 @@ const ForgotPassword = ({ navigation }) => {
                 resizeMode="contain"
               />
               <View style={styles.headerCard}>
-                <Text style={styles.headerCardTitle}>Forgot password</Text>
+                <Text style={styles.headerCardTitle}>Forgot Password</Text>
                 <Text style={styles.headerCardSubtitle}>
-                  Enter your registered phone number below to recover your
+                  Enter your registered email address below to recover your
                   password.
                 </Text>
               </View>
@@ -89,7 +61,7 @@ const ForgotPassword = ({ navigation }) => {
 
             <View style={styles.whiteContainer}>
               <Formik
-                initialValues={{ countryCode: "+91", phoneNumber: "" }}
+                initialValues={{ email: "" }}
                 validationSchema={validationSchema}
                 onSubmit={handleSendOTP}
               >
@@ -97,58 +69,25 @@ const ForgotPassword = ({ navigation }) => {
                   handleChange,
                   handleBlur,
                   handleSubmit,
-                  setFieldValue,
                   values,
                   errors,
                   touched,
                 }) => (
                   <>
                     <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Phone Number</Text>
-                      <View style={styles.phoneInputContainer}>
-                        <TouchableOpacity
-                          style={styles.dropdown}
-                          onPress={() => setDropdownVisible(!dropdownVisible)}
-                        >
-                          <Text style={styles.countryCodeText}>
-                            {values.countryCode}
-                          </Text>
-                          <Ionicons
-                            name={
-                              dropdownVisible
-                                ? "chevron-up-outline"
-                                : "chevron-down-outline"
-                            }
-                            size={16}
-                            color="#666666"
-                          />
-                        </TouchableOpacity>
-                        <TextInput
-                          style={styles.phoneInput}
-                          placeholder="9876543210"
-                          placeholderTextColor="#999"
-                          keyboardType="phone-pad"
-                          value={values.phoneNumber}
-                          onChangeText={handleChange("phoneNumber")}
-                          onBlur={handleBlur("phoneNumber")}
-                          maxLength={10}
-                        />
-                      </View>
-                      {dropdownVisible && (
-                        <View style={styles.dropdownList}>
-                          <FlatList
-                            data={countryCodes}
-                            keyExtractor={(item) => item.value}
-                            renderItem={({ item }) =>
-                              renderCountryCodeItem(item, setFieldValue)
-                            }
-                          />
-                        </View>
-                      )}
-                      {touched.phoneNumber && errors.phoneNumber && (
-                        <Text style={styles.errorText}>
-                          {errors.phoneNumber}
-                        </Text>
+                      <Text style={styles.inputLabel}>Email</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="example@example.com"
+                        placeholderTextColor="#999"
+                        keyboardType="email-address"
+                        value={values.email}
+                        onChangeText={handleChange("email")}
+                        onBlur={handleBlur("email")}
+                        autoCapitalize="none"
+                      />
+                      {touched.email && errors.email && (
+                        <Text style={styles.errorText}>{errors.email}</Text>
                       )}
                     </View>
 
@@ -229,7 +168,6 @@ const styles = StyleSheet.create({
     textAlign: "left",
     lineHeight: 18,
   },
-
   whiteContainer: {
     flex: 0.7,
     backgroundColor: "#FFFFFF",
@@ -246,48 +184,15 @@ const styles = StyleSheet.create({
     color: "#000000",
     marginBottom: 8,
   },
-  phoneInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  input: {
+    height: 48,
     borderWidth: 1,
     borderColor: "#E0E0E0",
     borderRadius: 8,
-    backgroundColor: "#FFFFFF",
-  },
-  dropdown: {
-    width: 80,
-    height: 48,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    borderRightWidth: 1,
-    borderRightColor: "#E0E0E0",
-    backgroundColor: "#F5F5F5",
-  },
-  countryCodeText: {
-    fontSize: 16,
-    fontFamily: "Poppins-Regular",
-    color: "#000000",
-    marginRight: 4,
-  },
-  dropdownList: {
-    position: "absolute",
-    top: 55,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
-    zIndex: 1000,
-    paddingVertical: 8,
-  },
-  phoneInput: {
-    flex: 1,
-    height: 48,
     paddingHorizontal: 16,
     fontSize: 16,
     fontFamily: "Poppins-Regular",
+    backgroundColor: "#FFFFFF",
     color: "#000000",
   },
   errorText: {
@@ -308,12 +213,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",
-  },
-  countryCodeItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
 });
 
