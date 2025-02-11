@@ -7,6 +7,7 @@ import {
   StatusBar,
   Dimensions,
   Animated,
+  Platform,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
@@ -27,7 +28,8 @@ const SplashScreen = () => {
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
-        translucent
+        translucent={true}
+        animated={true}
       />
 
       <Image
@@ -60,12 +62,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: width,
     height: height,
+    top: 0,
+    left: 0,
   },
   contentContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 50,
   },
   logo: {
     width: width * 0.7,

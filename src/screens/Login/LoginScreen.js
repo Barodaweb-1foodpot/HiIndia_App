@@ -43,7 +43,7 @@ const LoginScreen = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
             <View style={styles.topSection}>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => {
                   if (navigation.canGoBack()) {
@@ -54,10 +54,10 @@ const LoginScreen = ({ navigation }) => {
                 }}
               >
                 <Ionicons name="chevron-back" size={24} color="#FFF" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               <Image
-                source={require("../../assets/logo.png")}
+                source={require("../../../assets/logo.png")}
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -118,7 +118,9 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.greyText}>
                           Don't have an account?{" "}
                         </Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => navigation.navigate("SignUp")}
+                        >
                           <Text style={styles.createAccountText}>
                             Create One
                           </Text>
@@ -131,7 +133,7 @@ const LoginScreen = ({ navigation }) => {
                       </View>
                       <TouchableOpacity style={styles.socialButton}>
                         <Image
-                          source={require("../../assets/email.png")}
+                          source={require("../../../assets/email.png")}
                           style={styles.socialIcon}
                         />
                         <Text style={styles.socialButtonText}>
@@ -140,7 +142,7 @@ const LoginScreen = ({ navigation }) => {
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.socialButton}>
                         <Image
-                          source={require("../../assets/google.png")}
+                          source={require("../../../assets/google.png")}
                           style={styles.socialIcon}
                         />
                         <Text style={styles.socialButtonText}>
@@ -149,7 +151,7 @@ const LoginScreen = ({ navigation }) => {
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.appleButton}>
                         <Image
-                          source={require("../../assets/apple.png")}
+                          source={require("../../../assets/apple.png")}
                           style={[styles.socialIcon, styles.appleIcon]}
                         />
                         <Text style={styles.appleButtonText}>

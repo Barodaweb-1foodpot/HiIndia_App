@@ -7,13 +7,14 @@ import {
   Dimensions,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
 const Onboarding = ({ navigation }) => {
   const handleGetStarted = () => {
-    navigation.replace("Login");
+    navigation.replace("Auth");
   };
 
   return (
@@ -21,7 +22,8 @@ const Onboarding = ({ navigation }) => {
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
-        translucent
+        translucent={true}
+        animated={true}
       />
 
       <Image
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "space-between",
-    paddingTop: 60,
+    paddingTop: Platform.OS === "ios" ? 60 : 50,
     paddingBottom: 40,
   },
   logoContainer: {

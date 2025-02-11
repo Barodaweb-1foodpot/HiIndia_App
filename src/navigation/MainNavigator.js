@@ -3,9 +3,8 @@ import { createStackNavigator } from "@react-navigation/stack";
 import * as Font from "expo-font";
 import SplashScreen from "../screens/SplashScreen";
 import Onboarding from "../screens/Onboarding";
-import LoginScreen from "../screens/LoginScreen";
-import Homepage from "../screens/Homepage";
-import LoginPinScreen from "../screens/LoginPinScreen";
+import AuthNavigator from "./AuthNavigator";
+import ScreenNavigator from "./ScreenNavigator";
 
 const Stack = createStackNavigator();
 
@@ -42,19 +41,17 @@ const MainNavigator = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="LoginPin" 
+      initialRouteName="Onboarding"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false,
       }}
     >
-      <Stack.Screen name="LoginPin" component={LoginPinScreen} />
       <Stack.Screen name="Onboarding" component={Onboarding} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Home" component={Homepage} />
+      <Stack.Screen name="Auth" component={AuthNavigator} />
+      <Stack.Screen name="App" component={ScreenNavigator} />
     </Stack.Navigator>
   );
-  
 };
 
 export default MainNavigator;
