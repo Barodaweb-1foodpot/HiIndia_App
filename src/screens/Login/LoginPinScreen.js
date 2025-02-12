@@ -66,7 +66,7 @@ const LoginPinScreen = ({ navigation }) => {
                 validationSchema={validationSchema}
                 onSubmit={(values) => {
                   console.log("Logging in with PIN:", values.pin);
-                  navigation.navigate("App");
+                  navigation.navigate("Tab");
                 }}
               >
                 {({
