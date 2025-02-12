@@ -5,6 +5,8 @@ import SplashScreen from "../screens/SplashScreen";
 import Onboarding from "../screens/Onboarding";
 import AuthNavigator from "./AuthNavigator";
 import ScreenNavigator from "./ScreenNavigator";
+import Homepage from "../screens/Homepage";
+import TabNavigator from "./TabNavigator";
 
 const Stack = createStackNavigator();
 
@@ -50,6 +52,7 @@ const MainNavigator = () => {
       <Stack.Screen name="Onboarding" component={Onboarding} />
       <Stack.Screen name="Auth" component={AuthNavigator} />
       <Stack.Screen name="App" component={ScreenNavigator} />
+      <Stack.Screen name="Tab" component={TabNavigator} />
     </Stack.Navigator>
   );
 };

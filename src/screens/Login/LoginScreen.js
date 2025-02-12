@@ -131,7 +131,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
                       </View>
-                      <TouchableOpacity style={styles.socialButton}>
+                      {/* <TouchableOpacity style={styles.socialButton}>
                         <Image
                           source={require("../../../assets/email.png")}
                           style={styles.socialIcon}
@@ -139,7 +139,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Email
                         </Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                       <TouchableOpacity style={styles.socialButton}>
                         <Image
                           source={require("../../../assets/google.png")}
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     width: "85%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 4,
     zIndex: 10,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   whiteContainer: { flex: 0.8, backgroundColor: "#FFFFFF" },
   scrollViewContent: {
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 50,
     paddingBottom: 40,
   },
   inputContainer: { marginBottom: 20 },
@@ -250,13 +250,12 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: "#E3000F",
     borderRadius: 25,
-    borderWidth: 2,
-    borderColor: "#000000",
     height: 48,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
+  
   loginButtonText: {
     color: "#FFFFFF",
     fontSize: 16,

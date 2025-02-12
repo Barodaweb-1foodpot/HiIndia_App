@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Platform,
+  SafeAreaView,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
@@ -24,7 +25,7 @@ const SplashScreen = () => {
   }, [fadeAnim]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
@@ -45,23 +46,28 @@ const SplashScreen = () => {
           resizeMode="contain"
         />
 
-        <Animated.Text style={[styles.footerText, { opacity: fadeAnim }]}>
-          Events, Experiences, Connections
-        </Animated.Text>
+        <Animated.View style={[styles.footerContainer, { opacity: fadeAnim }]}>
+          <Text style={styles.footerText}>
+            Events, Experiences, Connections
+          </Text>
+        </Animated.View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: "#1a0000",
+  },
+  container: {
+    flex: 1,
   },
   backgroundImage: {
     position: "absolute",
     width: width,
-    height: height,
+    height: height + (Platform.OS === 'android' ? 50 : 0),
     top: 0,
     left: 0,
   },
@@ -71,18 +77,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 60 : 50,
+    paddingBottom: Platform.OS === "ios" ? 40 : 70,
   },
   logo: {
     width: width * 0.7,
     height: height * 0.2,
     marginBottom: 10,
   },
+  footerContainer: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 40 : 60,
+    width: "100%",
+    alignItems: "center",
+  },
   footerText: {
     fontSize: 16,
     color: "#FFFFFF",
     fontFamily: "Poppins-Regular",
-    position: "absolute",
-    bottom: 40,
     textAlign: "center",
   },
 });
