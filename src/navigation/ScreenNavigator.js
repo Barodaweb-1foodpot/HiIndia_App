@@ -1,6 +1,6 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import Homepage from "../screens/Homepage";
+import EventsDetail from "../screens/EventsDetail";
 
 const ScreenStack = createStackNavigator();
 
@@ -12,7 +12,7 @@ const ScreenNavigator = () => {
         gestureEnabled: false,
       }}
     >
-      <ScreenStack.Screen name="Home" component={Homepage} />
+      <ScreenStack.Screen name="Home" component={EventsDetail} />
     </ScreenStack.Navigator>
   );
 };

@@ -87,7 +87,6 @@ export default function EventsScreen({ navigation }) {
     },
   ];
 
-  // Initial filtering by category
   let filteredCategoryData = categoryData.filter((item) => {
     return selectedCategory === "All events" || item.category === selectedCategory;
   });
@@ -96,7 +95,6 @@ export default function EventsScreen({ navigation }) {
     return selectedCategory === "All events" || item.category === selectedCategory;
   });
 
-  // Add search filtering
   if (searchText) {
     filteredCategoryData = filteredCategoryData.filter((item) =>
       item.title.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -110,7 +108,6 @@ export default function EventsScreen({ navigation }) {
     );
   }
 
-  // Saved tab filtering
   if (activeTab === "Saved") {
     filteredCategoryData = filteredCategoryData.filter((item) => likedEvents[item.id]);
     filteredEvents = filteredEvents.filter((item) => likedEvents[item.id]);
