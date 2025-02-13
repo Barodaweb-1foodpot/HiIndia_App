@@ -5,7 +5,7 @@ import SplashScreen from "../screens/SplashScreen";
 import Onboarding from "../screens/Onboarding";
 import AuthNavigator from "./AuthNavigator";
 import ScreenNavigator from "./ScreenNavigator";
-import Homepage from "../screens/Homepage";
+import Homepage from "../screens/HomeScreen";
 import TabNavigator from "./TabNavigator";
 
 const Stack = createStackNavigator();

@@ -63,7 +63,7 @@ const UpdatedPin = ({ navigation }) => {
                 validationSchema={validationSchema}
                 onSubmit={(values) => {
                   console.log("Entered PIN:", values.pin);
-                  navigation.navigate("App");
+                  navigation.navigate("Tab");
                 }}
               >
                 {({
