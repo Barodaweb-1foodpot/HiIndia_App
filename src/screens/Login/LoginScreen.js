@@ -16,8 +16,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { handleGoogleSuccess } from "../../api/auth_api";
+
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// import { jwtDecode } from 'jwt-decode'
+
 
 const LoginScreen = ({ navigation }) => {
+  const {setLoginEmail} = useAuthContext()
   const validationSchema = Yup.object().shape({
     email: Yup.string()
       .email("Enter a valid email")
@@ -28,10 +35,63 @@ const LoginScreen = ({ navigation }) => {
     Keyboard.dismiss();
   };
 
-  const handleLogin = (values) => {
-    console.log("Logging in with:", values.email);
-    navigation.navigate("LoginPin");
-  };
+  // useEffect(() => {
+  //   GoogleSignin.configure({
+  //     webClientId: "349732420567-4umksh5n77j4cp33mf7iji8hvf65a3l9.apps.googleusercontent.com", // Replace with your actual Web Client ID
+  //   });
+  // }, []);
+
+  // const handleGoogleLogin = async () => {
+  //   try {
+  //     await GoogleSignin.hasPlayServices();
+  //     const userInfo = await GoogleSignin.signIn();
+  //     const { idToken } = userInfo;
+
+  //     if (!idToken) {
+  //       console.log("Google Sign-In failed: No token received");
+  //       return;
+  //     }
+
+  //     const decoded = jwtDecode(idToken);
+  //     console.log("Decoded JWT:", decoded);
+      
+  //     const email = decoded.email;
+
+  //     console.log("User Email:", email);
+  //     handleGoogleSuccess(email)
+  //     // Send email to backend for authentication
+  //     const serverResponse = await axios.post(
+  //       `${process.env.REACT_APP_API_URL_WECONVERSE}/api/participant/participantHandleGoogleLogin`,
+  //       { email }
+  //     );
+  //     console.log(serverResponse.data)
+  //     // if (serverResponse.data.success) {
+  //     //   console.log("Google login successful:", serverResponse.data);
+
+  //     //   // Store user details in AsyncStorage or SecureStore
+  //     //   // await AsyncStorage.setItem("Token", serverResponse.data.token);
+  //     //   // await AsyncStorage.setItem("role", serverResponse.data.data._id);
+
+  //     // } else {
+  //     //   console.log("Unregistered Participant. Please register first.");
+  //     // }
+  //   } catch (error) {
+  //     console.error("Google Sign-In Error:", error);
+  //   }
+  // };
+
+
+  // useEffect(() => {
+  //   GoogleSignin.configure({
+  //     webClientId: "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com", // Replace with actual client ID
+  //   });
+  
+  //   GoogleSignin.isSignedIn()
+  //     .then((isSignedIn) => console.log("Signed in:", isSignedIn))
+  //     .catch((err) => console.error("Google Sign-in error:", err));
+  // }, []);
+
+ 
 
   return (
     <View style={styles.rootContainer}>
@@ -140,7 +200,7 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Email
                         </Text>
                       </TouchableOpacity> */}
-                      <TouchableOpacity style={styles.socialButton}>
+                      <TouchableOpacity style={styles.socialButton} >
                         <Image
                           source={require("../../../assets/google.png")}
                           style={styles.socialIcon}
@@ -148,6 +208,14 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
+                        {/* <GoogleOAuthProvider clientId="535563161021-tf03ktunqb831r8ob13jmb2irpn4tq21.apps.googleusercontent.com">
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => {
+                            // setError("Login failed. Please try again.");
+                          }}
+                        />
+                      </GoogleOAuthProvider> */}
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.appleButton}>
                         <Image
