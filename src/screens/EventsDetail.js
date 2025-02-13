@@ -14,7 +14,7 @@ import MapView, { Marker } from "react-native-maps";
 
 const { width, height } = Dimensions.get("window");
 
-const EventsDetail = ({ navigation }) => {
+export default function EventsDetail({ navigation }) {
   // Toggle for "Read More" in Description
   const [readMore, setReadMore] = useState(false);
 
@@ -41,7 +41,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
     <View style={styles.rootContainer}>
       <StatusBar barStyle="light-content" />
 
-      {/* Top Section (Black Background + Event Image + Back Button) */}
+      {/* Top Section (Black background + Image + Back Button) */}
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
@@ -54,36 +54,38 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
 
+        {/* Event Image */}
         <Image
           source={require("../../assets/Atul_bhai.png")} // <-- Update path
           style={styles.topImage}
           resizeMode="cover"
         />
 
-        {/* Bridging Card (half on image, half on white) */}
+        {/* Bridging Card (like SignUpPage) */}
         <View style={styles.headerCard}>
           <Text style={styles.headerCardTitle}>Atul Purohit Graba</Text>
           <Text style={styles.headerCardSubtitle}>
-            Gelora Bung Karno Stadium, Ahmedabad
-            {"\n"}August 30 - September 2, 2024
-            {"\n"}09:00 AM - 07:00 PM
-          </Text>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.artistName}>Atul Purohit</Text>
-          <Text style={styles.artistDetail}>
-            Singer, artist, 26 instrumental player
+            Gelora Bung Karno Stadium, Ahmedabad{"\n"}
+            August 30 - September 2, 2024{"\n"}
+            09:00 AM - 07:00 PM
           </Text>
         </View>
       </View>
 
-      {/* White Container */}
+      {/* White Container Below */}
       <View style={styles.whiteContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Artist Info */}
+          <View style={styles.artistInfoContainer}>
+            <Text style={styles.artistName}>Atul Purohit</Text>
+            <Text style={styles.artistDetail}>
+              Singer, artist, 26 instrumental player
+            </Text>
+          </View>
+
           {/* Description Section */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Description</Text>
@@ -189,7 +191,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
             </View>
           )}
 
-          {/* Extra space so content isn't hidden behind the fixed bottom bar */}
+          {/* Extra space so content isn't hidden by the fixed bottom bar */}
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -203,21 +205,21 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
       </View>
     </View>
   );
-};
+}
 
-export default EventsDetail;
-
+// ====== STYLES ======
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: "#000000", // black background to match top section
+    backgroundColor: "#000000",
   },
+  // Top black section + image
   topSection: {
-    position: "relative",
     backgroundColor: "#000",
-    height: 200, // Adjust as needed
+    height: 240, // Adjust as needed
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
   backButton: {
     position: "absolute",
@@ -229,9 +231,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+
+  // The bridging card (like in SignUpPage)
   headerCard: {
     position: "absolute",
-    bottom: -40, // negative margin to overlap white container
+    bottom: -40, // negative to overlap white container
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -256,39 +260,39 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#666666",
     lineHeight: 18,
-    marginBottom: 10,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#E0E0E0",
-    marginVertical: 10,
-  },
-  artistName: {
-    fontSize: 14,
-    fontFamily: "Poppins-Bold",
-    color: "#000000",
-  },
-  artistDetail: {
-    fontSize: 12,
-    fontFamily: "Poppins-Regular",
-    color: "#666666",
-    marginTop: 4,
   },
 
+  // White container below bridging card
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    marginTop: -40, // Pull up to align with the bridging card
+    marginTop: -40, // pull it up so the card overlaps
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   scrollViewContent: {
     paddingHorizontal: 20,
-    paddingTop: 60, // Enough space for bridging card
+    paddingTop: 60, // space for bridging card
     paddingBottom: 20,
   },
 
-  // Sections
+  // Artist Info
+  artistInfoContainer: {
+    marginBottom: 20,
+  },
+  artistName: {
+    fontSize: 16,
+    fontFamily: "Poppins-Bold",
+    color: "#000000",
+    marginBottom: 4,
+  },
+  artistDetail: {
+    fontSize: 12,
+    fontFamily: "Poppins-Regular",
+    color: "#666666",
+  },
+
+  // Description, Venue & Location, etc.
   sectionContainer: {
     marginBottom: 20,
   },
@@ -348,7 +352,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
   },
 
-  // Catalogue (PDF)
+  // Catalogue
   catalogueContainer: {
     marginBottom: 20,
   },
