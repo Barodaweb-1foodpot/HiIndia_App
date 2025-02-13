@@ -16,8 +16,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { handleGoogleSuccess } from "../../api/auth_api";
+
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// import { jwtDecode } from 'jwt-decode'
+
 
 const LoginScreen = ({ navigation }) => {
+  const {setLoginEmail} = useAuthContext()
   const validationSchema = Yup.object().shape({
     email: Yup.string()
       .email("Enter a valid email")
@@ -27,11 +34,13 @@ const LoginScreen = ({ navigation }) => {
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
-
-  const handleLogin = (values) => {
-    console.log("Logging in with:", values.email);
+  const handleLogin = async (values) => {
+    setLoginEmail(values.email)
     navigation.navigate("LoginPin");
   };
+  
+
+ 
 
   return (
     <View style={styles.rootContainer}>
@@ -140,7 +149,7 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Email
                         </Text>
                       </TouchableOpacity> */}
-                      <TouchableOpacity style={styles.socialButton}>
+                      <TouchableOpacity style={styles.socialButton} >
                         <Image
                           source={require("../../../assets/google.png")}
                           style={styles.socialIcon}
@@ -148,6 +157,14 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
+                        {/* <GoogleOAuthProvider clientId="535563161021-tf03ktunqb831r8ob13jmb2irpn4tq21.apps.googleusercontent.com">
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => {
+                            // setError("Login failed. Please try again.");
+                          }}
+                        />
+                      </GoogleOAuthProvider> */}
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.appleButton}>
                         <Image

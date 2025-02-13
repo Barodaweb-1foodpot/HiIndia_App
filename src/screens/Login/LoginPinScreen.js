@@ -14,8 +14,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { handleLogin } from "../../api/auth_api";
+import Toast from "react-native-toast-message";
 
 const LoginPinScreen = ({ navigation }) => {
+  const { loginEmail } = useAuthContext()
   const inputRefs = useRef([]);
   const [isPinVisible, setIsPinVisible] = useState(false);
 
@@ -32,6 +36,32 @@ const LoginPinScreen = ({ navigation }) => {
       .required("PIN is required")
       .matches(/^\d{6}$/, "PIN must be exactly 6 digits"),
   });
+  const handleSubmit2 = async (values) => {
+    const temp = { email: loginEmail, password: values.pin };
+    console.log("---------", temp);
+    const res = await handleLogin(temp);
+    console.log("pppp", res);
+    if (res.isOk) { 
+      Toast.show({
+        type: "success",
+        text1: "Email entered successfully",
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.navigate("Tab");
+      }, 2000);
+
+    }
+    else{
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      }); 
+    }
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -64,10 +94,7 @@ const LoginPinScreen = ({ navigation }) => {
               <Formik
                 initialValues={{ pin: "" }}
                 validationSchema={validationSchema}
-                onSubmit={(values) => {
-                  console.log("Logging in with PIN:", values.pin);
-                  navigation.navigate("Tab");
-                }}
+                onSubmit={handleSubmit2}
               >
                 {({
                   handleChange,
@@ -161,9 +188,9 @@ const LoginPinScreen = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.loginButton}
                       onPress={() => {
-                        setFieldTouched("pin", true); 
+                        setFieldTouched("pin", true);
                         if (values.pin.length === 6) {
-                          handleSubmit();
+                          handleSubmit(); // ✅ This will now call `handleSubmit2`
                         }
                       }}
                       activeOpacity={0.8}
@@ -177,6 +204,8 @@ const LoginPinScreen = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+      <Toast />
+
     </View>
   );
 };
@@ -248,7 +277,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontFamily: "Poppins-Bold", 
+    fontFamily: "Poppins-Bold",
     color: "#000000",
     marginBottom: 8,
   },
