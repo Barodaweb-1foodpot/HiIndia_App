@@ -1,6 +1,7 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import EventsDetail from "../screens/EventsDetail";
+import EventsDetail from "../screens/Events/EventsDetail";
+import BuyTicketScreen from "../screens/Events/BuyTicketScreen";
 
 const ScreenStack = createStackNavigator();
 
@@ -12,7 +13,8 @@ const ScreenNavigator = () => {
         gestureEnabled: false,
       }}
     >
-      <ScreenStack.Screen name="Home" component={EventsDetail} />
+      <ScreenStack.Screen name="EventsDetail" component={EventsDetail} />
+      <ScreenStack.Screen name="BuyTicket" component={BuyTicketScreen} />
     </ScreenStack.Navigator>
   );
 };
