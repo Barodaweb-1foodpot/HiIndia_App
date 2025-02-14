@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,17 @@ import {
   Keyboard,
   StatusBar,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { requestOTP } from "../../api/auth_api";
+import { isLoaded } from "expo-font";
 
 const ForgotPassword = ({ navigation }) => {
+  const { setForgotEmail, forgotEmail , forgot_id , setForgot_Id} = useAuthContext()
+  const [isloading, setIsLoading] = useState(false)
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
@@ -26,10 +32,41 @@ const ForgotPassword = ({ navigation }) => {
       .required("Email is required"),
   });
 
-  const handleSendOTP = (values) => {
-    console.log("Sending OTP to email:", values.email);
-    navigation.navigate("VerifyOtp");
+  const handleSendOTP = async (values) => {
+    setIsLoading(true)
+    setForgotEmail(values.email);
+    const res = await requestOTP(values.email)
+    console.log("--------",res)
+    if (res.isOk) {
+      setForgot_Id(res.data._id)
+      setIsLoading(false)
+      Toast.show({
+        type: "success",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.navigate("VerifyOtp");
+      }, 2000);
+
+    }
+    else {
+      setIsLoading(false)
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+    setIsLoading(false)
+    // navigation.navigate("VerifyOtp");
   };
+
+
+
 
   return (
     <View style={styles.rootContainer}>
@@ -61,7 +98,7 @@ const ForgotPassword = ({ navigation }) => {
 
             <View style={styles.whiteContainer}>
               <Formik
-                initialValues={{ email: "" }}
+                initialValues={{ email: forgotEmail || "" }}
                 validationSchema={validationSchema}
                 onSubmit={handleSendOTP}
               >
@@ -95,8 +132,9 @@ const ForgotPassword = ({ navigation }) => {
                       style={styles.sendOTPButton}
                       onPress={handleSubmit}
                       activeOpacity={0.8}
+                      disabled={isloading}
                     >
-                      <Text style={styles.sendOTPButtonText}>Send OTP</Text>
+                      <Text style={styles.sendOTPButtonText}>{isloading ? "Sending...." : "Send OTP"}</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -105,6 +143,8 @@ const ForgotPassword = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+      <Toast />
+
     </View>
   );
 };

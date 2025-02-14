@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
+import { getEventCategoriesByPartner } from "../api/event_api";
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -35,6 +36,18 @@ export default function EventsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState("All events");
   const [likedEvents, setLikedEvents] = useState({});
   const [searchText, setSearchText] = useState("");
+  const [category , setCategory] = useState([])
+  useEffect(() => {
+    fetchCategory()
+  },[])
+  const fetchCategory = async () => {
+    const res = await getEventCategoriesByPartner()
+    console.log(res.data)
+    if(res.data.data?.length>0)
+    {
+      setCategory(res.data.data)
+    }
+  }
 
   const categories = [
     "All events",
@@ -145,7 +158,7 @@ export default function EventsScreen({ navigation }) {
         >
           <View style={styles.eventsHeader}>
             <Text style={styles.eventsTitle}>Events</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 setSearchVisible(prev => !prev);
                 if (!searchVisible) setSearchText('');
@@ -179,16 +192,16 @@ export default function EventsScreen({ navigation }) {
             </TouchableOpacity>
             {dropdownOpen && (
               <View style={styles.dropdownList}>
-                {categories.map((cat, index) => (
+                {category?.map((cat, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      setSelectedCategory(cat);
-                      setDropdownOpen(false);
-                    }}
+                    // onPress={() => {
+                    //   setSelectedCategory(cat);
+                    //   setDropdownOpen(false);
+                    // }}
                   >
-                    <Text style={styles.dropdownItemText}>{cat}</Text>
+                    <Text style={styles.dropdownItemText}>{cat.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
