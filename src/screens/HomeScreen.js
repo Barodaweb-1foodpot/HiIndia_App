@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,12 @@ import {
   Image,
   StatusBar,
   Platform,
-} from "react-native";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import { BlurView } from "expo-blur";
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { BlurView } from 'expo-blur';
+import { fetchEvents, listActiveEvents } from '../api/event_api';
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import moment from 'moment';
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -32,7 +35,43 @@ export default function HomeScreen({ navigation }) {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [likedEvents, setLikedEvents] = useState({});
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState('All');
+  const [events, setEvents] = useState([]);
+  const [perPage, setPerPage] = useState(2);
+  const [pageNo, setPageNo] = useState(0);
+  const [activeEvent, setActiveEvents] = useState([]);
+  const [count, setCount] = useState(0) 
+  useEffect(() => {
+    fetchEvent();
+    fetchActiveEvent()
+  }, [searchText, perPage, pageNo]);
+  
+  useEffect(()=>{
+    setEvents([])
+    console.log(activeTab)
+    fetchEvent()
+  },[activeTab])
+
+  const fetchEvent = async () => { 
+    
+    const res = await fetchEvents(pageNo, perPage, searchText, filterDate=activeTab);
+    // console.log("kkkkkkkkkkk", res);
+    if (res.data.length > 0) {
+      setCount(res.count)
+      setEvents(res.data);
+    }
+    else {
+      setCount(0)
+      setEvents([])
+    }
+  };
+
+  const fetchActiveEvent = async () => {
+    const res = await listActiveEvents() 
+    if (res.data.length > 0) {
+      setActiveEvents(res.data)
+    }
+  }
 
   const toggleLike = (index) => {
     setLikedEvents((prev) => ({
@@ -41,48 +80,31 @@ export default function HomeScreen({ navigation }) {
     }));
   };
 
-  const eventsData = [
-    {
-      title: "Atul Purohit Graba",
-      image: require("../../assets/Atul_dada.png"),
-    },
-    {
-      title: "Falguni Pathak Hits",
-      image: require("../../assets/placeholder.jpg"),
-    },
-    { title: "DJ Music Event", image: require("../../assets/placeholder.jpg") },
-  ];
+  // Filter events based on the search text
+  // const filteredEvents = events.filter((event) => {
+  //   const searchLower = searchText.toLowerCase();
+  //   return (
+  //     event.EventName?.toLowerCase().includes(searchLower) ||
+  //     event.EventLocation?.toLowerCase().includes(searchLower) ||
+  //     event.city?.toLowerCase().includes(searchLower) ||
+  //     event.state?.toLowerCase().includes(searchLower) ||
+  //     event.country?.CountryName?.toLowerCase().includes(searchLower)
+  //   );
+  // });
 
-  const hubData = [
-    {
-      title: "Global Music Fest",
-      date: "Aug 30 - Sep 2, 2025",
-      location: "Springfield, IL",
-      category: "Music Festival",
-      image: require("../../assets/placeholder.jpg"),
-    },
-    {
-      title: "Global Healthcare Congress",
-      date: "Aug 30 - Sep 2, 2025",
-      location: "123 Oakwood Dr.",
-      category: "Healthcare",
-      image: require("../../assets/placeholder.jpg"),
-    },
-  ];
-
-  const filteredEventsData = eventsData.filter((item) =>
-    item.title.toLowerCase().includes(searchText.toLowerCase())
-  );
-
-  const filteredHubData = hubData.filter((item) => {
-    return (
-      item.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.location?.toLowerCase().includes(searchText.toLowerCase()) ||
-      false ||
-      item.date.toLowerCase().includes(searchText.toLowerCase())
-    );
-  });
+  // Further filter events based on the active tab (All, Upcoming, Past)
+  const now = new Date();
+  // const filteredByTabEvents = filteredEvents.filter((event) => {
+  //   if (activeTab === 'All') return true;
+  //   // Assuming event.startDate and event.endDate are available in ISO format
+  //   if (activeTab === 'Upcoming') {
+  //     return event.startDate && new Date(event.startDate) >= now;
+  //   }
+  //   if (activeTab === 'Past') {
+  //     return event.endDate && new Date(event.endDate) < now;
+  //   }
+  //   return true;
+  // });
 
   return (
     <View style={styles.container}>
@@ -148,7 +170,11 @@ export default function HomeScreen({ navigation }) {
                   styles.tabButton,
                   activeTab === "All" && styles.activeTab,
                 ]}
-                onPress={() => setActiveTab("All")}
+                onPress={() => {
+                  setActiveTab('All')
+                   
+                  setPerPage(2)
+                }}
               >
                 <Text
                   style={[
@@ -159,28 +185,17 @@ export default function HomeScreen({ navigation }) {
                   All
                 </Text>
               </TouchableOpacity>
+               
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  activeTab === "Upcoming" && styles.activeTab,
+                  activeTab === 'Past' && styles.activeTab,
                 ]}
-                onPress={() => setActiveTab("Upcoming")}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "Upcoming" && styles.activeTabText,
-                  ]}
-                >
-                  Upcoming
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === "Past" && styles.activeTab,
-                ]}
-                onPress={() => setActiveTab("Past")}
+                onPress={() => {
+                  setActiveTab('Past')
+                  
+                  setPerPage(2)
+                }}
               >
                 <Text
                   style={[
@@ -196,69 +211,102 @@ export default function HomeScreen({ navigation }) {
 
           {/* Trending Events Section */}
           <View style={styles.section}>
-            {activeTab === "All" && (
-              <Text style={styles.sectionTitle}>Trending Events</Text>
+            {activeTab === 'All' && (
+              <Text style={styles.sectionTitle}>All Events</Text>
             )}
 
-            {filteredEventsData.map((event, index) => (
-              <View key={index} style={styles.eventCard}>
-                <Image source={event.image} style={styles.eventImage} />
-                <TouchableOpacity
-                  style={styles.heartButton}
-                  onPress={() => toggleLike(index)}
-                >
-                  <Ionicons
-                    name={likedEvents[index] ? "heart" : "heart-outline"}
-                    size={20}
-                    color={likedEvents[index] ? "#E3000F" : "#000"}
-                  />
-                </TouchableOpacity>
-                <BlurWrapper style={styles.eventContent}>
-                  <View style={styles.eventDetailsColumn}>
-                    <Text style={styles.eventTitle}>{event.title}</Text>
-                    <View style={styles.eventDetail}>
-                      <Ionicons
-                        name="location-outline"
-                        size={14}
-                        color="#fff"
-                      />
-                      <Text style={styles.eventDetailText}>
-                        Gelora Bung Karno Stadium..
-                      </Text>
-                    </View>
-                    <View style={styles.eventDetail}>
-                      <Ionicons
-                        name="calendar-outline"
-                        size={14}
-                        color="#fff"
-                      />
-                      <Text style={styles.eventDetailText}>
-                        Aug 30 - Sep 2, 2025
-                      </Text>
-                    </View>
-                  </View>
-                  {activeTab === "All" && (
-                    <View style={styles.registerContainer}>
-                      <TouchableOpacity
-                        style={styles.registerButton}
-                        onPress={() => navigation.navigate("App")}
-                      >
-                        <Text style={styles.registerText}>Register</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </BlurWrapper>
-              </View>
-            ))}
+            {events?.map((event, index) => {
+              const eventImageUri = event.EventImage
+                ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+                : null;
+              // Format the date string if both start and end dates are available
+              const eventDate =
+                event.StartDate && event.EndDate
+                  ? `${moment(event.StartDate).format('D/M/YY HH:mm')} to ${moment(event.EndDate).format('D/M/YY HH:mm')}`
+                  : 'Date not available';
 
-            <View style={styles.viewMoreContainer}>
-              <TouchableOpacity style={styles.viewMoreButton}>
-                <View style={styles.viewMoreButtonContent}>
-                  <Text style={styles.viewMoreText}>View More</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#000" />
+              return (
+                <View key={index} style={styles.eventCard}>
+                  <Image
+                    source={
+                      eventImageUri
+                        ? { uri: eventImageUri }
+                        : require('../../assets/placeholder.jpg')
+                    }
+                    style={styles.eventImage}
+                  />
+                  <TouchableOpacity
+                    style={styles.heartButton}
+                    onPress={() => toggleLike(index)}
+                  >
+                    <Ionicons
+                      name={likedEvents[index] ? 'heart' : 'heart-outline'}
+                      size={20}
+                      color={likedEvents[index] ? '#E3000F' : '#000'}
+                    />
+                  </TouchableOpacity>
+                  <BlurWrapper style={styles.eventContent}>
+                    <View style={styles.eventDetailsColumn}>
+                      <Text style={styles.eventTitle} numberOfLines={1}>
+                        {event.EventName}
+                      </Text>
+                      <View style={styles.dflex}>
+                        <View style={styles.eventDetail}>
+                          <View><Text style={styles.eventDetailText}>
+                            <Ionicons
+                              name="location-outline"
+                              size={14}
+                              color="#fff"
+                            />{event.EventLocation}
+                            {/* {event.city ? `, ${event.city}` : ''}
+                          {event.state ? `, ${event.state}` : ''}
+                          {event.country?.CountryName
+                            ? `, ${event.country.CountryName}`
+                            : ''} */}
+                          </Text>
+
+                          </View>
+                          <View>
+                            <Text style={styles.eventDetailText}>
+                              <Ionicons
+                                name="calendar-outline"
+                                size={14}
+                                color="#fff"
+                              />  {eventDate}
+                            </Text>
+                          </View>
+
+                        </View>
+
+                        <View style={styles.registerContainer} >
+                          <TouchableOpacity style={styles.registerButton}  onPress={() => navigation.navigate("App")}>
+                            <Text style={styles.registerText}>Register</Text>
+                          </TouchableOpacity>
+                        </View>
+
+
+                      </View>
+                    </View>
+
+                  </BlurWrapper>
                 </View>
-              </TouchableOpacity>
-            </View>
+              );
+            })}
+
+            {count > events.length &&
+              <View style={styles.viewMoreContainer}>
+                <TouchableOpacity style={styles.viewMoreButton}
+                  onPress={() => {
+                    setPerPage(perPage + 5)
+                    console.log(perPage + 5)
+                  }}>
+                  <View style={styles.viewMoreButtonContent}>
+                    <Text style={styles.viewMoreText}>View More</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#000" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            }
           </View>
 
           {/* Event Hub Section (shown only in the All tab) */}
@@ -270,28 +318,50 @@ export default function HomeScreen({ navigation }) {
                 showsHorizontalScrollIndicator={false}
                 style={styles.hubScrollView}
               >
-                {filteredHubData.map((item, index) => (
-                  <View key={index} style={styles.hubCard}>
-                    <Image source={item.image} style={styles.hubCardImage} />
-                    <View style={styles.hubCardContent}>
-                      <Text style={styles.hubCardTitle}>{item.title}</Text>
-                      <Text style={styles.hubCardDate}>{item.date}</Text>
-                      <View style={styles.hubLocationContainer}>
-                        <Ionicons
-                          name="location-outline"
-                          size={12}
-                          color="#666"
-                        />
-                        <Text style={styles.hubLocationText}>
-                          {item.location}
-                        </Text>
-                      </View>
-                      <View style={styles.categoryPill}>
-                        <Text style={styles.categoryText}>{item.category}</Text>
+                {activeEvent.map((item, index) => {
+                  const eventImageUri = item.EventImage
+                    ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+                    : null;
+                  // Format the date string if both start and end dates are available
+                  const eventDate =
+                    item.StartDate && item.EndDate
+                      ? `${moment(item.StartDate).format('D/M/YY HH:mm')} to ${moment(item.EndDate).format('D/M/YY HH:mm')}`
+                      : 'Date not available';
+                  return (
+                    <View key={index} style={styles.hubCard}>
+                      <Image source={
+                        eventImageUri
+                          ? { uri: eventImageUri }
+                          : require('../../assets/placeholder.jpg')
+                      } style={styles.hubCardImage} />
+                      <View style={styles.hubCardContent}>
+                        <Text style={styles.hubCardTitle} numberOfLines={1}>{item.EventName}</Text>
+                        <Text style={styles.hubCardDate}> <Ionicons name="calendar-outline" style={styles.iconCircle} />{eventDate}</Text>
+                        <View style={styles.hubLocationContainer}>
+                          <Ionicons
+                            name="location-outline"
+                            size={12}
+                            color="#666"
+                          />
+                          <Text style={styles.hubLocationText} numberOfLines={1}>
+                            {item.EventLocation}
+                          </Text>
+                        </View>
+                        <View style={styles.dflex2}>
+                          {item.EventCategory?.map((data, index) => (
+                            <View style={styles.categoryPill} key={index}>
+                              <Text style={styles.categoryText}>
+                                {data.category}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+
+
                       </View>
                     </View>
-                  </View>
-                ))}
+                  )
+                })}
               </ScrollView>
             </View>
           )}
@@ -302,6 +372,21 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  viewMoreContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  viewMoreButton: {
+    borderWidth: 1,
+    borderColor: "#000",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  viewMoreButtonContent: { flexDirection: "row", alignItems: "center", gap: 4 },
+  viewMoreText: { fontSize: 14, color: "#000", fontWeight: "600" },
   container: {
     flex: 1,
     backgroundColor: "#000",
@@ -423,7 +508,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    height: 200,
+    height: 250,
   },
   eventImage: {
     width: "100%",
@@ -460,18 +545,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   eventDetailsColumn: {
-    flex: 1,
-    justifyContent: "center",
+    // flex: 1,
+    // justifyContent: 'center',
+  },
+  dflex: {
+    display: 'flex',
+    flexDirection: 'row', // Aligns items in a row
+    justifyContent: 'space-between', // Distributes space properly
+    alignItems: 'center', // Ensures vertical alignment
+    width: '100%', // Ensures it takes full width
+  },
+  dflex2: {
+    gap: 10,
+    display: 'flex',
+    flexDirection: 'row', // Aligns items in a row
+    alignItems: 'center', // Ensures vertical alignment
+    width: '100%', // Ensures it takes full width
   },
   eventTitle: {
+    overflow: 'hidden',
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
     marginBottom: 8,
   },
   eventDetail: {
-    flexDirection: "row",
-    alignItems: "center",
+    width: "60%",
+    // flexDirection: 'row',
+    // alignItems: 'center',
     marginBottom: 4,
   },
   eventDetailText: {
@@ -480,10 +581,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   registerContainer: {
-    justifyContent: "center",
-    alignItems: "center",
+    height: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingLeft: 8,
+    width: "40%",
+    flex: 1, // Allows it to take available space
+    alignSelf: 'flex-end', // Pushes it to the right if necessary
   },
+
   registerButton: {
     backgroundColor: "#E3000F",
     paddingHorizontal: 24,
@@ -528,7 +634,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     marginRight: 16,
-    width: 300,
+    width: 340,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

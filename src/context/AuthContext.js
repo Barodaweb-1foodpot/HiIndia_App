@@ -5,12 +5,16 @@ export const useAuthContext = () => useContext(AuthContext);
 
 export const ContextProvider = ({ children }) => {  
     const [loginEmail, setLoginEmail] = useState("");
-
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgot_id , setForgot_Id] = useState('')
     return (
-        <AuthContext.Provider value={{ loginEmail, setLoginEmail }}>
+        <AuthContext.Provider value={{ loginEmail, setLoginEmail ,
+            forgotEmail, setForgotEmail,
+            forgot_id , setForgot_Id
+        }}>
             {children}  
         </AuthContext.Provider>
     );
 };
 
-export default ContextProvider; // ✅ Default export to match App.js
+export default ContextProvider;

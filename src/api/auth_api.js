@@ -40,41 +40,61 @@ export const handleLogin = async (values) => {
     }
 };
 
-export const handleGoogleSuccess = async (Email) => {
-    console.log("Google response object:", response); // Check the response structure
+export const requestOTP = async (values) => {
     try {
-    //   const token = response.credential; // JWT token provided by Google
-    //   const decoded = jwtDecode(token); // Use jwt-decode library to decode the JWT
-    //   console.log(decoded)
-    //   const Email = decoded.email; // Get Email from decoded token
-
-    //   console.log("Decoded Email:", Email); // Log the Email
-
-      const serverResponse = await axios.post(
-        `${API_BASE_URL}/api/eventPartner/eventPartnerHandleGoogleLogin`,
-        { Email: Email } // Send Email to your backend
-      );
-      console.log("API response:", serverResponse); // Log the response from your API
-      if (serverResponse.success === true) {
-        console.log(serverResponse.data)
-        // await AsyncStorage.setItem("role", res.data.data._id);
-        //     await AsyncStorage.setItem("Token", res.data.token);
-
-        // localStorage.setItem("AdminUser", serverResponse.data._id)
-        // localStorage.setItem("LoggedinUser", serverResponse.data.FirstName        )
-        // console.log("Google login successful!", serverResponse);
-        // Navigate("/dashboard");
-        // console.log("Redirecting to dashboard...");
-        // localStorage.setItem("Token", serverResponse.token)
-      }
-
-      else {
-       return "Unregistered Speaker. Please register first."
-
-        // setError(serverResponse.message || "Failed to authenticate with Google.");
-      }
+        console.log(values)
+        const response = await axios.post(`${API_BASE_URL}/auth/participant/otp-Forget-password-request`, { email: values }, {
+            validateStatus: () => true,
+        });
+        console.log(response.data)
+        return response.data
     } catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
         throw new Error(error);
+    }
+};
 
+
+export const verifyOTP = async (values) => {
+
+    try {
+        const response = await axios.post(`${API_BASE_URL}/auth/participant/verify-otp-login`, values);
+        console.log(response.data)
+        return response.data
+    } catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
+        throw new Error(error);
+    }
+};
+
+
+export const handleSetPassword = async (id , password) => {
+    
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/participant/set-password/${id}`,
+        { password }
+      );
+
+      console.log(response.data)
+      return response.data
+    } catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
+        throw new Error(error);
     }
   };
