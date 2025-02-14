@@ -8,20 +8,18 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Platform,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker } from "react-native-maps";
+// import MapView, { Marker } from "react-native-maps";
 
 const { width, height } = Dimensions.get("window");
 
-const EventsDetail = ({ navigation }) => {
-  // Toggle for "Read More" in Description
+export default function EventsDetail({ navigation }) {
   const [readMore, setReadMore] = useState(false);
-
-  // Toggle for Tab Selection
   const [selectedTab, setSelectedTab] = useState("Event Catalogue");
 
-  // Sample short and full descriptions
   const shortDescription =
     "Join us for an unforgettable Garba Night, where tradition meets celebration! Dance to the electrifying beats of dandiya and Garba, dressed in vibrant festive attire...";
   const fullDescription = `
@@ -29,62 +27,97 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
 \nCelebrate the spirit of togetherness as you twirl and swirl to the mesmerizing tunes of Garba. Whether you're a seasoned dancer or a first-timer, this night promises joy, laughter, and cherished memories. Get ready to immerse yourself in the cultural extravaganza and make new friends on the dance floor!
 `;
 
-  // Sample region for the MapView
-  const initialRegion = {
-    latitude: 22.308387,
-    longitude: 73.168029,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
+  const latitude = 22.308387;
+  const longitude = 73.168029;
+
+  const openMaps = () => {
+    const url = `https://maps.google.com/?q=${latitude},${longitude}`;
+    Linking.openURL(url);
   };
 
   return (
     <View style={styles.rootContainer}>
       <StatusBar barStyle="light-content" />
 
-      {/* Top Section (Black Background + Event Image + Back Button) */}
+      {/* Top Section */}
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => {
-            if (navigation && navigation.canGoBack()) {
-              navigation.goBack();
-            }
-          }}
+          onPress={() => navigation.navigate("Tab")}
         >
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
 
         <Image
-          source={require("../../assets/Atul_bhai.png")} // <-- Update path
+          source={require("../../../assets/Atul_bhai.png")}
           style={styles.topImage}
           resizeMode="cover"
         />
 
-        {/* Bridging Card (half on image, half on white) */}
+        {/* Floating Card */}
         <View style={styles.headerCard}>
           <Text style={styles.headerCardTitle}>Atul Purohit Graba</Text>
-          <Text style={styles.headerCardSubtitle}>
-            Gelora Bung Karno Stadium, Ahmedabad
-            {"\n"}August 30 - September 2, 2024
-            {"\n"}09:00 AM - 07:00 PM
-          </Text>
 
-          <View style={styles.divider} />
+          {/* Location row */}
+          <View style={styles.headerCardRow}>
+            <Ionicons
+              name="location-outline"
+              size={16}
+              color="#666666"
+              style={styles.headerCardIcon}
+            />
+            <Text style={styles.headerCardSubtitle}>
+              Gelora Bung Karno Stadium, Ahmedabad
+            </Text>
+          </View>
 
-          <Text style={styles.artistName}>Atul Purohit</Text>
-          <Text style={styles.artistDetail}>
-            Singer, artist, 26 instrumental player
-          </Text>
+          {/* Date row */}
+          <View style={styles.headerCardRow}>
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color="#666666"
+              style={styles.headerCardIcon}
+            />
+            <Text style={styles.headerCardSubtitle}>
+              August 30 - September 2, 2024
+            </Text>
+          </View>
+
+          {/* Time row */}
+          <View style={styles.headerCardRow}>
+            <Ionicons
+              name="time-outline"
+              size={16}
+              color="#666666"
+              style={styles.headerCardIcon}
+            />
+            <Text style={styles.headerCardSubtitle}>09:00 AM - 07:00 PM</Text>
+          </View>
         </View>
       </View>
 
-      {/* White Container */}
+      {/* White Section */}
       <View style={styles.whiteContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Description Section */}
+          {/* Artist Info with Circular Image */}
+          <View style={styles.artistInfoContainer}>
+            <Image
+              source={require("../../../assets/placeholder.jpg")}
+              style={styles.artistImage}
+            />
+            <View style={styles.artistTextContainer}>
+              <Text style={styles.artistName}>Atul Purohit</Text>
+              <Text style={styles.artistDetail}>
+                Singer, artist, 26 instrumental player
+              </Text>
+            </View>
+          </View>
+
+          {/* Description */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.descriptionText}>
@@ -97,19 +130,28 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
             </TouchableOpacity>
           </View>
 
-          {/* Venue & Location Section */}
+          {/* Venue & Location */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Venue & Location</Text>
+
+            {/* COMMENTED MAP
             <View style={styles.mapContainer}>
               <MapView style={styles.mapStyle} initialRegion={initialRegion}>
                 <Marker
                   coordinate={{
-                    latitude: 22.308387,
-                    longitude: 73.168029,
+                    latitude: latitude,
+                    longitude: longitude,
                   }}
                 />
               </MapView>
-            </View>
+            </View> 
+            */}
+
+            {/* CLICKABLE LINK */}
+            <TouchableOpacity onPress={openMaps} style={styles.locationLink}>
+              <Ionicons name="location-sharp" size={20} color="#E3000F" />
+              <Text style={styles.locationLinkText}>Open in Maps</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Tabs */}
@@ -152,7 +194,6 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
           {/* Tab Content */}
           {selectedTab === "Event Catalogue" && (
             <View style={styles.catalogueContainer}>
-              {/* Example PDF card */}
               <View style={styles.pdfCard}>
                 <Ionicons
                   name="document-text-outline"
@@ -176,52 +217,56 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
               {[1, 2, 3, 4].map((_, index) => (
                 <View key={index} style={styles.galleryItem}>
                   <Image
-                    source={require("../../assets/placeholder.jpg")} // <-- Update path
+                    source={require("../../../assets/placeholder.jpg")}
                     style={styles.galleryImage}
                     resizeMode="cover"
                   />
-                  {/* Share icon overlay */}
                   <TouchableOpacity style={styles.shareIcon}>
-                    <Ionicons name="share-social-outline" size={18} color="#FFF" />
+                    <Ionicons
+                      name="share-social-outline"
+                      size={18}
+                      color="#FFF"
+                    />
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
           )}
 
-          {/* Extra space so content isn't hidden behind the fixed bottom bar */}
-          <View style={{ height: 100 }} />
+          {/* Extra space so content isn't hidden by the bottom bar */}
+          <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Fixed Bottom Bar: Price + Buy Ticket */}
+        {/* Bottom Bar */}
         <View style={styles.bottomBar}>
-          <Text style={styles.priceText}>Start from IDR1.100.000</Text>
-          <TouchableOpacity style={styles.buyButton}>
+          <Text style={styles.priceText}>Start from 14.02.2025</Text>
+          <TouchableOpacity
+            style={styles.buyButton}
+            onPress={() => navigation.navigate("BuyTicket")}
+          >
             <Text style={styles.buyButtonText}>Buy Ticket</Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
-};
-
-export default EventsDetail;
+}
 
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: "#000000", // black background to match top section
+    backgroundColor: "#000",
   },
   topSection: {
     position: "relative",
+    paddingTop: Platform.OS === "ios" ? 40 : 0,
     backgroundColor: "#000",
-    height: 200, // Adjust as needed
-    alignItems: "center",
+    height: 360,
     justifyContent: "center",
   },
   backButton: {
     position: "absolute",
-    top: 50,
+    top: Platform.OS === "ios" ? 60 : 40,
     left: 16,
     zIndex: 10,
   },
@@ -231,7 +276,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: -40, // negative margin to overlap white container
+    bottom: 25,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -249,46 +294,58 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "Poppins-Bold",
     color: "#000000",
+    marginBottom: 8,
+  },
+  headerCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
+  },
+  headerCardIcon: {
+    marginRight: 4,
   },
   headerCardSubtitle: {
     fontSize: 12,
     fontFamily: "Poppins-Regular",
     color: "#666666",
-    lineHeight: 18,
-    marginBottom: 10,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#E0E0E0",
-    marginVertical: 10,
+  whiteContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    marginTop: -80,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  scrollViewContent: {
+    paddingHorizontal: 20,
+    paddingTop: 70,
+    paddingBottom: 20,
+  },
+  artistInfoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  artistImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    resizeMode: "cover",
+  },
+  artistTextContainer: {
+    marginLeft: 12,
   },
   artistName: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "Poppins-Bold",
     color: "#000000",
+    marginBottom: 4,
   },
   artistDetail: {
     fontSize: 12,
     fontFamily: "Poppins-Regular",
     color: "#666666",
-    marginTop: 4,
   },
-
-  whiteContainer: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    marginTop: -40, // Pull up to align with the bridging card
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  scrollViewContent: {
-    paddingHorizontal: 20,
-    paddingTop: 60, // Enough space for bridging card
-    paddingBottom: 20,
-  },
-
-  // Sections
   sectionContainer: {
     marginBottom: 20,
   },
@@ -311,7 +368,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Map
+  // Map Container (commented out) & clickable link
+  /*
   mapContainer: {
     width: "100%",
     height: 200,
@@ -321,6 +379,19 @@ const styles = StyleSheet.create({
   mapStyle: {
     width: "100%",
     height: "100%",
+  },
+  */
+  locationLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  locationLinkText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: "#E3000F",
+    fontFamily: "Poppins-Medium",
+    textDecorationLine: "underline",
   },
 
   // Tabs
@@ -348,7 +419,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
   },
 
-  // Catalogue (PDF)
+  // Catalogue
   catalogueContainer: {
     marginBottom: 20,
   },
@@ -413,12 +484,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 20,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
-
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
