@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef , useState} from "react";
 import {
   View,
   Text,
@@ -14,9 +14,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { handleSetPassword } from "../../api/auth_api";
+import Toast from "react-native-toast-message";
 
 const VerifyCode = ({ navigation }) => {
   const resetInputRefs = useRef([]);
+  const { forgot_id, setForgot_Id } = useAuthContext()
+    const [isloading, setIsLoading] = useState(false)
+  
   const confirmInputRefs = useRef([]);
 
   const dismissKeyboard = () => {
@@ -29,8 +35,41 @@ const VerifyCode = ({ navigation }) => {
       .matches(/^\d{6}$/, "Reset PIN must be exactly 6 digits"),
     confirmPin: Yup.string()
       .required("Confirm PIN is required")
-      .oneOf([Yup.ref("resetPin")], "Pins do not match"),
+      .oneOf([Yup.ref("resetPin")], "Pins do not match")
+      .matches(/^\d{6}$/, "Confirm PIN must be exactly 6 digits"),
   });
+
+
+  const handleResetPassword = async (values) => {
+    console.log(forgot_id)
+
+    const res = await handleSetPassword(forgot_id, values.confirmPin)
+    console.log("-----------",res)
+    if (res.isOk) {
+
+      setIsLoading(false)
+      Toast.show({
+        type: "success",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.navigate("Login");
+      }, 1000);
+
+    }
+    else {
+      setIsLoading(false)
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+  }
 
   return (
     <View style={styles.rootContainer}>
@@ -65,12 +104,7 @@ const VerifyCode = ({ navigation }) => {
               <Formik
                 initialValues={{ resetPin: "", confirmPin: "" }}
                 validationSchema={validationSchema}
-                onSubmit={(values) => {
-                  if (values.resetPin === values.confirmPin) {
-                    console.log("Pins match:", values.resetPin);
-                    navigation.navigate("UpdatedPin");
-                  }
-                }}
+                onSubmit={handleResetPassword}
               >
                 {({
                   handleChange,
@@ -139,7 +173,7 @@ const VerifyCode = ({ navigation }) => {
                             style={[
                               styles.pinInput,
                               values.confirmPin[index] &&
-                                styles.pinInputFilled,
+                              styles.pinInputFilled,
                             ]}
                             keyboardType="numeric"
                             maxLength={1}
@@ -183,10 +217,11 @@ const VerifyCode = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.resetButton}
                       onPress={handleSubmit}
+                      disabled={isloading}
                       activeOpacity={0.8}
                     >
                       <Text style={styles.resetButtonText}>
-                        Reset and Continue
+                       {isloading ? "Setting...." :" Reset and Continue"}
                       </Text>
                     </TouchableOpacity>
                   </>
@@ -196,6 +231,7 @@ const VerifyCode = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+      <Toast/>
     </View>
   );
 };

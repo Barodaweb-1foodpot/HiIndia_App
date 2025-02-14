@@ -14,11 +14,17 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { useAuthContext } from "../../context/AuthContext";
+import { requestOTP, verifyOTP } from "../../api/auth_api";
+import Toast from "react-native-toast-message";
+// import { isLoading } from "expo-font";
 
 const VerifyOtp = ({ navigation }) => {
   const inputRefs = useRef([]);
+  const { forgotEmail } = useAuthContext()
   const [timeLeft, setTimeLeft] = useState(90); // Set 90 seconds for the timer
-
+  const [isloading, setIsLoading] = useState(false)
+  const [er, setEr] = useState('')
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
@@ -50,6 +56,93 @@ const VerifyOtp = ({ navigation }) => {
       .toString()
       .padStart(2, "0")}`;
   };
+  const handleSendOTP = async (values) => {
+    setIsLoading(true)
+    console.log("-------------")
+    const res = await requestOTP(forgotEmail)
+    console.log(res)
+    if (res.isOk) {
+      setIsLoading(false)
+      Toast.show({
+        type: "success",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+    else {
+      setIsLoading(false)
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+    // navigation.navigate("VerifyOtp");
+  };
+
+  const handleSendAgain = async () => {
+    setIsLoading(true)
+    console.log("-------------")
+    const res = await requestOTP(forgotEmail)
+    console.log(res)
+    if (res.isOk) {
+      setIsLoading(false)
+      Toast.show({
+        type: "success",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+    else {
+      setIsLoading(false)
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+  };
+
+  const handleVerifyAndContinue = async(values) => {
+    console.log("hello", values.otp);
+    const value = { email:forgotEmail, otp:values.otp }
+    const res = await verifyOTP(value)
+    console.log(res)
+    if (res.isOk) {
+      
+      setIsLoading(false)
+      Toast.show({
+        type: "success",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.navigate("VerifyCode");
+      }, 1000);
+
+    }
+    else {
+      setIsLoading(false)
+      Toast.show({
+        type: "error",
+        text1: res.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
+
+    }
+  };
+
+
 
   return (
     <View style={styles.rootContainer}>
@@ -74,7 +167,7 @@ const VerifyOtp = ({ navigation }) => {
                 <Text style={styles.headerCardTitle}>Verification Code</Text>
                 <Text style={styles.headerCardSubtitle}>
                   Verification code sent successfully to your registered email
-                  address **hiindia@gmail.com**
+                  address **{forgotEmail}**
                 </Text>
               </View>
             </View>
@@ -83,10 +176,8 @@ const VerifyOtp = ({ navigation }) => {
               <Formik
                 initialValues={{ otp: "" }}
                 validationSchema={validationSchema}
-                onSubmit={(values) => {
-                  console.log("Verifying OTP:", values.otp);
-                  navigation.navigate("VerifyCode");
-                }}
+                onSubmit={handleSendOTP}
+
               >
                 {({
                   handleChange,
@@ -143,23 +234,20 @@ const VerifyOtp = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.otp}</Text>
                       )}
                       <TouchableOpacity
-                        onPress={() => {
-                          if (timeLeft === 0) {
-                            setTimeLeft(90); // Reset the timer when it has expired
-                          }
-                        }}
+                        onPress={handleSendAgain}
                         activeOpacity={0.7}
+                        disabled={isloading}
                       >
                         <Text style={styles.timerText}>
                           Didn’t receive code?{" "}
-                          <Text style={styles.timer}>{formatTime()}</Text>
+                          <Text style={styles.timer}>{isloading ? "Sending Again ....." : "Send Again"}</Text>
                         </Text>
                       </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity
                       style={styles.verifyButton}
-                      onPress={handleSubmit}
+                      onPress={() => handleVerifyAndContinue(values)}
                       activeOpacity={0.8}
                     >
                       <Text style={styles.verifyButtonText}>
@@ -173,6 +261,7 @@ const VerifyOtp = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+      <Toast />
     </View>
   );
 };
