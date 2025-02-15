@@ -19,8 +19,8 @@ const TabNavigator = () => {
         },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Events" component={EventsScreen} />
+      {/* <Tab.Screen name="Home" component={HomeScreen} /> */}
+      {/* <Tab.Screen name="Events" component={EventsScreen} /> */}
       <Tab.Screen name="Tickets" component={TicketsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

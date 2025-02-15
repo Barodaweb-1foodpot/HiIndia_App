@@ -43,7 +43,7 @@ const MainNavigator = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="Tab"
+      // initialRouteName="Onboarding"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false,
