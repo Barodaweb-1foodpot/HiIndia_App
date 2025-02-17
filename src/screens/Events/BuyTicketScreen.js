@@ -222,7 +222,7 @@ export default function BuyTicketScreen() {
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate("EventsDetail")}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
