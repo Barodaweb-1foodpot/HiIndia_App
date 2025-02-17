@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,27 +13,53 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 // import MapView, { Marker } from "react-native-maps";
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import RenderHTML from "react-native-render-html";
+import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
 
 const { width, height } = Dimensions.get("window");
 
-export default function EventsDetail({ navigation }) {
+export default function EventsDetail({ navigation, route }) {
   const [readMore, setReadMore] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("Event Catalogue");
+  const [titleReadMore, setTitleReadMore] = useState(false);
 
-  const shortDescription =
-    "Join us for an unforgettable Garba Night, where tradition meets celebration! Dance to the electrifying beats of dandiya and Garba, dressed in vibrant festive attire...";
-  const fullDescription = `
-Join us for an unforgettable Garba Night, where tradition meets celebration! Dance to the electrifying beats of dandiya and Garba, dressed in vibrant festive attire. Experience the energy of Navratri with live music, traditional décor, and an enthusiastic crowd. 
-\nCelebrate the spirit of togetherness as you twirl and swirl to the mesmerizing tunes of Garba. Whether you're a seasoned dancer or a first-timer, this night promises joy, laughter, and cherished memories. Get ready to immerse yourself in the cultural extravaganza and make new friends on the dance floor!
-`;
+  const { eventDetail } = route.params || {}; // Default to empty object in case params are undefined
+  console.log("00000000",eventDetail)
+  useEffect(() => {
+    if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
+      fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
+    }
+    
+  }, [eventDetail?.EventCatalogue]);
+  const [fileSize, setFileSize] = useState(null);
 
-  const latitude = 22.308387;
-  const longitude = 73.168029;
+  const fetchFileSize = async (url) => {
+    try {
+      const encodedUrl = encodeURI(url); 
 
-  const openMaps = () => {
-    const url = `https://maps.google.com/?q=${latitude},${longitude}`;
-    Linking.openURL(url);
+      const response = await fetch(encodedUrl, { method: "HEAD" });
+
+      if (!response.ok) {
+        return
+        // throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+      }
+
+      const contentLength = response.headers.get("content-length");
+      if (contentLength) {
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2); // Convert bytes to MB
+        
+        setFileSize(sizeInMB);
+      } else {
+        console.warn("Content-Length header is missing.");
+      }
+    } catch (error) {
+      console.error("Error fetching file size:", error);
+    }
   };
+
+  const [selectedTab, setSelectedTab] = useState("Event Catalogue");
+ 
+ 
 
   return (
     <View style={styles.rootContainer}>
@@ -49,17 +75,32 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
         </TouchableOpacity>
 
         <Image
-          source={require("../../../assets/Atul_bhai.png")}
+          source={{
+            uri: eventDetail?.EventImage
+              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
+          }}
           style={styles.topImage}
           resizeMode="cover"
         />
 
         {/* Floating Card */}
         <View style={styles.headerCard}>
-          <Text style={styles.headerCardTitle}>Atul Purohit Graba</Text>
+          <View>
+            <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+              {eventDetail?.EventName}
+
+            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
+                <Text style={styles.readMoreText}>{titleReadMore ? "Read Less" : "Read More"}</Text>
+              </TouchableOpacity>
+            )}
+
+          </View>
+
 
           {/* Location row */}
-          <View style={styles.headerCardRow}>
+          <View style={styles.headerCardRow2}>
             <Ionicons
               name="location-outline"
               size={16}
@@ -67,7 +108,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              Gelora Bung Karno Stadium, Ahmedabad
+              {eventDetail?.EventLocation}
             </Text>
           </View>
 
@@ -80,7 +121,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              August 30 - September 2, 2024
+              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
             </Text>
           </View>
 
@@ -92,7 +133,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
               color="#666666"
               style={styles.headerCardIcon}
             />
-            <Text style={styles.headerCardSubtitle}>09:00 AM - 07:00 PM</Text>
+            <Text style={styles.headerCardSubtitle}>{formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}</Text>
           </View>
         </View>
       </View>
@@ -106,13 +147,17 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
           {/* Artist Info with Circular Image */}
           <View style={styles.artistInfoContainer}>
             <Image
-              source={require("../../../assets/placeholder.jpg")}
+              source={{
+                uri: eventDetail?.EventImage
+                  ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
+              }}
               style={styles.artistImage}
             />
             <View style={styles.artistTextContainer}>
-              <Text style={styles.artistName}>Atul Purohit</Text>
+              <Text style={styles.artistName}>{eventDetail?.artistName}</Text>
               <Text style={styles.artistDetail}>
-                Singer, artist, 26 instrumental player
+                {eventDetail?.artistDesc}
+                {/* {console.log(eventDetail)} */}
               </Text>
             </View>
           </View>
@@ -121,7 +166,13 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.descriptionText}>
-              {readMore ? fullDescription : shortDescription}
+              {readMore ? (
+                eventDetail?.EventDescreption.replace(/<[^>]+>/g, "")
+              ) : (
+                <Text numberOfLines={2} ellipsizeMode="tail">
+                  {eventDetail?.ShortDescreption}
+                </Text>
+              )}
             </Text>
             <TouchableOpacity onPress={() => setReadMore(!readMore)}>
               <Text style={styles.readMoreText}>
@@ -148,7 +199,7 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
             */}
 
             {/* CLICKABLE LINK */}
-            <TouchableOpacity onPress={openMaps} style={styles.locationLink}>
+            <TouchableOpacity onPress={() => Linking.openURL(eventDetail?.googleMapLink)} style={styles.locationLink}>
               <Ionicons name="location-sharp" size={20} color="#E3000F" />
               <Text style={styles.locationLinkText}>Open in Maps</Text>
             </TouchableOpacity>
@@ -192,8 +243,8 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
           </View>
 
           {/* Tab Content */}
-          {selectedTab === "Event Catalogue" && (
-            <View style={styles.catalogueContainer}>
+          {selectedTab === "Event Catalogue" && eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null" ? (
+            <View style={styles.catalogueContainer}> 
               <View style={styles.pdfCard}>
                 <Ionicons
                   name="document-text-outline"
@@ -202,36 +253,46 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
                   style={styles.pdfIcon}
                 />
                 <View style={styles.pdfInfo}>
-                  <Text style={styles.pdfTitle}>Policy_catalogue.pdf</Text>
-                  <Text style={styles.pdfSize}>2.2MB</Text>
+                  <Text style={styles.pdfTitle}>Download Catalogue</Text>
+                  <Text style={styles.pdfSize}>{fileSize} MB</Text>
                 </View>
                 <TouchableOpacity style={styles.downloadIcon}>
                   <Ionicons name="download-outline" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
             </View>
+          ) : (
+            <View>
+              <Text>No Catalogue</Text>
+            </View>
           )}
+
 
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
-              {[1, 2, 3, 4].map((_, index) => (
-                <View key={index} style={styles.galleryItem}>
-                  <Image
-                    source={require("../../../assets/placeholder.jpg")}
-                    style={styles.galleryImage}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity style={styles.shareIcon}>
-                    <Ionicons
-                      name="share-social-outline"
-                      size={18}
-                      color="#FFF"
+              {eventDetail?.GalleryImages && eventDetail?.GalleryImages.length > 0 ? (
+                eventDetail?.GalleryImages.map((image, index) => (
+                  <View key={index} style={styles.galleryItem}>
+                    <Image
+                      source={{ uri: `${API_BASE_URL_UPLOADS}/${image}` || require('../../../assets/placeholder.jpg') }} // Assuming image is a URL, otherwise adjust as necessary
+                      style={styles.galleryImage}
+                      resizeMode="cover"
                     />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                    <TouchableOpacity style={styles.shareIcon}>
+                      <Ionicons
+                        name="share-social-outline"
+                        size={18}
+                        color="#FFF"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              ) : (
+                <Text>No Images</Text>
+              )}
             </View>
           )}
+
 
           {/* Extra space so content isn't hidden by the bottom bar */}
           <View style={{ height: 120 }} />
@@ -239,13 +300,21 @@ Join us for an unforgettable Garba Night, where tradition meets celebration! Dan
 
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
-          <Text style={styles.priceText}>Start from 14.02.2025</Text>
-          <TouchableOpacity
-            style={styles.buyButton}
-            onPress={() => navigation.navigate("BuyTicket")}
-          >
-            <Text style={styles.buyButtonText}>Buy Ticket</Text>
-          </TouchableOpacity>
+          <Text style={styles.priceText}>
+            {eventDetail?.eventRates.length > 0 ? (
+              `Start from ${eventDetail?.countryDetail[0].Currency} ${Math.max(...eventDetail?.eventRates.map(rate => rate.ratesForParticipant))}`
+            ) : (
+              "Free Event"
+            )}
+          </Text>
+          {new Date(eventDetail?.StartDate) > Date.now() &&
+            <TouchableOpacity
+              style={styles.buyButton}
+              onPress={() => navigation.navigate("BuyTicket")}
+            >
+              <Text style={styles.buyButtonText}>Buy Ticket</Text>
+            </TouchableOpacity>
+          }
         </View>
       </View>
     </View>
@@ -302,9 +371,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "Poppins-Bold",
     color: "#000000",
-    marginBottom: 8,
   },
   headerCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  headerCardRow2: {
+    marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 4,
@@ -351,6 +425,7 @@ const styles = StyleSheet.create({
   },
   artistDetail: {
     fontSize: 12,
+    paddingRight: 30,
     fontFamily: "Poppins-Regular",
     color: "#666666",
   },
@@ -417,6 +492,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#E3000F",
   },
+  readMoreText: {
+    color: "black",
+  },
+
   tabText: {
     fontSize: 14,
     fontFamily: "Poppins-Regular",
