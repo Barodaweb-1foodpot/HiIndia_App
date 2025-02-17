@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const { width } = Dimensions.get("window");
@@ -35,6 +34,21 @@ const couponsList = [
     code: "MEGA50",
     discount: 50,
     minSpend: 2000,
+  },
+  {
+    code: "SUMMER20",
+    discount: 20,
+    minSpend: 700,
+  },
+  {
+    code: "SUPER30",
+    discount: 30,
+    minSpend: 1000,
+  },
+  {
+    code: "BONUS25",
+    discount: 25,
+    minSpend: 1500,
   },
 ];
 
@@ -67,6 +81,8 @@ export default function BuyTicketScreen() {
 
   const [showCouponsModal, setShowCouponsModal] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+  const [showValidation, setShowValidation] = useState(false);
 
   const handleNext = () => {
     const count = parseInt(numRegistrationsInput, 10);
@@ -179,22 +195,34 @@ export default function BuyTicketScreen() {
   }
 
   const handleProceed = () => {
-    console.log("Proceed pressed. Implement your logic here.");
+    let hasError = false;
+    registrations.forEach((reg) => {
+      if (!reg.name.trim() || !reg.dobString.trim()) {
+        hasError = true;
+      }
+    });
+
+    if (hasError) {
+      setShowValidation(true);
+      return;
+    }
+
+    navigation.navigate("PaymentScreen", {
+      registrations,
+      finalTotal,
+    });
   };
 
   return (
     <View style={styles.rootContainer}>
       <StatusBar barStyle="light-content" />
 
+      {/* TOP SECTION */}
       <View style={styles.topSection}>
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            }
-          }}
+          onPress={() => navigation.navigate("EventsDetail")}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
@@ -245,6 +273,7 @@ export default function BuyTicketScreen() {
         </View>
       </View>
 
+      {/* WHITE SECTION */}
       <View style={styles.whiteContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -262,7 +291,7 @@ export default function BuyTicketScreen() {
             </Text>
           </Text>
 
-          {/* Enhanced Number of Registrations */}
+          {/* Number of Registrations */}
           {!hasClickedNext && (
             <View style={styles.registrationNumberSection}>
               <Text style={styles.sectionLabel}>Number of Registration</Text>
@@ -292,28 +321,41 @@ export default function BuyTicketScreen() {
             </View>
           )}
 
-          {/* Enhanced Registration Cards */}
+          {/* Registration Cards */}
           {hasClickedNext &&
-            registrations.map((reg, index) => (
-              <View key={index} style={styles.registrationCard}>
-                <View style={styles.registrationHeader}>
-                  <Text style={styles.registrationTitle}>
-                    Registration #{index + 1}
-                  </Text>
-                  {registrations.length > 1 && (
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={() => handleCancelRegistration(index)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#E3000F" />
-                    </TouchableOpacity>
-                  )}
-                </View>
+            registrations.map((reg, index) => {
+              // Check if current fields are invalid
+              const nameInvalid = showValidation && !reg.name.trim();
+              const dobInvalid = showValidation && !reg.dobString.trim();
 
-                {/* Enhanced Input Container */}
-                <View style={styles.inputContainer}>
+              return (
+                <View key={index} style={styles.registrationCard}>
+                  <View style={styles.registrationHeader}>
+                    <Text style={styles.registrationTitle}>
+                      Registration #{index + 1}
+                    </Text>
+                    {registrations.length > 1 && (
+                      <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={() => handleCancelRegistration(index)}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={24}
+                          color="#E3000F"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* NAME Input */}
                   <View style={styles.inputGroup}>
-                    <View style={styles.boxInputContainer}>
+                    <View
+                      style={[
+                        styles.boxInputContainer,
+                        nameInvalid && { borderColor: "red" },
+                      ]}
+                    >
                       <Ionicons name="person-outline" size={20} color="#666" />
                       <TextInput
                         style={styles.boxInput}
@@ -327,12 +369,20 @@ export default function BuyTicketScreen() {
                         }}
                       />
                     </View>
+                    {nameInvalid && (
+                      <Text style={styles.errorText}>
+                        Please enter your name
+                      </Text>
+                    )}
                   </View>
 
+                  {/* DOB Input */}
                   <View style={styles.inputGroup}>
-                    <TouchableOpacity
-                      style={styles.boxInputContainer}
-                      onPress={() => showDatePicker(index)}
+                    <View
+                      style={[
+                        styles.boxInputContainer,
+                        dobInvalid && { borderColor: "red" },
+                      ]}
                     >
                       <Ionicons
                         name="calendar-outline"
@@ -344,12 +394,19 @@ export default function BuyTicketScreen() {
                           styles.boxInput,
                           !reg.dobString && styles.placeholderText,
                         ]}
+                        onPress={() => showDatePicker(index)}
                       >
                         {reg.dobString || "Select your date of birth"}
                       </Text>
-                    </TouchableOpacity>
+                    </View>
+                    {dobInvalid && (
+                      <Text style={styles.errorText}>
+                        Please select your date of birth
+                      </Text>
+                    )}
                   </View>
 
+                  {/* Age (read-only, not required) */}
                   <View style={styles.inputGroup}>
                     <View style={styles.boxInputContainer}>
                       <Ionicons
@@ -366,51 +423,53 @@ export default function BuyTicketScreen() {
                       />
                     </View>
                   </View>
-                </View>
 
-                {/* Enhanced Ticket Selection */}
-                <View style={styles.ticketSection}>
-                  <Text style={styles.sectionLabel}>Select Ticket Type</Text>
+                  {/* Ticket Selection */}
+                  <View style={styles.ticketSection}>
+                    <Text style={styles.sectionLabel}>Select Ticket Type</Text>
+                    <TouchableOpacity
+                      style={styles.ticketSelector}
+                      onPress={() => {
+                        setActiveRegIndexTicket(index);
+                        setShowTicketModal(true);
+                      }}
+                    >
+                      <View style={styles.ticketInfo}>
+                        <Text style={styles.selectedTicketType}>
+                          {reg.ticketType}
+                        </Text>
+                        <Text style={styles.ticketPrice}>
+                          ${reg.ticketPrice}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-down" size={24} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Copy Details Option */}
                   <TouchableOpacity
-                    style={styles.ticketSelector}
-                    onPress={() => {
-                      setActiveRegIndexTicket(index);
-                      setShowTicketModal(true);
-                    }}
+                    style={styles.copyDetailsButton}
+                    onPress={() => toggleCopyDetails(index)}
                   >
-                    <View style={styles.ticketInfo}>
-                      <Text style={styles.selectedTicketType}>
-                        {reg.ticketType}
-                      </Text>
-                      <Text style={styles.ticketPrice}>${reg.ticketPrice}</Text>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        reg.copyDetails && styles.checkboxChecked,
+                      ]}
+                    >
+                      {reg.copyDetails && (
+                        <Ionicons name="checkmark" size={16} color="#FFF" />
+                      )}
                     </View>
-                    <Ionicons name="chevron-down" size={24} color="#666" />
+                    <Text style={styles.copyDetailsText}>
+                      Copy these details for other tickets
+                    </Text>
                   </TouchableOpacity>
                 </View>
+              );
+            })}
 
-                {/* Enhanced Copy Details Option */}
-                <TouchableOpacity
-                  style={styles.copyDetailsButton}
-                  onPress={() => toggleCopyDetails(index)}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      reg.copyDetails && styles.checkboxChecked,
-                    ]}
-                  >
-                    {reg.copyDetails && (
-                      <Ionicons name="checkmark" size={16} color="#FFF" />
-                    )}
-                  </View>
-                  <Text style={styles.copyDetailsText}>
-                    Copy these details for other tickets
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-
-          {/* Enhanced Add Registration Button */}
+          {/* Add Registration Button */}
           {hasClickedNext && (
             <TouchableOpacity
               style={styles.addRegistrationButton}
@@ -423,7 +482,7 @@ export default function BuyTicketScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Enhanced Coupons Section */}
+          {/* Coupons Section */}
           {hasClickedNext && (
             <View style={styles.couponsSection}>
               {appliedCoupon ? (
@@ -467,7 +526,7 @@ export default function BuyTicketScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Enhanced Bottom Bar */}
+        {/* Bottom Bar */}
         {hasClickedNext && (
           <View style={styles.bottomBar}>
             <View style={styles.totalSection}>
@@ -491,7 +550,7 @@ export default function BuyTicketScreen() {
           </View>
         )}
 
-        {/* Enhanced Ticket Type Modal */}
+        {/* Ticket Type Modal */}
         <Modal visible={showTicketModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
@@ -504,7 +563,7 @@ export default function BuyTicketScreen() {
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              {Object.entries(ticketData).map(([type, price], idx) => (
+              {Object.entries(ticketData).map(([type, price]) => (
                 <TouchableOpacity
                   key={type}
                   style={styles.ticketOption}
@@ -521,7 +580,7 @@ export default function BuyTicketScreen() {
           </View>
         </Modal>
 
-        {/* Enhanced Coupons Modal */}
+        {/* Coupons Modal */}
         <Modal visible={showCouponsModal} transparent animationType="slide">
           <View style={styles.couponModalOverlay}>
             <View style={styles.couponModalContainer}>
@@ -534,32 +593,46 @@ export default function BuyTicketScreen() {
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              {couponsList.map((coupon, index) => (
-                <View key={coupon.code} style={styles.couponCard}>
-                  <View style={styles.couponContent}>
-                    <View style={styles.couponHeader}>
-                      <Ionicons name="pricetag" size={24} color="#E3000F" />
-                      <Text style={styles.couponCode}>{coupon.code}</Text>
-                      <View style={styles.discountBadge}>
-                        <Text style={styles.discountText}>
-                          {coupon.discount}% OFF
-                        </Text>
+              <ScrollView>
+                {couponsList.map((coupon) => {
+                  const isCouponAvailable = rawTotal >= coupon.minSpend;
+
+                  return (
+                    <View key={coupon.code} style={styles.couponCard}>
+                      <View style={styles.couponContent}>
+                        <View style={styles.couponHeader}>
+                          <Ionicons name="pricetag" size={24} color="#E3000F" />
+                          <Text style={styles.couponCode}>{coupon.code}</Text>
+                          <View style={styles.discountBadge}>
+                            <Text style={styles.discountText}>
+                              {coupon.discount}% OFF
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.couponDetails}>
+                          <Text style={styles.couponMinSpend}>
+                            Minimum spend: ${coupon.minSpend}
+                          </Text>
+                        </View>
                       </View>
+                      {isCouponAvailable ? (
+                        <TouchableOpacity
+                          style={styles.couponApplyButton}
+                          onPress={() => handleApplyCoupon(coupon)}
+                        >
+                          <Text style={styles.couponApplyText}>Apply</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.couponUnavailableOverlay}>
+                          <Text style={styles.couponUnavailableText}>
+                            Not Available
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                    <View style={styles.couponDetails}>
-                      <Text style={styles.couponMinSpend}>
-                        Minimum spend: ${coupon.minSpend}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.couponApplyButton}
-                    onPress={() => handleApplyCoupon(coupon)}
-                  >
-                    <Text style={styles.couponApplyText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                  );
+                })}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -583,6 +656,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -592,19 +666,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: 50,
+    top: Platform.OS === "ios" ? 50 : 15,
     left: 16,
     zIndex: 10,
-    width: 44,
-    height: 44,
+    width: 34,
+    height: 34,
     borderRadius: 22,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#FFF",
-    // backgroundColor: "rgba(255,255,255,0.3)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   topImage: {
     width: "100%",
     height: "100%",
@@ -666,7 +738,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Registration Number Section
   registrationNumberSection: {
     marginBottom: 24,
   },
@@ -679,7 +750,7 @@ const styles = StyleSheet.create({
   numberRegContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 2,
   },
   numberRegInput: {
     flex: 1,
@@ -693,13 +764,18 @@ const styles = StyleSheet.create({
     borderColor: "#E9ECEF",
   },
   generateButton: {
-    height: 52,
-    backgroundColor: "#E3000F",
-    borderRadius: 12,
-    paddingHorizontal: 24,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    height: 48,
+    backgroundColor: "#E3000F",
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    marginLeft: 10,
+    shadowColor: "#E3000F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   generateButtonText: {
     fontSize: 15,
@@ -707,7 +783,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 
-  // Registration Card
   registrationCard: {
     backgroundColor: "#FFF",
     borderRadius: 16,
@@ -736,19 +811,8 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 
-  // Input Groups
-  inputContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-  },
   inputGroup: {
     marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#555",
-    marginBottom: 8,
   },
   boxInputContainer: {
     flexDirection: "row",
@@ -769,8 +833,13 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "#999",
   },
+  errorText: {
+    marginTop: 4,
+    marginLeft: 4,
+    fontSize: 13,
+    color: "red",
+  },
 
-  // Ticket Section
   ticketSection: {
     marginTop: 24,
   },
@@ -799,7 +868,6 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  // Copy Details
   copyDetailsButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -823,7 +891,6 @@ const styles = StyleSheet.create({
     color: "#444",
   },
 
-  // Add Registration Button
   addRegistrationButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -842,7 +909,6 @@ const styles = StyleSheet.create({
     color: "#E3000F",
   },
 
-  // Coupons Section
   couponsSection: {
     marginBottom: 24,
   },
@@ -898,7 +964,6 @@ const styles = StyleSheet.create({
     color: "#444",
   },
 
-  // Bottom Bar
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -916,12 +981,8 @@ const styles = StyleSheet.create({
   totalSection: {
     flex: 1,
   },
-  totalLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  totalAmount: {
-    fontSize: 20,
+  grandTotalText: {
+    fontSize: 16,
     fontWeight: "700",
     color: "#222",
   },
@@ -933,6 +994,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 24,
     marginLeft: 20,
+    shadowColor: "#E3000F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   proceedButtonText: {
     fontSize: 15,
@@ -940,7 +1006,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 
-  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -989,10 +1054,8 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  // Coupon Modal
   couponModalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   couponModalContainer: {
@@ -1001,6 +1064,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: "80%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   couponModalHeader: {
     flexDirection: "row",
@@ -1016,12 +1084,17 @@ const styles = StyleSheet.create({
   couponCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FAFAFA",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#E9ECEF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   couponContent: {
     flex: 1,
@@ -1039,8 +1112,8 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     backgroundColor: "#FFE5E7",
-    borderRadius: 12,
-    paddingHorizontal: 8,
+    borderRadius: 15,
+    paddingHorizontal: 3,
     paddingVertical: 4,
     marginLeft: 8,
   },
@@ -1068,9 +1141,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFF",
   },
-  grandTotalText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
+  couponUnavailableOverlay: {
+    backgroundColor: "rgba(255, 0, 0, 0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  couponUnavailableText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#E3000F",
+    textAlign: "center",
   },
 });
