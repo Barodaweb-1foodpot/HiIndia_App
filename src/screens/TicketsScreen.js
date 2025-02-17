@@ -77,8 +77,10 @@ export default function TicketScreen({ navigation }) {
             <TouchableOpacity style={styles.iconCircle}>
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconCircle}>
+            <TouchableOpacity
+              style={styles.iconCircle}
               onPress={() => navigation.navigate("App", { screen: "Calender" })}
+            >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
           </View>

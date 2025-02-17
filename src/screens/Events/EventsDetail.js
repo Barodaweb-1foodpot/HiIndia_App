@@ -69,7 +69,7 @@ export default function EventsDetail({ navigation, route }) {
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate("Tab")}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>

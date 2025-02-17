@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
   Image,
   StatusBar,
   Platform,
-} from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { BlurView } from 'expo-blur';
-import { fetchEvents, listActiveEvents } from '../api/event_api';
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
-import moment from 'moment';
+  Share,
+  StyleSheet as RNStyleSheet,
+} from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import { BlurView } from "expo-blur";
+import { fetchEvents, listActiveEvents } from "../api/event_api";
+import { API_BASE_URL_UPLOADS } from "@env";
+import moment from "moment";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// A wrapper component for blur effect
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -32,56 +35,99 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
+// Custom component to handle image loading with a placeholder
+const EventImage = ({ uri, style }) => {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && (
+        <Image
+          source={require("../../assets/placeholder.jpg")}
+          style={[StyleSheet.absoluteFill, style]}
+          resizeMode="cover"
+        />
+      )}
+      <Image
+        source={uri ? { uri } : require("../../assets/placeholder.jpg")}
+        style={style}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+      />
+    </View>
+  );
+};
+
 export default function HomeScreen({ navigation }) {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [likedEvents, setLikedEvents] = useState({});
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState("All");
   const [events, setEvents] = useState([]);
   const [perPage, setPerPage] = useState(2);
   const [pageNo, setPageNo] = useState(0);
   const [activeEvent, setActiveEvents] = useState([]);
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
+
   useEffect(() => {
     fetchEvent();
-    fetchActiveEvent()
+    fetchActiveEvent();
   }, [searchText, perPage, pageNo]);
 
   useEffect(() => {
-    setEvents([])
-    console.log(activeTab)
-    fetchEvent()
-  }, [activeTab])
+    setEvents([]);
+    console.log(activeTab);
+    fetchEvent();
+  }, [activeTab]);
 
   const fetchEvent = async () => {
-   
-    const res = await fetchEvents(pageNo, perPage, searchText, filterDate = activeTab);
-    // console.log("kkkkkkkkkkk", res);
+    const res = await fetchEvents(
+      pageNo,
+      perPage,
+      searchText,
+      (filterDate = activeTab)
+    );
     if (res.data.length > 0) {
-      setCount(res.count)
+      setCount(res.count);
       setEvents(res.data);
-    }
-    else {
-      setCount(0)
-      setEvents([])
+    } else {
+      setCount(0);
+      setEvents([]);
     }
   };
 
   const fetchActiveEvent = async () => {
-    const res = await listActiveEvents()
+    const res = await listActiveEvents();
     if (res.data.length > 0) {
-      setActiveEvents(res.data)
+      setActiveEvents(res.data);
     }
-  }
-
-  const toggleLike = (index) => {
-    setLikedEvents((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
   };
 
-  
+  // Function to share event details
+  const shareEvent = async (event) => {
+    try {
+      const eventDate =
+        event.StartDate && event.EndDate
+          ? `${moment(event.StartDate).format("D/M/YY HH:mm")} to ${moment(
+              event.EndDate
+            ).format("D/M/YY HH:mm")}`
+          : "Date not available";
+      const eventImageUri = event.EventImage
+        ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+        : null;
+      const shareMessage =
+        `🎶 *Check out this event!*\n\n` +
+        `📌 *Event:* ${event.EventName}\n` +
+        `📍 *Location:* ${event.EventLocation}\n` +
+        `🗓️ *Date:* ${eventDate}\n` +
+        (eventImageUri ? `🖼️ *Image:* ${eventImageUri}\n` : "");
+
+      await Share.share({
+        message: shareMessage,
+      });
+    } catch (error) {
+      console.error("Error sharing event", error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -98,7 +144,10 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity style={styles.iconCircle}>
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconCircle}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() => navigation.navigate("App", { screen: "Calender" })}
+            >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
           </View>
@@ -148,9 +197,8 @@ export default function HomeScreen({ navigation }) {
                   activeTab === "All" && styles.activeTab,
                 ]}
                 onPress={() => {
-                  setActiveTab('All')
-
-                  setPerPage(2)
+                  setActiveTab("All");
+                  setPerPage(2);
                 }}
               >
                 <Text
@@ -166,12 +214,11 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  activeTab === 'Past' && styles.activeTab,
+                  activeTab === "Past" && styles.activeTab,
                 ]}
                 onPress={() => {
-                  setActiveTab('Past')
-
-                  setPerPage(2)
+                  setActiveTab("Past");
+                  setPerPage(2);
                 }}
               >
                 <Text
@@ -188,7 +235,7 @@ export default function HomeScreen({ navigation }) {
 
           {/* Trending Events Section */}
           <View style={styles.section}>
-            {activeTab === 'All' && (
+            {activeTab === "All" && (
               <Text style={styles.sectionTitle}>All Events</Text>
             )}
 
@@ -196,32 +243,30 @@ export default function HomeScreen({ navigation }) {
               const eventImageUri = event.EventImage
                 ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
                 : null;
-              // Format the date string if both start and end dates are available
               const eventDate =
                 event.StartDate && event.EndDate
-                  ? `${moment(event.StartDate).format('D/M/YY HH:mm')} to ${moment(event.EndDate).format('D/M/YY HH:mm')}`
-                  : 'Date not available';
+                  ? `${moment(event.StartDate).format(
+                      "D/M/YY HH:mm"
+                    )} to ${moment(event.EndDate).format("D/M/YY HH:mm")}`
+                  : "Date not available";
 
               return (
                 <View key={index} style={styles.eventCard}>
-                  <Image
-                    source={
-                      eventImageUri
-                        ? { uri: eventImageUri }
-                        : require('../../assets/placeholder.jpg')
-                    }
-                    style={styles.eventImage}
-                  />
+                  {/* Event image with placeholder until load */}
+                  <EventImage uri={eventImageUri} style={styles.eventImage} />
+
+                  {/* Share Button */}
                   <TouchableOpacity
-                    style={styles.heartButton}
-                    onPress={() => toggleLike(index)}
+                    style={styles.shareButton}
+                    onPress={() => shareEvent(event)}
                   >
                     <Ionicons
-                      name={likedEvents[index] ? 'heart' : 'heart-outline'}
+                      name="share-social-outline"
                       size={20}
-                      color={likedEvents[index] ? '#E3000F' : '#000'}
+                      color="#000"
                     />
                   </TouchableOpacity>
+
                   <BlurWrapper style={styles.eventContent}>
                     <View style={styles.eventDetailsColumn}>
                       <Text style={styles.eventTitle} numberOfLines={1}>
@@ -229,64 +274,63 @@ export default function HomeScreen({ navigation }) {
                       </Text>
                       <View style={styles.dflex}>
                         <View style={styles.eventDetail}>
-                          <View><Text style={styles.eventDetailText} numberOfLines={2}>
+                          <Text
+                            style={styles.eventDetailText}
+                            numberOfLines={2}
+                          >
                             <Ionicons
                               name="location-outline"
                               size={14}
                               color="#fff"
-                            />{event.EventLocation}
-                            {/* {event.city ? `, ${event.city}` : ''}
-                          {event.state ? `, ${event.state}` : ''}
-                          {event.country?.CountryName
-                            ? `, ${event.country.CountryName}`
-                            : ''} */}
+                            />{" "}
+                            {event.EventLocation}
                           </Text>
-
-                          </View>
-                          <View>
-                            <Text style={styles.eventDetailText}>
-                              <Ionicons
-                                name="calendar-outline"
-                                size={14}
-                                color="#fff"
-                              />  {eventDate}
-                            </Text>
-                          </View>
-
+                          <Text style={styles.eventDetailText}>
+                            <Ionicons
+                              name="calendar-outline"
+                              size={14}
+                              color="#fff"
+                            />{" "}
+                            {eventDate}
+                          </Text>
                         </View>
 
-                        <View style={styles.registerContainer} >
-                          <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate("App", {
-                            screen: "EventsDetail",
-                            params: { eventDetail: event }
-                          })}                          >
+                        <View style={styles.registerContainer}>
+                          <TouchableOpacity
+                            style={styles.registerButton}
+                            onPress={() =>
+                              navigation.navigate("App", {
+                                screen: "EventsDetail",
+                                params: { eventDetail: event },
+                              })
+                            }
+                          >
                             <Text style={styles.registerText}>Register</Text>
                           </TouchableOpacity>
                         </View>
-
-
                       </View>
                     </View>
-
                   </BlurWrapper>
                 </View>
               );
             })}
 
-            {count > events.length &&
+            {count > events.length && (
               <View style={styles.viewMoreContainer}>
-                <TouchableOpacity style={styles.viewMoreButton}
+                <TouchableOpacity
+                  style={styles.viewMoreButton}
                   onPress={() => {
-                    setPerPage(perPage + 5)
-                    console.log(perPage + 5)
-                  }}>
+                    setPerPage(perPage + 5);
+                    console.log(perPage + 5);
+                  }}
+                >
                   <View style={styles.viewMoreButtonContent}>
                     <Text style={styles.viewMoreText}>View More</Text>
                     <Ionicons name="chevron-forward" size={16} color="#000" />
                   </View>
                 </TouchableOpacity>
               </View>
-            }
+            )}
           </View>
 
           {/* Event Hub Section (shown only in the All tab) */}
@@ -299,49 +343,57 @@ export default function HomeScreen({ navigation }) {
                 style={styles.hubScrollView}
               >
                 {activeEvent.map((item, index) => {
-                  const eventImageUri = item.EventImage
-                    && `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-
-                  // Format the date string if both start and end dates are available
+                  const eventImageUri =
+                    item.EventImage &&
+                    `${API_BASE_URL_UPLOADS}/${item.EventImage}`;
                   const eventDate =
                     item.StartDate && item.EndDate
-                      ? `${moment(item.StartDate).format('D/M/YY HH:mm')} to ${moment(item.EndDate).format('D/M/YY HH:mm')}`
-                      : 'Date not available';
+                      ? `${moment(item.StartDate).format(
+                          "D/M/YY HH:mm"
+                        )} to ${moment(item.EndDate).format("D/M/YY HH:mm")}`
+                      : "Date not available";
                   return (
                     <TouchableOpacity
-                    key={index}
-                    onPress={() => {
-                      console.log("Selected Item ID:", item._id); // Log the item ID
-                      console.log(events[0]._id)
-                      const selectedEvent = events.find(e => e._id === item._id);
-                      
-                      if (selectedEvent) {
-                        navigation.navigate("App", {
-                          screen: "EventsDetail",
-                          params: { eventDetail: selectedEvent }
-                        });
-                      }
-                    }}
-                  >
-                    {/* Your TouchableOpacity content */}
-                  
-                  
+                      key={index}
+                      onPress={() => {
+                        console.log("Selected Item ID:", item._id);
+                        const selectedEvent = events.find(
+                          (e) => e._id === item._id
+                        );
+                        if (selectedEvent) {
+                          navigation.navigate("App", {
+                            screen: "EventsDetail",
+                            params: { eventDetail: selectedEvent },
+                          });
+                        }
+                      }}
+                    >
                       <View style={styles.hubCard}>
-                        <Image source={
-                          eventImageUri
-                            ? { uri: eventImageUri }
-                            : require('../../assets/placeholder.jpg')
-                        } style={styles.hubCardImage} />
+                        <EventImage
+                          uri={eventImageUri}
+                          style={styles.hubCardImage}
+                        />
                         <View style={styles.hubCardContent}>
-                          <Text style={styles.hubCardTitle} numberOfLines={1}>{item.EventName}</Text>
-                          <Text style={styles.hubCardDate}> <Ionicons name="calendar-outline" style={styles.iconCircle} />{eventDate}</Text>
+                          <Text style={styles.hubCardTitle} numberOfLines={1}>
+                            {item.EventName}
+                          </Text>
+                          <Text style={styles.hubCardDate}>
+                            <Ionicons
+                              name="calendar-outline"
+                              style={styles.iconCircle}
+                            />{" "}
+                            {eventDate}
+                          </Text>
                           <View style={styles.hubLocationContainer}>
                             <Ionicons
                               name="location-outline"
                               size={12}
                               color="#666"
                             />
-                            <Text style={styles.hubLocationText} numberOfLines={1}>
+                            <Text
+                              style={styles.hubLocationText}
+                              numberOfLines={1}
+                            >
                               {item.EventLocation}
                             </Text>
                           </View>
@@ -354,13 +406,10 @@ export default function HomeScreen({ navigation }) {
                               </View>
                             ))}
                           </View>
-
-
                         </View>
-
                       </View>
                     </TouchableOpacity>
-                  )
+                  );
                 })}
               </ScrollView>
             </View>
@@ -372,21 +421,6 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  viewMoreContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  viewMoreButton: {
-    borderWidth: 1,
-    borderColor: "#000",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  viewMoreButtonContent: { flexDirection: "row", alignItems: "center", gap: 4 },
-  viewMoreText: { fontSize: 14, color: "#000", fontWeight: "600" },
   container: {
     flex: 1,
     backgroundColor: "#000",
@@ -513,9 +547,8 @@ const styles = StyleSheet.create({
   eventImage: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
-  heartButton: {
+  shareButton: {
     position: "absolute",
     top: 12,
     right: 12,
@@ -545,25 +578,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   eventDetailsColumn: {
-    // flex: 1,
-    // justifyContent: 'center',
+    // You can adjust as needed
   },
   dflex: {
-    display: 'flex',
-    flexDirection: 'row', // Aligns items in a row
-    justifyContent: 'space-between', // Distributes space properly
-    alignItems: 'center', // Ensures vertical alignment
-    width: '100%', // Ensures it takes full width
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
   },
   dflex2: {
     gap: 10,
-    display: 'flex',
-    flexDirection: 'row', // Aligns items in a row
-    alignItems: 'center', // Ensures vertical alignment
-    width: '100%', // Ensures it takes full width
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
   },
   eventTitle: {
-    overflow: 'hidden',
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
@@ -571,8 +600,6 @@ const styles = StyleSheet.create({
   },
   eventDetail: {
     width: "60%",
-    // flexDirection: 'row',
-    // alignItems: 'center',
     marginBottom: 4,
   },
   eventDetailText: {
@@ -581,15 +608,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   registerContainer: {
-    height: "100%",
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingLeft: 8,
     width: "40%",
-    flex: 1, // Allows it to take available space
-    alignSelf: 'flex-end', // Pushes it to the right if necessary
+    flex: 1,
+    alignSelf: "flex-end",
   },
-
   registerButton: {
     backgroundColor: "#E3000F",
     paddingHorizontal: 24,
@@ -605,6 +630,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     marginTop: 8,
+    marginBottom: 16,
   },
   viewMoreButton: {
     borderWidth: 1,
@@ -635,8 +661,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 16,
     width: 340,
-    minHeight:100,
-    maxHeight:120,
+    minHeight: 100,
+    maxHeight: 120,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -650,7 +676,6 @@ const styles = StyleSheet.create({
   hubCardImage: {
     width: 100,
     height: "100%",
-    resizeMode: "cover",
   },
   hubCardContent: {
     flex: 1,

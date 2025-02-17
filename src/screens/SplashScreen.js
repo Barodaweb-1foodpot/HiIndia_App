@@ -17,11 +17,14 @@ const SplashScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1500,
-      useNativeDriver: true,
-    }).start();
+    const timer = setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      }).start();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [fadeAnim]);
 
   return (
@@ -67,7 +70,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     position: "absolute",
     width: width,
-    height: height + (Platform.OS === 'android' ? 50 : 0),
+    height: height + (Platform.OS === "android" ? 50 : 0),
     top: 0,
     left: 0,
   },

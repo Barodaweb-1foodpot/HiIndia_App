@@ -6,63 +6,21 @@ import {
   TouchableOpacity,
   Image,
   Animated,
-  ScrollView,
-  Dimensions,
   Platform,
+  StatusBar,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 
-const { width } = Dimensions.get("window");
-
-// Enhanced sample events data with more fields
 const events = {
   "2025-02-14": [
     {
       id: 1,
       title: "Global Music Fest",
-      description: "Experience the world's best artists live in concert",
-      location: "Springfield Arena, IL 62704",
-      time: "7:00 PM",
-      image: "https://example.com/event-image.jpg",
-      category: "music",
-      gradient: ["#FF416C", "#FF4B2B"],
-      attendees: 234,
-      price: "$50",
-      isFeatured: true,
+      location: "Springfield, IL 62704, USA",
     },
   ],
- 
-};
-
-const CategoryIcon = ({ category }) => {
-  const icons = {
-    music: "musical-notes",
-    technology: "hardware-chip",
-    art: "color-palette",
-    sports: "basketball",
-    food: "restaurant",
-    education: "school",
-  };
-
-  const colors = {
-    music: "#FF416C",
-    technology: "#4158D0",
-    art: "#00C9FF",
-    sports: "#FF8C00",
-    food: "#FF6B6B",
-    education: "#4CAF50",
-  };
-
-  return (
-    <View
-      style={[styles.categoryIcon, { backgroundColor: colors[category] + "20" }]}
-    >
-      <Ionicons name={icons[category]} size={16} color={colors[category]} />
-    </View>
-  );
 };
 
 export default function CalendarScreen({ navigation }) {
@@ -70,10 +28,10 @@ export default function CalendarScreen({ navigation }) {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const renderHeader = (date) => {
-    const month = date.toString("MMMM yyyy");
+    const monthYear = date.toString("MMMM yyyy");
     return (
       <BlurView intensity={80} tint="light" style={styles.monthHeader}>
-        <Text style={styles.monthText}>{month}</Text>
+        <Text style={styles.monthText}>{monthYear}</Text>
       </BlurView>
     );
   };
@@ -81,12 +39,11 @@ export default function CalendarScreen({ navigation }) {
   const getMarkedDates = () => {
     const marked = {};
     Object.keys(events).forEach((date) => {
-      const event = events[date][0];
       marked[date] = {
         marked: true,
         selected: date === selectedDate,
-        selectedColor: event.gradient[0],
-        dotColor: event.gradient[0],
+        selectedColor: "#E3000F",
+        dotColor: "#E3000F",
         customStyles: {
           container: {
             borderRadius: 12,
@@ -100,100 +57,75 @@ export default function CalendarScreen({ navigation }) {
     return marked;
   };
 
-  const renderEventCard = (eventsList, date) => {
-    if (!eventsList) return null;
+  const formatSelectedDate = (dateString) => {
+    if (!dateString) return "";
+    const dateObj = new Date(dateString);
+    if (isNaN(dateObj)) return "";
 
+    return dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const renderEventList = (eventsList = []) => {
     return eventsList.map((event) => (
-      <Animated.View
-        key={event.id}
-        style={[
-          styles.eventCard,
-          {
-            transform: [
-              {
-                translateY: scrollY.interpolate({
-                  inputRange: [-100, 0, 100],
-                  outputRange: [-20, 0, 20],
-                }),
-              },
-            ],
-          },
-        ]}
+      <TouchableOpacity 
+        key={event.id} 
+        style={styles.eventCard}
+        activeOpacity={0.7}
       >
         <Image
-          source={{ uri: event.image }}
+          source={require("../../assets/placeholder.jpg")}
           style={styles.eventImage}
-          defaultSource={require("../../assets/placeholder.jpg")}
         />
 
-        {/* Featured badge */}
-        {event.isFeatured && (
-          <View style={styles.featuredBadge}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.featuredText}>Featured</Text>
-          </View>
-        )}
-
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.8)"]}
-          style={styles.eventOverlay}
-        >
-          <View style={styles.eventContent}>
-            <View style={styles.eventHeader}>
-              <CategoryIcon category={event.category} />
-              <View style={styles.priceBadge}>
-                <Text style={styles.priceText}>{event.price}</Text>
-              </View>
-            </View>
-
-            <View style={styles.eventInfo}>
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text style={styles.eventDescription} numberOfLines={2}>
-                {event.description}
+        <View style={styles.eventInfo}>
+          <View style={styles.eventHeader}>
+            <Text style={styles.eventTitle} numberOfLines={1}>
+              {event.title}
+            </Text>
+            <View style={styles.dateBadge}>
+              <Text style={styles.dateText}>
+                {formatSelectedDate(selectedDate)}
               </Text>
-
-              <View style={styles.eventDetails}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={16} color="#FFF" />
-                  <Text style={styles.detailText}>{event.time}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="location-outline" size={16} color="#FFF" />
-                  <Text style={styles.detailText}>{event.location}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={16} color="#FFF" />
-                  <Text style={styles.detailText}>
-                    {event.attendees} attending
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.registerButton}>
-                <Text style={styles.registerButtonText}>Register Now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFF" />
-              </TouchableOpacity>
             </View>
           </View>
-        </LinearGradient>
-      </Animated.View>
+
+          <View style={styles.locationContainer}>
+            <View style={styles.locationIconContainer}>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color="#6B7280"
+              />
+            </View>
+            <Text style={styles.eventLocation} numberOfLines={1}>
+              {event.location}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
     ));
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <StatusBar barStyle="dark-content" />
+      
+      <BlurView intensity={80} tint="light" style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Events Calendar</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="filter" size={24} color="#1F2937" />
-        </TouchableOpacity>
-      </View>
+        
+        <View style={styles.placeholder} />
+      </BlurView>
 
       <Calendar
         style={styles.calendar}
@@ -229,18 +161,15 @@ export default function CalendarScreen({ navigation }) {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {selectedDate && (
-          <View>
+        {selectedDate && events[selectedDate] && (
+          <View style={styles.eventListContainer}>
             <Text style={styles.eventsHeader}>
-              Events on{" "}
+              Showing events schedule on{" "}
               <Text style={styles.selectedDate}>
-                {new Date(selectedDate).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                })}
+                {formatSelectedDate(selectedDate)}
               </Text>
             </Text>
-            {renderEventCard(events[selectedDate], selectedDate)}
+            {renderEventList(events[selectedDate])}
           </View>
         )}
       </Animated.ScrollView>
@@ -260,19 +189,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 44 : 20,
     paddingBottom: 15,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
   },
   backButton: {
-    padding: 8,
+    padding: 10,
     borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.05)",
   },
-  filterButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.05)",
+  placeholder: {
+    width: 44,  // Same width as backButton for symmetry
   },
   headerTitle: {
     fontSize: 20,
@@ -293,19 +220,22 @@ const styles = StyleSheet.create({
     color: "#1F2937",
   },
   calendar: {
-    marginHorizontal: 20,
-    marginVertical: 20,
-    borderRadius: 20,
+    margin: 16,
+    borderRadius: 24,
     backgroundColor: "#fff",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    padding: 8,
   },
   eventsContainer: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+  },
+  eventListContainer: {
+    marginTop: 16,
   },
   eventsHeader: {
     fontSize: 16,
@@ -317,106 +247,66 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   eventCard: {
-    borderRadius: 24,
-    marginBottom: 20,
-    overflow: "hidden",
-    height: 400,
+    flexDirection: "row",
     backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 16,
+    padding: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   eventImage: {
-    width: "100%",
-    height: "100%",
-    position: "absolute",
-  },
-  featuredBadge: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.75)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-  },
-  featuredText: {
-    color: "#FFD700",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  eventOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    padding: 20,
-  },
-  eventContent: {
-    gap: 16,
-  },
-  eventHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  categoryIcon: {
-    padding: 8,
+    width: 90,
+    height: 90,
     borderRadius: 12,
-  },
-  priceBadge: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  priceText: {
-    color: "#1F2937",
-    fontWeight: "700",
-    fontSize: 14,
+    marginRight: 12,
+    backgroundColor: "#f3f4f6",
   },
   eventInfo: {
-    gap: 12,
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  eventHeader: {
+    marginBottom: 8,
   },
   eventTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
+    color: "#1F2937",
+    marginBottom: 8,
   },
-  eventDescription: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
-    lineHeight: 20,
+  dateBadge: {
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: "flex-start",
   },
-  eventDetails: {
-    gap: 8,
+  dateText: {
+    fontSize: 13,
+    color: "#4B5563",
+    fontWeight: "500",
   },
-  detailItem: {
+  locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    marginBottom: 8,
   },
-  detailText: {
-    color: "#fff",
-    fontSize: 14,
-  },
-  registerButton: {
-    flexDirection: "row",
+  locationIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#f3f4f6",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    gap: 8,
-    marginTop: 8,
+    marginRight: 8,
   },
-  registerButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  eventLocation: {
+    flex: 1,
+    fontSize: 14,
+    color: "#6B7280",
   },
 });

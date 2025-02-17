@@ -103,7 +103,6 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>Others</Text>
 
-      {/* Invite Friends with custom styling */}
       <TouchableOpacity
         style={[styles.menuItem, { backgroundColor: "rgba(255, 248, 249, 1)" }]}
         onPress={() => setShowShareModal(true)}

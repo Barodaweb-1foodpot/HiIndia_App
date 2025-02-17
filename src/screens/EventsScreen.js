@@ -12,8 +12,12 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { fetchEvents, getEventCategoriesByPartner, SaveEvent } from "../api/event_api";
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import {
+  fetchEvents,
+  getEventCategoriesByPartner,
+  SaveEvent,
+} from "../api/event_api";
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatDateRange } from "../helper/helper_Function";
 
 const BlurWrapper = ({ style, children }) => {
@@ -38,49 +42,53 @@ export default function EventsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState("All events");
   const [likedEvents, setLikedEvents] = useState({});
   const [searchText, setSearchText] = useState("");
-  const [category, setCategory] = useState([])
+  const [category, setCategory] = useState([]);
   const [events, setEvents] = useState([]);
   const [perPage, setPerPage] = useState(2);
-  const [catId, setCatId] = useState('')
-  const [firstTime, setFirstTime] = useState(true)
+  const [catId, setCatId] = useState("");
+  const [firstTime, setFirstTime] = useState(true);
   const [pageNo, setPageNo] = useState(0);
   const [activeEvent, setActiveEvents] = useState([]);
-  const [count, setCount] = useState(0)
-  const [allEvent, setAllEvent] = useState([])
+  const [count, setCount] = useState(0);
+  const [allEvent, setAllEvent] = useState([]);
 
   useEffect(() => {
-    fetchCategory()
-  }, [])
+    fetchCategory();
+  }, []);
   useEffect(() => {
     fetchEvent();
   }, [searchText, perPage, pageNo, selectedCategory]);
 
-  // useEffect(()=>{ 
+  // useEffect(()=>{
   //   SaveUserEvent()
   // },[likedEvents])
 
   const fetchEvent = async () => {
-    const res = await fetchEvents(pageNo, perPage, searchText, categoryFilter = catId);
+    const res = await fetchEvents(
+      pageNo,
+      perPage,
+      searchText,
+      (categoryFilter = catId)
+    );
     console.log("kkkkkkkkkkk", res);
     if (res.data.length > 0) {
-      setCount(res.count)
-      if (firstTime) setAllEvent(res.data)
+      setCount(res.count);
+      if (firstTime) setAllEvent(res.data);
       setEvents(res.data);
-      setFirstTime(false)
-    }
-    else {
-      setCount(0)
-      setEvents([])
+      setFirstTime(false);
+    } else {
+      setCount(0);
+      setEvents([]);
     }
   };
 
   const fetchCategory = async () => {
-    const res = await getEventCategoriesByPartner()
-    console.log(res.data)
+    const res = await getEventCategoriesByPartner();
+    console.log(res.data);
     if (res.data.data?.length > 0) {
-      setCategory(res.data.data)
+      setCategory(res.data.data);
     }
-  }
+  };
 
   // const SaveUserEvent = async () => {
   //   const res = await SaveEvent({savedEvent:likedEvents});
@@ -115,7 +123,10 @@ export default function EventsScreen({ navigation }) {
             <TouchableOpacity style={styles.iconCircle}>
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconCircle}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() => navigation.navigate("App", { screen: "Calender" })}
+            >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
           </View>
@@ -131,8 +142,8 @@ export default function EventsScreen({ navigation }) {
             <Text style={styles.eventsTitle}>Events</Text>
             <TouchableOpacity
               onPress={() => {
-                setSearchVisible(prev => !prev);
-                if (!searchVisible) setSearchText('');
+                setSearchVisible((prev) => !prev);
+                if (!searchVisible) setSearchText("");
               }}
             >
               <Ionicons name="search-outline" size={24} color="#000" />
@@ -232,22 +243,26 @@ export default function EventsScreen({ navigation }) {
               {events.map((item) => (
                 <TouchableOpacity
                   key={item._id}
-                    onPress={() => navigation.navigate("App", {
-                    screen: "EventsDetail",
-                    params: { eventDetail: item }
-                  })}>
+                  onPress={() =>
+                    navigation.navigate("App", {
+                      screen: "EventsDetail",
+                      params: { eventDetail: item },
+                    })
+                  }
+                >
                   <View style={styles.categoryCard}>
                     <Image
                       source={{
-                        uri:
-                          item.EventImage
-                            ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-                            : require('../../assets/placeholder.jpg'),
+                        uri: item.EventImage
+                          ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+                          : require("../../assets/placeholder.jpg"),
                       }}
                       style={styles.categoryCardImage}
                     />
                     <View style={styles.categoryCardContent}>
-                      <Text style={styles.categoryCardTitle} numberOfLines={1} >{item.EventName}</Text>
+                      <Text style={styles.categoryCardTitle} numberOfLines={1}>
+                        {item.EventName}
+                      </Text>
                       <Text style={styles.categoryCardDate}>
                         {formatDateRange(item.StartDate, item.EndDate)}
                       </Text>
@@ -257,7 +272,10 @@ export default function EventsScreen({ navigation }) {
                           size={12}
                           color="#666"
                         />
-                        <Text style={styles.categoryLocationText} numberOfLines={2}>
+                        <Text
+                          style={styles.categoryLocationText}
+                          numberOfLines={2}
+                        >
                           {item.EventLocation}
                         </Text>
                       </View>
@@ -269,26 +287,28 @@ export default function EventsScreen({ navigation }) {
                               {data.category}
                             </Text>
                           </View>
-
                         ))}
                       </View>
                     </View>
                   </View>
                 </TouchableOpacity>
               ))}
-              {count > perPage &&
+              {count > perPage && (
                 <View style={styles.viewMoreContainer}>
-                  <TouchableOpacity style={styles.viewMoreButton} onPress={() => {
-                    setPerPage(perPage + 5)
-                    console.log(perPage + 5)
-                  }}>
+                  <TouchableOpacity
+                    style={styles.viewMoreButton}
+                    onPress={() => {
+                      setPerPage(perPage + 5);
+                      console.log(perPage + 5);
+                    }}
+                  >
                     <View style={styles.viewMoreButtonContent}>
                       <Text style={styles.viewMoreText}>View More</Text>
                       <Ionicons name="chevron-forward" size={16} color="#000" />
                     </View>
                   </TouchableOpacity>
-                </View>}
-
+                </View>
+              )}
             </>
           )}
 
@@ -297,12 +317,14 @@ export default function EventsScreen({ navigation }) {
               <Text style={styles.sectionTitle}>Other events</Text>
               {allEvent.map((item) => (
                 <View key={item._id} style={styles.eventCard}>
-                  <Image source={{
-                    uri:
-                      item.EventImage
+                  <Image
+                    source={{
+                      uri: item.EventImage
                         ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-                        : require('../../assets/placeholder.jpg'),
-                  }} style={styles.eventImage} />
+                        : require("../../assets/placeholder.jpg"),
+                    }}
+                    style={styles.eventImage}
+                  />
                   <TouchableOpacity
                     style={styles.heartButtonEvent}
                     onPress={() => toggleLike(item._id)}
@@ -315,7 +337,9 @@ export default function EventsScreen({ navigation }) {
                   </TouchableOpacity>
                   <BlurWrapper style={styles.eventContent}>
                     <View style={styles.eventDetailsColumn}>
-                      <Text style={styles.eventTitle} numberOfLines={1} >{item.EventName}</Text>
+                      <Text style={styles.eventTitle} numberOfLines={1}>
+                        {item.EventName}
+                      </Text>
                       <View style={styles.eventDetail}>
                         <Ionicons
                           name="location-outline"
@@ -332,15 +356,22 @@ export default function EventsScreen({ navigation }) {
                           size={14}
                           color="#fff"
                         />
-                        <Text style={styles.eventDetailText}>{formatDateRange(item.StartDate, item.EndDate)}</Text>
+                        <Text style={styles.eventDetailText}>
+                          {formatDateRange(item.StartDate, item.EndDate)}
+                        </Text>
                       </View>
                     </View>
                     {activeTab === "All" && (
                       <View style={styles.registerContainer}>
-                        <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate("App", {
-                          screen: "EventsDetail",
-                          params: { eventDetail: item }
-                        })}>
+                        <TouchableOpacity
+                          style={styles.registerButton}
+                          onPress={() =>
+                            navigation.navigate("App", {
+                              screen: "EventsDetail",
+                              params: { eventDetail: item },
+                            })
+                          }
+                        >
                           <Text style={styles.registerText}>Register</Text>
                         </TouchableOpacity>
                       </View>
@@ -359,10 +390,10 @@ export default function EventsScreen({ navigation }) {
 const styles = StyleSheet.create({
   dflex2: {
     gap: 10,
-    display: 'flex',
-    flexDirection: 'row', // Aligns items in a row
-    alignItems: 'center', // Ensures vertical alignment
-    width: '100%', // Ensures it takes full width
+    display: "flex",
+    flexDirection: "row", // Aligns items in a row
+    alignItems: "center", // Ensures vertical alignment
+    width: "100%", // Ensures it takes full width
   },
   container: { flex: 1, backgroundColor: "#000" },
   header: {
@@ -471,7 +502,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
   },
-  categoryCardImage: { width: 120, height: "100%", maxHeight: 140, minHeight: 140, resizeMode: "cover" },
+  categoryCardImage: {
+    width: 120,
+    height: "100%",
+    maxHeight: 140,
+    minHeight: 140,
+    resizeMode: "cover",
+  },
   categoryCardContent: { flex: 1, padding: 12, justifyContent: "center" },
   categoryCardTitle: {
     fontSize: 16,
