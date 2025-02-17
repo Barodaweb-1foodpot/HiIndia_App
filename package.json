@@ -20,6 +20,7 @@
     "expo": "~52.0.35",
     "expo-blur": "^14.0.3",
     "expo-font": "~13.0.3",
+    "expo-linear-gradient": "~14.0.2",
     "formik": "^2.4.6",
     "jwt-decode": "^4.0.0",
     "moment": "^2.30.1",
@@ -33,7 +34,8 @@
     "react-native-toast-message": "^2.2.1",
     "react-native-vector-icons": "^10.2.0",
     "yup": "^1.6.1",
-    "expo-linear-gradient": "~14.0.2"
+    "expo-image-picker": "~16.0.6",
+    "expo-clipboard": "~7.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

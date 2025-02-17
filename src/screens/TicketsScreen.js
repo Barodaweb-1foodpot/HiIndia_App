@@ -474,7 +474,6 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     fontSize: 14,
     fontWeight: "600",
-    // Poppins Medium
     fontFamily: "Poppins-Medium",
   },
   orderDetails: {
@@ -491,7 +490,7 @@ const styles = StyleSheet.create({
   ticketHolderName: {
     fontSize: 14,
     color: "#000",
-    fontFamily: "Poppins-Medium", // Poppins Medium
+    fontFamily: "Poppins-Medium", 
   },
 
   /* Price & Type Container */
@@ -508,12 +507,12 @@ const styles = StyleSheet.create({
   purplePriceText: {
     fontSize: 15,
     color: "#000",
-    fontFamily: "Poppins-Medium", // Poppins Medium
+    fontFamily: "Poppins-Medium", 
   },
   purplePriceType: {
     fontSize: 12,
     color: "#666",
-    fontFamily: "Poppins-Medium", // Poppins Medium
+    fontFamily: "Poppins-Medium", 
   },
   italic: {
     fontStyle: "italic",
@@ -541,7 +540,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 10,
-    width: "90%", // narrower alignment like the design
+    width: "90%",
     alignSelf: "center",
   },
   whiteTotalsRow: {
@@ -552,13 +551,13 @@ const styles = StyleSheet.create({
   whiteTotalsLabel: {
     fontSize: 14,
     color: "#000",
-    fontFamily: "Poppins-Medium", // Poppins Medium
+    fontFamily: "Poppins-Medium", 
   },
   whiteTotalsValue: {
     fontSize: 15,
     color: "#000",
     fontWeight: "600",
-    fontFamily: "Poppins-Medium", // Poppins Medium
+    fontFamily: "Poppins-Medium", 
   },
   whiteShortSeparator: {
     height: 1,
@@ -569,13 +568,13 @@ const styles = StyleSheet.create({
   },
   couponValue: {
     fontSize: 15,
-    color: "#E3000F",
+    color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
     fontFamily: "Poppins-Medium",
   },
   finalTotal: {
     fontSize: 15,
-    color: "#E3000F",
+    color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
     fontFamily: "Poppins-Medium",
   },
