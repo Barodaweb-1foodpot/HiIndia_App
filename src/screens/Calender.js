@@ -34,21 +34,7 @@ const events = {
       isFeatured: true,
     },
   ],
-  "2025-02-17": [
-    {
-      id: 2,
-      title: "Tech Conference 2025",
-      description: "Annual technology summit featuring industry leaders",
-      location: "Convention Center, NY 10001",
-      time: "9:00 AM",
-      image: "https://example.com/tech-conf.jpg",
-      category: "technology",
-      gradient: ["#4158D0", "#C850C0"],
-      attendees: 500,
-      price: "$199",
-      isFeatured: false,
-    },
-  ],
+ 
 };
 
 const CategoryIcon = ({ category }) => {
