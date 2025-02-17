@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import { fetchEvents, listActiveEvents } from '../api/event_api';
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
 import moment from 'moment';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -40,21 +41,21 @@ export default function HomeScreen({ navigation }) {
   const [perPage, setPerPage] = useState(2);
   const [pageNo, setPageNo] = useState(0);
   const [activeEvent, setActiveEvents] = useState([]);
-  const [count, setCount] = useState(0) 
+  const [count, setCount] = useState(0)
   useEffect(() => {
     fetchEvent();
     fetchActiveEvent()
   }, [searchText, perPage, pageNo]);
-  
-  useEffect(()=>{
+
+  useEffect(() => {
     setEvents([])
     console.log(activeTab)
     fetchEvent()
-  },[activeTab])
+  }, [activeTab])
 
-  const fetchEvent = async () => { 
-    
-    const res = await fetchEvents(pageNo, perPage, searchText, filterDate=activeTab);
+  const fetchEvent = async () => {
+   
+    const res = await fetchEvents(pageNo, perPage, searchText, filterDate = activeTab);
     // console.log("kkkkkkkkkkk", res);
     if (res.data.length > 0) {
       setCount(res.count)
@@ -67,7 +68,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   const fetchActiveEvent = async () => {
-    const res = await listActiveEvents() 
+    const res = await listActiveEvents()
     if (res.data.length > 0) {
       setActiveEvents(res.data)
     }
@@ -80,31 +81,7 @@ export default function HomeScreen({ navigation }) {
     }));
   };
 
-  // Filter events based on the search text
-  // const filteredEvents = events.filter((event) => {
-  //   const searchLower = searchText.toLowerCase();
-  //   return (
-  //     event.EventName?.toLowerCase().includes(searchLower) ||
-  //     event.EventLocation?.toLowerCase().includes(searchLower) ||
-  //     event.city?.toLowerCase().includes(searchLower) ||
-  //     event.state?.toLowerCase().includes(searchLower) ||
-  //     event.country?.CountryName?.toLowerCase().includes(searchLower)
-  //   );
-  // });
-
-  // Further filter events based on the active tab (All, Upcoming, Past)
-  const now = new Date();
-  // const filteredByTabEvents = filteredEvents.filter((event) => {
-  //   if (activeTab === 'All') return true;
-  //   // Assuming event.startDate and event.endDate are available in ISO format
-  //   if (activeTab === 'Upcoming') {
-  //     return event.startDate && new Date(event.startDate) >= now;
-  //   }
-  //   if (activeTab === 'Past') {
-  //     return event.endDate && new Date(event.endDate) < now;
-  //   }
-  //   return true;
-  // });
+  
 
   return (
     <View style={styles.container}>
@@ -172,7 +149,7 @@ export default function HomeScreen({ navigation }) {
                 ]}
                 onPress={() => {
                   setActiveTab('All')
-                   
+
                   setPerPage(2)
                 }}
               >
@@ -185,7 +162,7 @@ export default function HomeScreen({ navigation }) {
                   All
                 </Text>
               </TouchableOpacity>
-               
+
               <TouchableOpacity
                 style={[
                   styles.tabButton,
@@ -193,7 +170,7 @@ export default function HomeScreen({ navigation }) {
                 ]}
                 onPress={() => {
                   setActiveTab('Past')
-                  
+
                   setPerPage(2)
                 }}
               >
@@ -252,7 +229,7 @@ export default function HomeScreen({ navigation }) {
                       </Text>
                       <View style={styles.dflex}>
                         <View style={styles.eventDetail}>
-                          <View><Text style={styles.eventDetailText}>
+                          <View><Text style={styles.eventDetailText} numberOfLines={2}>
                             <Ionicons
                               name="location-outline"
                               size={14}
@@ -279,7 +256,10 @@ export default function HomeScreen({ navigation }) {
                         </View>
 
                         <View style={styles.registerContainer} >
-                          <TouchableOpacity style={styles.registerButton}  onPress={() => navigation.navigate("App")}>
+                          <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate("App", {
+                            screen: "EventsDetail",
+                            params: { eventDetail: event }
+                          })}                          >
                             <Text style={styles.registerText}>Register</Text>
                           </TouchableOpacity>
                         </View>
@@ -320,46 +300,66 @@ export default function HomeScreen({ navigation }) {
               >
                 {activeEvent.map((item, index) => {
                   const eventImageUri = item.EventImage
-                    ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-                    : null;
+                    && `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+
                   // Format the date string if both start and end dates are available
                   const eventDate =
                     item.StartDate && item.EndDate
                       ? `${moment(item.StartDate).format('D/M/YY HH:mm')} to ${moment(item.EndDate).format('D/M/YY HH:mm')}`
                       : 'Date not available';
                   return (
-                    <View key={index} style={styles.hubCard}>
-                      <Image source={
-                        eventImageUri
-                          ? { uri: eventImageUri }
-                          : require('../../assets/placeholder.jpg')
-                      } style={styles.hubCardImage} />
-                      <View style={styles.hubCardContent}>
-                        <Text style={styles.hubCardTitle} numberOfLines={1}>{item.EventName}</Text>
-                        <Text style={styles.hubCardDate}> <Ionicons name="calendar-outline" style={styles.iconCircle} />{eventDate}</Text>
-                        <View style={styles.hubLocationContainer}>
-                          <Ionicons
-                            name="location-outline"
-                            size={12}
-                            color="#666"
-                          />
-                          <Text style={styles.hubLocationText} numberOfLines={1}>
-                            {item.EventLocation}
-                          </Text>
-                        </View>
-                        <View style={styles.dflex2}>
-                          {item.EventCategory?.map((data, index) => (
-                            <View style={styles.categoryPill} key={index}>
-                              <Text style={styles.categoryText}>
-                                {data.category}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
+                    <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      console.log("Selected Item ID:", item._id); // Log the item ID
+                      console.log(events[0]._id)
+                      const selectedEvent = events.find(e => e._id === item._id);
+                      
+                      if (selectedEvent) {
+                        navigation.navigate("App", {
+                          screen: "EventsDetail",
+                          params: { eventDetail: selectedEvent }
+                        });
+                      }
+                    }}
+                  >
+                    {/* Your TouchableOpacity content */}
+                  
+                  
+                      <View style={styles.hubCard}>
+                        <Image source={
+                          eventImageUri
+                            ? { uri: eventImageUri }
+                            : require('../../assets/placeholder.jpg')
+                        } style={styles.hubCardImage} />
+                        <View style={styles.hubCardContent}>
+                          <Text style={styles.hubCardTitle} numberOfLines={1}>{item.EventName}</Text>
+                          <Text style={styles.hubCardDate}> <Ionicons name="calendar-outline" style={styles.iconCircle} />{eventDate}</Text>
+                          <View style={styles.hubLocationContainer}>
+                            <Ionicons
+                              name="location-outline"
+                              size={12}
+                              color="#666"
+                            />
+                            <Text style={styles.hubLocationText} numberOfLines={1}>
+                              {item.EventLocation}
+                            </Text>
+                          </View>
+                          <View style={styles.dflex2}>
+                            {item.EventCategory?.map((data, index) => (
+                              <View style={styles.categoryPill} key={index}>
+                                <Text style={styles.categoryText}>
+                                  {data.category}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
 
+
+                        </View>
 
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   )
                 })}
               </ScrollView>
@@ -635,6 +635,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 16,
     width: 340,
+    minHeight:100,
+    maxHeight:120,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

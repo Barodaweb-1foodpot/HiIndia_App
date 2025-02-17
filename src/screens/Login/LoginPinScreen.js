@@ -37,10 +37,8 @@ const LoginPinScreen = ({ navigation }) => {
       .matches(/^\d{6}$/, "PIN must be exactly 6 digits"),
   });
   const handleSubmit2 = async (values) => {
-    const temp = { email: loginEmail, password: values.pin };
-    console.log("---------", temp);
-    const res = await handleLogin(temp);
-    console.log("pppp", res);
+    const temp = { email: loginEmail, password: values.pin }; 
+    const res = await handleLogin(temp); 
     if (res.isOk) { 
       Toast.show({
         type: "success",
