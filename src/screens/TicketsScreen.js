@@ -69,12 +69,16 @@ export default function TicketScreen({ navigation }) {
       {/* Black Header Gradient */}
       <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>
         <View style={styles.headerContent}>
-          <Image source={require("../../assets/logo.png")} style={styles.logo} />
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+          />
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconCircle}>
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconCircle}>
+              onPress={() => navigation.navigate("App", { screen: "Calender" })}
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
           </View>
@@ -245,8 +249,7 @@ export default function TicketScreen({ navigation }) {
                               <Text style={styles.whiteTotalsLabel}>Total</Text>
                               <Text style={styles.finalTotal}>
                                 $
-                                {calculateTotal(ticket.tickets) -
-                                  ticket.coupon}
+                                {calculateTotal(ticket.tickets) - ticket.coupon}
                               </Text>
                             </View>
                             <View style={styles.whiteShortSeparator} />
@@ -490,7 +493,7 @@ const styles = StyleSheet.create({
   ticketHolderName: {
     fontSize: 14,
     color: "#000",
-    fontFamily: "Poppins-Medium", 
+    fontFamily: "Poppins-Medium",
   },
 
   /* Price & Type Container */
@@ -507,12 +510,12 @@ const styles = StyleSheet.create({
   purplePriceText: {
     fontSize: 15,
     color: "#000",
-    fontFamily: "Poppins-Medium", 
+    fontFamily: "Poppins-Medium",
   },
   purplePriceType: {
     fontSize: 12,
     color: "#666",
-    fontFamily: "Poppins-Medium", 
+    fontFamily: "Poppins-Medium",
   },
   italic: {
     fontStyle: "italic",
@@ -521,7 +524,7 @@ const styles = StyleSheet.create({
   /* Row Separator (shorter from both sides) */
   rowSeparator: {
     height: 1,
-    width: "100%", 
+    width: "100%",
     backgroundColor: "#E5E7EB",
     alignSelf: "center",
     marginVertical: 1,
@@ -551,17 +554,17 @@ const styles = StyleSheet.create({
   whiteTotalsLabel: {
     fontSize: 14,
     color: "#000",
-    fontFamily: "Poppins-Medium", 
+    fontFamily: "Poppins-Medium",
   },
   whiteTotalsValue: {
     fontSize: 15,
     color: "#000",
     fontWeight: "600",
-    fontFamily: "Poppins-Medium", 
+    fontFamily: "Poppins-Medium",
   },
   whiteShortSeparator: {
     height: 1,
-    width: "100%", 
+    width: "100%",
     backgroundColor: "#E5E7EB",
     alignSelf: "center",
     marginVertical: 4,
