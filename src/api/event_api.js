@@ -25,12 +25,11 @@ export const listActiveEvents = async () => {
 
 };
 
-export const fetchEvents = async (pageNo, perPage, query  , filterDate) => {
+export const fetchEvents = async (pageNo, perPage, query, categoryFilter, filterDate) => {
     let skip = (pageNo - 1) * perPage;
     if (skip < 0) {
         skip = 0;
     } 
-    console.log("xxxxxxxxxxxx",filterDate)
     try {
         const response = await axios.post(
             `${API_BASE_URL}/auth/list-by-params/eventforparticipant`,
@@ -38,13 +37,13 @@ export const fetchEvents = async (pageNo, perPage, query  , filterDate) => {
                 skip: skip,
                 per_page: perPage,
                 match: query,
-                IsActive: true, 
-                filterDate
+                IsActive: true,
+                filterDate,
+                categoryFilter
             }
         );
 
-        // console.log("------", response.data[0].data); // ✅ This logs correctly
-        return response?.data[0]; // ✅ Now correctly returns the data
+         return response?.data[0]; // ✅ Now correctly returns the data
     } catch (error) {
         console.error("Error during fetching events:", error);
         Toast.show({
@@ -72,3 +71,33 @@ export const getEventCategoriesByPartner = async () => {
     }
 
 };
+
+
+export const SaveEvent = async (values) => {
+    try {
+        const token = await AsyncStorage.getItem("Token")
+        const id = await AsyncStorage.getItem("role")
+        console.log(token)
+        return await axios.patch(
+            `${API_BASE_URL}/auth/patch/saveParticipantEvent/${id}`,
+            values,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+    }
+    catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
+        throw new Error(error);
+    }
+
+};
+
+

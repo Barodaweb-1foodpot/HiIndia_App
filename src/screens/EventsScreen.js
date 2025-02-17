@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { getEventCategoriesByPartner } from "../api/event_api";
+import { fetchEvents, getEventCategoriesByPartner, SaveEvent } from "../api/event_api";
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import { formatDateRange } from "../helper/helper_Function";
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -36,95 +38,64 @@ export default function EventsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState("All events");
   const [likedEvents, setLikedEvents] = useState({});
   const [searchText, setSearchText] = useState("");
-  const [category , setCategory] = useState([])
+  const [category, setCategory] = useState([])
+  const [events, setEvents] = useState([]);
+  const [perPage, setPerPage] = useState(2);
+  const [catId, setCatId] = useState('')
+  const [firstTime, setFirstTime] = useState(true)
+  const [pageNo, setPageNo] = useState(0);
+  const [activeEvent, setActiveEvents] = useState([]);
+  const [count, setCount] = useState(0)
+  const [allEvent, setAllEvent] = useState([])
+
   useEffect(() => {
     fetchCategory()
-  },[])
+  }, [])
+  useEffect(() => {
+    fetchEvent();
+  }, [searchText, perPage, pageNo, selectedCategory]);
+
+  // useEffect(()=>{ 
+  //   SaveUserEvent()
+  // },[likedEvents])
+
+  const fetchEvent = async () => {
+    const res = await fetchEvents(pageNo, perPage, searchText, categoryFilter = catId);
+    console.log("kkkkkkkkkkk", res);
+    if (res.data.length > 0) {
+      setCount(res.count)
+      if (firstTime) setAllEvent(res.data)
+      setEvents(res.data);
+      setFirstTime(false)
+    }
+    else {
+      setCount(0)
+      setEvents([])
+    }
+  };
+
   const fetchCategory = async () => {
     const res = await getEventCategoriesByPartner()
     console.log(res.data)
-    if(res.data.data?.length>0)
-    {
+    if (res.data.data?.length > 0) {
       setCategory(res.data.data)
     }
   }
 
-  const categories = [
-    "All events",
-    "Music Festival",
-    "Workshop & Seminar",
-    "Esports Tournament",
-    "Cultural Festival",
-    "Hospitality & Tourism Expo",
-    "Real Estate Summit",
-    "Agriculture & Farming Event",
-  ];
-
-  const categoryData = [
-    {
-      id: "category-1",
-      title: "Global Music Fest",
-      date: "Aug 30 - Sep 2, 2025",
-      location: "Springfield, IL",
-      category: "Music Festival",
-      image: require("../../assets/placeholder.jpg"),
-    },
-    {
-      id: "category-2",
-      title: "Global Healthcare Congress",
-      date: "Aug 30 - Sep 2, 2025",
-      location: "123 Oakwood Dr.",
-      category: "Workshop & Seminar",
-      image: require("../../assets/placeholder.jpg"),
-    },
-  ];
-
-  const Events = [
-    {
-      id: "events-1",
-      title: "Atul Purohit Graba",
-      image: require("../../assets/Atul_dada.png"),
-      category: "Music Festival",
-    },
-    {
-      id: "events-2",
-      title: "Falguni Pathak Hits",
-      image: require("../../assets/placeholder.jpg"),
-      category: "Cultural Festival",
-    },
-    {
-      id: "events-3",
-      title: "DJ Music Event",
-      image: require("../../assets/placeholder.jpg"),
-      category: "Esports Tournament",
-    },
-  ];
-
-  let filteredCategoryData = categoryData.filter((item) => {
-    return selectedCategory === "All events" || item.category === selectedCategory;
-  });
-
-  let filteredEvents = Events.filter((item) => {
-    return selectedCategory === "All events" || item.category === selectedCategory;
-  });
-
-  if (searchText) {
-    filteredCategoryData = filteredCategoryData.filter((item) =>
-      item.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchText.toLowerCase()) ||
-      (item.location?.toLowerCase().includes(searchText.toLowerCase()) || false)
-    );
-
-    filteredEvents = filteredEvents.filter((item) =>
-      item.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }
-
-  if (activeTab === "Saved") {
-    filteredCategoryData = filteredCategoryData.filter((item) => likedEvents[item.id]);
-    filteredEvents = filteredEvents.filter((item) => likedEvents[item.id]);
-  }
+  // const SaveUserEvent = async () => {
+  //   const res = await SaveEvent({savedEvent:likedEvents});
+  //   console.log("kkkkkkkkkkk", res);
+  //   if (res.data.length > 0) {
+  //     setCount(res.count)
+  //     if(firstTime) setAllEvent(res.data)
+  //     setEvents(res.data);
+  //     setFirstTime(false)
+  //   }
+  //   else {
+  //     setCount(0)
+  //     setEvents([])
+  //   }
+  // };
 
   const toggleLike = (id) => {
     setLikedEvents((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -196,14 +167,25 @@ export default function EventsScreen({ navigation }) {
                   <TouchableOpacity
                     key={index}
                     style={styles.dropdownItem}
-                    // onPress={() => {
-                    //   setSelectedCategory(cat);
-                    //   setDropdownOpen(false);
-                    // }}
+                    onPress={() => {
+                      setCatId(cat._id);
+                      setSelectedCategory(cat.name);
+                      setDropdownOpen(false);
+                    }}
                   >
                     <Text style={styles.dropdownItemText}>{cat.name}</Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setCatId("All");
+                    setSelectedCategory("All");
+                    setDropdownOpen(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>All</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -245,68 +227,103 @@ export default function EventsScreen({ navigation }) {
             </View>
           </View>
 
-          {filteredCategoryData.length > 0 && (
+          {events.length > 0 && (
             <>
-              {filteredCategoryData.map((item) => (
-                <View key={item.id} style={styles.categoryCard}>
-                  <Image source={item.image} style={styles.categoryCardImage} />
-                  <View style={styles.categoryCardContent}>
-                    <Text style={styles.categoryCardTitle}>{item.title}</Text>
-                    <Text style={styles.categoryCardDate}>{item.date}</Text>
-                    <View style={styles.categoryLocationContainer}>
-                      <Ionicons
-                        name="location-outline"
-                        size={12}
-                        color="#666"
-                      />
-                      <Text style={styles.categoryLocationText}>
-                        {item.location}
+              {events.map((item) => (
+                <TouchableOpacity
+                  key={item._id}
+                    onPress={() => navigation.navigate("App", {
+                    screen: "EventsDetail",
+                    params: { eventDetail: item }
+                  })}>
+                  <View style={styles.categoryCard}>
+                    <Image
+                      source={{
+                        uri:
+                          item.EventImage
+                            ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+                            : require('../../assets/placeholder.jpg'),
+                      }}
+                      style={styles.categoryCardImage}
+                    />
+                    <View style={styles.categoryCardContent}>
+                      <Text style={styles.categoryCardTitle} numberOfLines={1} >{item.EventName}</Text>
+                      <Text style={styles.categoryCardDate}>
+                        {formatDateRange(item.StartDate, item.EndDate)}
                       </Text>
+                      <View style={styles.categoryLocationContainer}>
+                        <Ionicons
+                          name="location-outline"
+                          size={12}
+                          color="#666"
+                        />
+                        <Text style={styles.categoryLocationText} numberOfLines={2}>
+                          {item.EventLocation}
+                        </Text>
+                      </View>
+                      <View style={styles.dflex2}>
+                        {console.log(item.EventCategoryDetail.length)}
+                        {item.EventCategoryDetail?.map((data, index2) => (
+                          <View style={styles.categoryPill} key={index2}>
+                            <Text style={styles.categoryText}>
+                              {data.category}
+                            </Text>
+                          </View>
+
+                        ))}
+                      </View>
                     </View>
-                    <View style={styles.categoryPill}>
-                      <Text style={styles.categoryText}>{item.category}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-              <View style={styles.viewMoreContainer}>
-                <TouchableOpacity style={styles.viewMoreButton}>
-                  <View style={styles.viewMoreButtonContent}>
-                    <Text style={styles.viewMoreText}>View More</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#000" />
                   </View>
                 </TouchableOpacity>
-              </View>
+              ))}
+              {count > perPage &&
+                <View style={styles.viewMoreContainer}>
+                  <TouchableOpacity style={styles.viewMoreButton} onPress={() => {
+                    setPerPage(perPage + 5)
+                    console.log(perPage + 5)
+                  }}>
+                    <View style={styles.viewMoreButtonContent}>
+                      <Text style={styles.viewMoreText}>View More</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#000" />
+                    </View>
+                  </TouchableOpacity>
+                </View>}
+
             </>
           )}
 
-          {filteredEvents.length > 0 && (
+          {allEvent.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Other events</Text>
-              {filteredEvents.map((event) => (
-                <View key={event.id} style={styles.eventCard}>
-                  <Image source={event.image} style={styles.eventImage} />
+              {allEvent.map((item) => (
+                <View key={item._id} style={styles.eventCard}>
+                  <Image source={{
+                    uri:
+                      item.EventImage
+                        ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+                        : require('../../assets/placeholder.jpg'),
+                  }} style={styles.eventImage} />
                   <TouchableOpacity
                     style={styles.heartButtonEvent}
-                    onPress={() => toggleLike(event.id)}
+                    onPress={() => toggleLike(item._id)}
                   >
                     <Ionicons
-                      name={likedEvents[event.id] ? "heart" : "heart-outline"}
+                      name={likedEvents[item._id] ? "heart" : "heart-outline"}
                       size={20}
-                      color={likedEvents[event.id] ? "#E3000F" : "#000"}
+                      color={likedEvents[item._id] ? "#E3000F" : "#000"}
                     />
                   </TouchableOpacity>
                   <BlurWrapper style={styles.eventContent}>
                     <View style={styles.eventDetailsColumn}>
-                      <Text style={styles.eventTitle}>{event.title}</Text>
+                      <Text style={styles.eventTitle} numberOfLines={1} >{item.EventName}</Text>
                       <View style={styles.eventDetail}>
                         <Ionicons
                           name="location-outline"
                           size={14}
                           color="#fff"
                         />
-                        <Text style={styles.eventDetailText}>
-                          Event Location
+                        <Text style={styles.eventDetailText} numberOfLines={2}>
+                          {item.EventLocation}
                         </Text>
                       </View>
                       <View style={styles.eventDetail}>
@@ -315,12 +332,15 @@ export default function EventsScreen({ navigation }) {
                           size={14}
                           color="#fff"
                         />
-                        <Text style={styles.eventDetailText}>Event Date</Text>
+                        <Text style={styles.eventDetailText}>{formatDateRange(item.StartDate, item.EndDate)}</Text>
                       </View>
                     </View>
                     {activeTab === "All" && (
                       <View style={styles.registerContainer}>
-                        <TouchableOpacity style={styles.registerButton}>
+                        <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate("App", {
+                          screen: "EventsDetail",
+                          params: { eventDetail: item }
+                        })}>
                           <Text style={styles.registerText}>Register</Text>
                         </TouchableOpacity>
                       </View>
@@ -337,6 +357,13 @@ export default function EventsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  dflex2: {
+    gap: 10,
+    display: 'flex',
+    flexDirection: 'row', // Aligns items in a row
+    alignItems: 'center', // Ensures vertical alignment
+    width: '100%', // Ensures it takes full width
+  },
   container: { flex: 1, backgroundColor: "#000" },
   header: {
     height: "15%",
@@ -444,7 +471,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
   },
-  categoryCardImage: { width: 120, height: 120, resizeMode: "cover" },
+  categoryCardImage: { width: 120, height: "100%", maxHeight: 140, minHeight: 140, resizeMode: "cover" },
   categoryCardContent: { flex: 1, padding: 12, justifyContent: "center" },
   categoryCardTitle: {
     fontSize: 16,

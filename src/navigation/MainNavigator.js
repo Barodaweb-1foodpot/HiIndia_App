@@ -51,7 +51,7 @@ const MainNavigator = () => {
     >
       {/* <Stack.Screen name="Onboarding" component={Onboarding} /> */}
       {/* <Stack.Screen name="Auth" component={AuthNavigator} /> */}
-      {/* <Stack.Screen name="App" component={ScreenNavigator} /> */}
+      <Stack.Screen name="App" component={ScreenNavigator} />
       <Stack.Screen name="Tab" component={TabNavigator} />
     </Stack.Navigator>
   );
