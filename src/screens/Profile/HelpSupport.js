@@ -66,7 +66,7 @@ export default function HelpSupport() {
         <Text style={styles.headerTitle}>Help/Support</Text>
       </View>
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.menuItem}
         onPress={() => setShowFeedbackModal(true)}
       >
@@ -77,7 +77,7 @@ export default function HelpSupport() {
           <Text style={styles.menuText}>Rate Us/Feedback</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <TouchableOpacity
         style={styles.menuItem}

@@ -162,7 +162,7 @@ export default function HomeScreen({ navigation }) {
         >
           {/* Search Header */}
           <View style={styles.eventsHeader}>
-            <Text style={styles.eventsTitle}>Events</Text>
+            <Text style={styles.eventsTitle}>All Events</Text>
             <TouchableOpacity
               onPress={() => {
                 setSearchVisible((prev) => !prev);
@@ -235,9 +235,7 @@ export default function HomeScreen({ navigation }) {
 
           {/* Trending Events Section */}
           <View style={styles.section}>
-            {activeTab === "All" && (
-              <Text style={styles.sectionTitle}>All Events</Text>
-            )}
+            {activeTab === "All"}
 
             {events?.map((event, index) => {
               const eventImageUri = event.EventImage
@@ -578,7 +576,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   eventDetailsColumn: {
-    // You can adjust as needed
+    
   },
   dflex: {
     flexDirection: "row",
