@@ -51,7 +51,7 @@ const VerifyCode = ({ navigation }) => {
       Toast.show({
         type: "success",
         text1: res.message,
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       });
       setTimeout(() => {
@@ -64,7 +64,7 @@ const VerifyCode = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: res.message,
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       });
 

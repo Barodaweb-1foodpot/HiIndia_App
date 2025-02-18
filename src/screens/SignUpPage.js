@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,26 +15,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { handleSignup, fetchActiveCountries } from "../api/auth_api";
+import Toast from "react-native-toast-message";
 
-const countryCodes = [
-  { code: "+91", country: "India" },
-  { code: "+1", country: "United States" },
-  { code: "+44", country: "United Kingdom" },
-  { code: "+86", country: "China" },
-  { code: "+81", country: "Japan" },
-  { code: "+49", country: "Germany" },
-  { code: "+33", country: "France" },
-  { code: "+39", country: "Italy" },
-  { code: "+7", country: "Russia" },
-  { code: "+55", country: "Brazil" },
-];
-
-const CountryCodeDropdown = ({ selectedCode, onSelect }) => {
+const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
   const [isOpen, setIsOpen] = useState(false);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
   const toggleDropdown = () => {
-    const toValue = isOpen ? 0 : 200; 
+    const toValue = isOpen ? 0 : 200;
     Animated.timing(animatedHeight, {
       toValue,
       duration: 300,
@@ -56,7 +45,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect }) => {
           color="#000"
         />
       </TouchableOpacity>
-      
+
       <Animated.View
         style={[
           styles.dropdownList,
@@ -74,19 +63,21 @@ const CountryCodeDropdown = ({ selectedCode, onSelect }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {countryCodes.map((item) => (
-            <TouchableOpacity
-              key={item.code}
-              style={styles.dropdownItem}
-              onPress={() => {
-                onSelect(item.code);
-                toggleDropdown();
-              }}
-            >
-              <Text style={styles.countryCodeText}>{item.code}</Text>
-              <Text style={styles.countryNameText}>{item.country}</Text>
-            </TouchableOpacity>
-          ))}
+          {countries.map((item) => {
+            return (
+              <TouchableOpacity
+                key={item._id}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  onSelect("+" + item.CountryCode);
+                  toggleDropdown();
+                }}
+              >
+                <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+                <Text style={styles.countryNameText}>{item.CountryName}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </Animated.View>
     </View>
@@ -95,9 +86,23 @@ const CountryCodeDropdown = ({ selectedCode, onSelect }) => {
 
 const SignUpPage = ({ navigation }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
+  const [countries, setCountries] = useState([]);
   const scrollViewRef = useRef(null);
   const inputRefsSetPin = useRef([]);
   const inputRefsConfirmPin = useRef([]);
+
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const data = await fetchActiveCountries();
+
+        setCountries(data);
+      } catch (error) {
+        console.error("Error loading countries:", error);
+      }
+    };
+    loadCountries();
+  }, []);
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required("First Name is required"),
@@ -124,6 +129,7 @@ const SignUpPage = ({ navigation }) => {
         style={styles.container}
       >
         <View style={styles.inner}>
+          {/* Header Section */}
           <View style={styles.topSection}>
             <TouchableOpacity
               style={styles.backButton}
@@ -145,6 +151,7 @@ const SignUpPage = ({ navigation }) => {
             </View>
           </View>
 
+          {/* White Container */}
           <View style={styles.whiteContainer}>
             <ScrollView
               ref={scrollViewRef}
@@ -162,12 +169,41 @@ const SignUpPage = ({ navigation }) => {
                   confirmPin: "",
                 }}
                 validationSchema={validationSchema}
-                onSubmit={(values) => {
-                  console.log("SignUp Values:", {
-                    ...values,
-                    phoneNumber: `${selectedCountryCode}${values.phoneNumber}`,
-                  });
-                  navigation.navigate("LoginPin");
+                onSubmit={async (values) => {
+                  const payload = {
+                    firstName: values.firstName,
+                    lastName: values.lastName,
+                    emailId: values.email,
+                    password: values.setPin,
+                    contactNumber: values.phoneNumber,
+                    ParticipantCountryCode: selectedCountryCode,
+                    isMailVerified: false,
+                    isContactNumberVerified: false,
+                    IsActive: true,
+                  };
+
+                  try {
+                    const response = await handleSignup(payload);
+                    if (response.isOk) {
+                      Toast.show({
+                        type: "success",
+                        text1: "Signup Successful",
+                        text2: "Account created successfully.",
+                        position: "bottom",
+                      });
+
+                      navigation.navigate("Login");
+                    } else {
+                      Toast.show({
+                        type: "error",
+                        text1: "Signup Failed",
+                        text2: response.message || "Please try again.",
+                        position: "bottom",
+                      });
+                    }
+                  } catch (err) {
+                    console.error(err);
+                  }
                 }}
               >
                 {({
@@ -180,6 +216,7 @@ const SignUpPage = ({ navigation }) => {
                   touched,
                 }) => (
                   <>
+                    {/* First Name */}
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>First Name</Text>
                       <TextInput
@@ -194,6 +231,7 @@ const SignUpPage = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.firstName}</Text>
                       )}
 
+                      {/* Last Name */}
                       <Text style={styles.inputLabel}>Last Name</Text>
                       <TextInput
                         style={styles.input}
@@ -207,11 +245,13 @@ const SignUpPage = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.lastName}</Text>
                       )}
 
+                      {/* Phone Number + Country Code */}
                       <Text style={styles.inputLabel}>Phone Number</Text>
                       <View style={styles.phoneInputContainer}>
                         <CountryCodeDropdown
                           selectedCode={selectedCountryCode}
                           onSelect={setSelectedCountryCode}
+                          countries={countries}
                         />
                         <TextInput
                           style={styles.phoneInput}
@@ -225,9 +265,12 @@ const SignUpPage = ({ navigation }) => {
                         />
                       </View>
                       {touched.phoneNumber && errors.phoneNumber && (
-                        <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+                        <Text style={styles.errorText}>
+                          {errors.phoneNumber}
+                        </Text>
                       )}
 
+                      {/* Email */}
                       <Text style={styles.inputLabel}>Email</Text>
                       <TextInput
                         style={styles.input}
@@ -243,12 +286,15 @@ const SignUpPage = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.email}</Text>
                       )}
 
+                      {/* Set PIN */}
                       <Text style={styles.inputLabel}>Set PIN</Text>
                       <View style={styles.pinContainer}>
                         {[...Array(6)].map((_, index) => (
                           <TextInput
                             key={index}
-                            ref={(ref) => (inputRefsSetPin.current[index] = ref)}
+                            ref={(ref) =>
+                              (inputRefsSetPin.current[index] = ref)
+                            }
                             style={[
                               styles.pinInput,
                               values.setPin[index] && styles.pinInputFilled,
@@ -267,7 +313,10 @@ const SignUpPage = ({ navigation }) => {
                               }
                             }}
                             onKeyPress={(e) => {
-                              if (e.nativeEvent.key === "Backspace" && index > 0) {
+                              if (
+                                e.nativeEvent.key === "Backspace" &&
+                                index > 0
+                              ) {
                                 const newPin =
                                   values.setPin.substring(0, index) +
                                   " " +
@@ -289,12 +338,15 @@ const SignUpPage = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.setPin}</Text>
                       )}
 
+                      {/* Confirm PIN */}
                       <Text style={styles.inputLabel}>Confirm PIN</Text>
                       <View style={styles.pinContainer}>
                         {[...Array(6)].map((_, index) => (
                           <TextInput
                             key={index}
-                            ref={(ref) => (inputRefsConfirmPin.current[index] = ref)}
+                            ref={(ref) =>
+                              (inputRefsConfirmPin.current[index] = ref)
+                            }
                             style={[
                               styles.pinInput,
                               values.confirmPin[index] && styles.pinInputFilled,
@@ -313,7 +365,10 @@ const SignUpPage = ({ navigation }) => {
                               }
                             }}
                             onKeyPress={(e) => {
-                              if (e.nativeEvent.key === "Backspace" && index > 0) {
+                              if (
+                                e.nativeEvent.key === "Backspace" &&
+                                index > 0
+                              ) {
                                 const newPin =
                                   values.confirmPin.substring(0, index) +
                                   " " +
@@ -332,10 +387,13 @@ const SignUpPage = ({ navigation }) => {
                         ))}
                       </View>
                       {touched.confirmPin && errors.confirmPin && (
-                        <Text style={styles.errorText}>{errors.confirmPin}</Text>
+                        <Text style={styles.errorText}>
+                          {errors.confirmPin}
+                        </Text>
                       )}
                     </View>
 
+                    {/* Submit Button */}
                     <TouchableOpacity
                       style={styles.continueButton}
                       onPress={handleSubmit}
@@ -353,8 +411,9 @@ const SignUpPage = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+export default SignUpPage;
 
+const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
     backgroundColor: "#000000",
@@ -369,8 +428,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
-
-
   topSection: {
     backgroundColor: "#000000",
     alignItems: "center",
@@ -390,8 +447,6 @@ const styles = StyleSheet.create({
     height: 60,
     marginTop: 10,
   },
-
-  
   headerCard: {
     position: "absolute",
     bottom: -40,
@@ -419,15 +474,11 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#666666",
   },
-
-  
   scrollViewContent: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 80,
   },
-
-  
   inputContainer: {
     marginBottom: 20,
   },
@@ -449,8 +500,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: "#000000",
   },
-
-  
   phoneInputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -469,64 +518,66 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#000000",
   },
-
-  
   dropdownContainer: {
-    position: 'relative',
+    position: "relative",
     zIndex: 1000,
-    width: 78, 
+    width: 78,
   },
   dropdownList: {
-    position: 'absolute',
+    position: "absolute",
     top: 52,
     left: 0,
-    width: 160, 
-    backgroundColor: '#FFFFFF',
+    width: 160,
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
+    borderColor: "#E0E0E0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 8,
-    paddingHorizontal: 6, 
+    paddingHorizontal: 6,
     height: 48,
     marginRight: 8,
-    backgroundColor: '#FFFFFF',
-    width: 70, 
-    justifyContent: 'space-between',
+    backgroundColor: "#FFFFFF",
+    width: 70,
+    justifyContent: "space-between",
+  },
+  countryCodeButtonText: {
+    fontSize: 16,
+    fontFamily: "Poppins-Regular",
+    color: "#000000",
   },
   dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    width: '100%', 
+    borderBottomColor: "#E0E0E0",
+    width: "100%",
   },
   countryCodeText: {
     fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    color: '#000000',
-    width: 40, 
+    fontFamily: "Poppins-Regular",
+    color: "#000000",
+    width: 50,
   },
   countryNameText: {
-    fontSize: 14, 
-    fontFamily: 'Poppins-Regular',
-    color: '#666666',
-    flex: 1, 
+    fontSize: 14,
+    fontFamily: "Poppins-Regular",
+    color: "#666666",
+    flex: 1,
+    marginLeft: 8,
   },
-
-  
   pinContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -549,16 +600,12 @@ const styles = StyleSheet.create({
     borderColor: "#000000",
     backgroundColor: "#F8F8F8",
   },
-
- 
   errorText: {
     marginTop: 4,
     color: "#FF0000",
     fontSize: 12,
     fontFamily: "Poppins-Regular",
   },
-
-  
   continueButton: {
     backgroundColor: "#E3000F",
     borderRadius: 25,
@@ -572,35 +619,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins-Medium",
   },
-
-
-  dropdownItemActive: {
-    backgroundColor: '#F5F5F5',
-  },
-  dropdownItemTextActive: {
-    color: '#E3000F',
-  },
-
-  
-  inputFocused: {
-    borderColor: '#000000',
-  },
-  countryCodeButtonFocused: {
-    borderColor: '#000000',
-  },
-
-  inputDisabled: {
-    backgroundColor: '#F5F5F5',
-    color: '#999999',
-  },
-  buttonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-
- 
-  inputError: {
-    borderColor: '#FF0000',
-  },
 });
-
-export default SignUpPage;

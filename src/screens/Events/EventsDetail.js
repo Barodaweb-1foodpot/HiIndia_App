@@ -10,44 +10,42 @@ import {
   Dimensions,
   Platform,
   Linking,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-// import MapView, { Marker } from "react-native-maps";
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import RenderHTML from "react-native-render-html";
 import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
+import moment from "moment";
 
 const { width, height } = Dimensions.get("window");
 
 export default function EventsDetail({ navigation, route }) {
   const [readMore, setReadMore] = useState(false);
   const [titleReadMore, setTitleReadMore] = useState(false);
+  const [fileSize, setFileSize] = useState(null);
+  const [selectedTab, setSelectedTab] = useState("Event Catalogue");
+
+  const { eventDetail } = route.params || {};
 
   const { eventDetail } = route.params || {}; // Default to empty object in case params are undefined
-
+  console.log("00000000",eventDetail)
   useEffect(() => {
     if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
-    
   }, [eventDetail?.EventCatalogue]);
-  const [fileSize, setFileSize] = useState(null);
 
   const fetchFileSize = async (url) => {
     try {
-      const encodedUrl = encodeURI(url); 
-
+      const encodedUrl = encodeURI(url);
       const response = await fetch(encodedUrl, { method: "HEAD" });
-
       if (!response.ok) {
-        return
-        // throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+        return;
       }
-
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2); // Convert bytes to MB
-        
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
         setFileSize(sizeInMB);
       } else {
         console.warn("Content-Length header is missing.");
@@ -57,9 +55,36 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  const [selectedTab, setSelectedTab] = useState("Event Catalogue");
- 
- 
+  // Share the entire event details
+  const shareEvent = async () => {
+    try {
+      const eventDate =
+        eventDetail?.StartDate && eventDetail?.EndDate
+          ? `${moment(eventDetail.StartDate).format("D/M/YY HH:mm")} to ${moment(
+              eventDetail.EndDate
+            ).format("D/M/YY HH:mm")}`
+          : "Date not available";
+      const shareMessage =
+        `🎶 Check out this event!\n\n` +
+        `Event: ${eventDetail?.EventName}\n` +
+        `Location: ${eventDetail?.EventLocation}\n` +
+        `Date: ${eventDate}\n` +
+        (eventDetail?.EventImage ? `Image: ${API_BASE_URL_UPLOADS}/${eventDetail.EventImage}\n` : "");
+      await Share.share({ message: shareMessage });
+    } catch (error) {
+      console.error("Error sharing event", error);
+    }
+  };
+
+  // Share a gallery image only
+  const shareGalleryImage = async (galleryImage) => {
+    try {
+      const imageUrl = `${API_BASE_URL_UPLOADS}/${galleryImage}`;
+      await Share.share({ message: imageUrl });
+    } catch (error) {
+      console.error("Error sharing gallery image", error);
+    }
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -67,38 +92,47 @@ export default function EventsDetail({ navigation, route }) {
 
       {/* Top Section */}
       <View style={styles.topSection}>
+        {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate("Tab")}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
-
+        {/* Share Button */}
+        <TouchableOpacity
+          style={styles.shareTopButton}
+          onPress={shareEvent}
+        >
+          <Ionicons name="share-social-outline" size={20} color="#FFF" />
+        </TouchableOpacity>
         <Image
           source={{
             uri: eventDetail?.EventImage
-              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
+              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+              : undefined,
           }}
           style={styles.topImage}
           resizeMode="cover"
+          defaultSource={require("../../../assets/placeholder.jpg")}
         />
-
         {/* Floating Card */}
         <View style={styles.headerCard}>
           <View>
-            <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
               {eventDetail?.EventName}
-
             </Text>
             {eventDetail?.EventName?.length > 50 && (
               <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
-                <Text style={styles.readMoreText}>{titleReadMore ? "Read Less" : "Read More"}</Text>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
               </TouchableOpacity>
             )}
-
           </View>
-
-
           {/* Location row */}
           <View style={styles.headerCardRow2}>
             <Ionicons
@@ -111,7 +145,6 @@ export default function EventsDetail({ navigation, route }) {
               {eventDetail?.EventLocation}
             </Text>
           </View>
-
           {/* Date row */}
           <View style={styles.headerCardRow}>
             <Ionicons
@@ -124,7 +157,6 @@ export default function EventsDetail({ navigation, route }) {
               {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
             </Text>
           </View>
-
           {/* Time row */}
           <View style={styles.headerCardRow}>
             <Ionicons
@@ -133,7 +165,9 @@ export default function EventsDetail({ navigation, route }) {
               color="#666666"
               style={styles.headerCardIcon}
             />
-            <Text style={styles.headerCardSubtitle}>{formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}</Text>
+            <Text style={styles.headerCardSubtitle}>
+              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+            </Text>
           </View>
         </View>
       </View>
@@ -144,20 +178,21 @@ export default function EventsDetail({ navigation, route }) {
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Artist Info with Circular Image */}
+          {/* Artist Info */}
           <View style={styles.artistInfoContainer}>
             <Image
               source={{
                 uri: eventDetail?.EventImage
-                  ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
+                  ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+                  : undefined,
               }}
               style={styles.artistImage}
+              defaultSource={require("../../../assets/placeholder.jpg")}
             />
             <View style={styles.artistTextContainer}>
               <Text style={styles.artistName}>{eventDetail?.artistName}</Text>
               <Text style={styles.artistDetail}>
                 {eventDetail?.artistDesc}
-                {/* {console.log(eventDetail)} */}
               </Text>
             </View>
           </View>
@@ -184,22 +219,10 @@ export default function EventsDetail({ navigation, route }) {
           {/* Venue & Location */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Venue & Location</Text>
-
-            {/* COMMENTED MAP
-            <View style={styles.mapContainer}>
-              <MapView style={styles.mapStyle} initialRegion={initialRegion}>
-                <Marker
-                  coordinate={{
-                    latitude: latitude,
-                    longitude: longitude,
-                  }}
-                />
-              </MapView>
-            </View> 
-            */}
-
-            {/* CLICKABLE LINK */}
-            <TouchableOpacity onPress={() => Linking.openURL(eventDetail?.googleMapLink)} style={styles.locationLink}>
+            <TouchableOpacity
+              onPress={() => Linking.openURL(eventDetail?.googleMapLink)}
+              style={styles.locationLink}
+            >
               <Ionicons name="location-sharp" size={20} color="#E3000F" />
               <Text style={styles.locationLinkText}>Open in Maps</Text>
             </TouchableOpacity>
@@ -223,7 +246,6 @@ export default function EventsDetail({ navigation, route }) {
                 Event Catalogue
               </Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={[
                 styles.tabButton,
@@ -243,42 +265,50 @@ export default function EventsDetail({ navigation, route }) {
           </View>
 
           {/* Tab Content */}
-          {selectedTab === "Event Catalogue" && eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null" ? (
-            <View style={styles.catalogueContainer}> 
-              <View style={styles.pdfCard}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={32}
-                  color="#000"
-                  style={styles.pdfIcon}
-                />
-                <View style={styles.pdfInfo}>
-                  <Text style={styles.pdfTitle}>Download Catalogue</Text>
-                  <Text style={styles.pdfSize}>{fileSize} MB</Text>
+          {selectedTab === "Event Catalogue" && (
+            <View style={styles.catalogueContainer}>
+              {eventDetail?.EventCatalogue &&
+              eventDetail?.EventCatalogue !== "null" ? (
+                <View style={styles.pdfCard}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={32}
+                    color="#000"
+                    style={styles.pdfIcon}
+                  />
+                  <View style={styles.pdfInfo}>
+                    <Text style={styles.pdfTitle}>Download Catalogue</Text>
+                    <Text style={styles.pdfSize}>{fileSize} MB</Text>
+                  </View>
+                  <TouchableOpacity style={styles.downloadIcon}>
+                    <Ionicons name="download-outline" size={24} color="#000" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.downloadIcon}>
-                  <Ionicons name="download-outline" size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View>
-              <Text>No Catalogue</Text>
+              ) : (
+                <View>
+                  <Text>No Catalogue</Text>
+                </View>
+              )}
             </View>
           )}
 
-
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
-              {eventDetail?.GalleryImages && eventDetail?.GalleryImages.length > 0 ? (
-                eventDetail?.GalleryImages.map((image, index) => (
+              {eventDetail?.GalleryImages &&
+              eventDetail?.GalleryImages.length > 0 ? (
+                eventDetail.GalleryImages.map((image, index) => (
                   <View key={index} style={styles.galleryItem}>
                     <Image
-                      source={{ uri: `${API_BASE_URL_UPLOADS}/${image}` || require('../../../assets/placeholder.jpg') }} // Assuming image is a URL, otherwise adjust as necessary
+                      source={{
+                        uri: `${API_BASE_URL_UPLOADS}/${image}`,
+                      }}
                       style={styles.galleryImage}
                       resizeMode="cover"
                     />
-                    <TouchableOpacity style={styles.shareIcon}>
+                    <TouchableOpacity
+                      style={styles.shareIcon}
+                      onPress={() => shareGalleryImage(image)}
+                    >
                       <Ionicons
                         name="share-social-outline"
                         size={18}
@@ -293,21 +323,21 @@ export default function EventsDetail({ navigation, route }) {
             </View>
           )}
 
-
-          {/* Extra space so content isn't hidden by the bottom bar */}
           <View style={{ height: 120 }} />
         </ScrollView>
 
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
           <Text style={styles.priceText}>
-            {eventDetail?.eventRates.length > 0 ? (
-              `Start from ${eventDetail?.countryDetail[0].Currency} ${Math.max(...eventDetail?.eventRates.map(rate => rate.ratesForParticipant))}`
-            ) : (
-              "Free Event"
-            )}
+            {eventDetail?.eventRates.length > 0
+              ? `Start from ${eventDetail?.countryDetail[0].Currency} ${Math.max(
+                  ...eventDetail.eventRates.map(
+                    (rate) => rate.ratesForParticipant
+                  )
+                )}`
+              : "Free Event"}
           </Text>
-          {new Date(eventDetail?.StartDate) > Date.now() &&
+          {new Date(eventDetail?.StartDate) > Date.now() && (
             <TouchableOpacity
               style={styles.buyButton}
               onPress={() => navigation.navigate("BuyTicket", { eventDetail: eventDetail }
@@ -315,7 +345,7 @@ export default function EventsDetail({ navigation, route }) {
             >
               <Text style={styles.buyButtonText}>Buy Ticket</Text>
             </TouchableOpacity>
-          }
+          )}
         </View>
       </View>
     </View>
@@ -336,7 +366,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 15, 
+    top: Platform.OS === "ios" ? 50 : 15,
     left: 16,
     zIndex: 10,
     width: 34,
@@ -344,7 +374,19 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
-    // backgroundColor: "rgba(255,255,255,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareTopButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 15,
+    right: 16,
+    zIndex: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -451,20 +493,6 @@ const styles = StyleSheet.create({
     color: "#E3000F",
     marginTop: 8,
   },
-
-  // Map Container (commented out) & clickable link
-  /*
-  mapContainer: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  mapStyle: {
-    width: "100%",
-    height: "100%",
-  },
-  */
   locationLink: {
     flexDirection: "row",
     alignItems: "center",
@@ -477,8 +505,6 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
     textDecorationLine: "underline",
   },
-
-  // Tabs
   tabsWrapper: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -493,10 +519,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#E3000F",
   },
-  readMoreText: {
-    color: "black",
-  },
-
   tabText: {
     fontSize: 14,
     fontFamily: "Poppins-Regular",
@@ -506,8 +528,6 @@ const styles = StyleSheet.create({
     color: "#E3000F",
     fontFamily: "Poppins-SemiBold",
   },
-
-  // Catalogue
   catalogueContainer: {
     marginBottom: 20,
   },
@@ -537,8 +557,6 @@ const styles = StyleSheet.create({
   downloadIcon: {
     marginLeft: 8,
   },
-
-  // Gallery
   galleryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -565,8 +583,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 6,
   },
-
-  // Bottom Bar
   bottomBar: {
     position: "absolute",
     bottom: 0,

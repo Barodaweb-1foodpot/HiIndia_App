@@ -43,7 +43,7 @@ const ForgotPassword = ({ navigation }) => {
       Toast.show({
         type: "success",
         text1: res.message,
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       });
       setTimeout(() => {
@@ -56,7 +56,7 @@ const ForgotPassword = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: res.message,
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       });
 

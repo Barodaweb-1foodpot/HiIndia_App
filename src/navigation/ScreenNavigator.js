@@ -20,7 +20,7 @@ const ScreenNavigator = () => {
         gestureEnabled: false,
       }}
     >
-      {/* <ScreenStack.Screen name="Calender" component={CalendarScreen} /> */}
+      <ScreenStack.Screen name="Calender" component={CalendarScreen} />
       <ScreenStack.Screen name="EventsDetail" component={EventsDetail} />
       <ScreenStack.Screen name="BuyTicket" component={BuyTicketScreen} />
       <ScreenStack.Screen name="PaymentScreen" component={PaymentScreen} />

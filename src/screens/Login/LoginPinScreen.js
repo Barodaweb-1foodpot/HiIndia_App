@@ -43,7 +43,7 @@ const LoginPinScreen = ({ navigation }) => {
       Toast.show({
         type: "success",
         text1: "Email entered successfully",
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       });
       setTimeout(() => {
@@ -55,7 +55,7 @@ const LoginPinScreen = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: res.message,
-        position: "top",
+        position: "bottom",
         visibilityTime: 2000,
       }); 
     }
@@ -220,16 +220,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topSection: {
-    flex: 0.3,
     backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    paddingTop: 50,
+    paddingBottom: 50,
+    height: 180,
   },
   backButton: {
     position: "absolute",
-    top: 48,
+    top: 50,
     left: 16,
+    zIndex: 1,
   },
   logo: {
     width: "100%",
@@ -238,7 +240,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: -30,
+    bottom: -40,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -264,7 +266,7 @@ const styles = StyleSheet.create({
     color: "#666666",
   },
   whiteContainer: {
-    flex: 0.7,
+    flex: 1,
     backgroundColor: "#FFFFFF",
     justifyContent: "space-between",
     paddingHorizontal: 20,
