@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,20 +9,86 @@ import {
   Platform,
   Share,
   StatusBar,
+  ScrollView,
   Linking,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetchProfile } from "../api/auth_api";
+import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function ProfileScreen() {
+  const [profileData, setProfileData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigation = useNavigation();
 
+  const loadProfile = async () => {
+    try {
+      const participantId = await AsyncStorage.getItem("role");
+      if (participantId) {
+        const res = await fetchProfile(participantId);
+        if (res && res._id) {
+          console.log(">>>>>>>>",res.profileImage)
+          setProfileData(res);
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "Profile Error",
+            text2: "Failed to load profile",
+            position: "bottom",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  const getProfileImageSource = () => {
+    console.log("oooooooooo",profileData)
+    if (
+      !profileData ||
+      !profileData.profileImage ||
+      !profileData.profileImage.trim()
+    ) {
+      return require("../../assets/placeholder.jpg");
+    }
+    return { uri: `${API_BASE_URL_UPLOADS}/${profileData.profileImage}` };
+  };
+
+  const handleLogout = async () => {
+    try {
+      setShowLogoutModal(false);
+      await AsyncStorage.removeItem("role");
+      await AsyncStorage.removeItem("Token");
+      Toast.show({
+        type: "info",
+        text1: "Logged Out",
+        text2: "You have been logged out successfully!",
+      });
+      navigation.navigate("Auth", { screen: "Login" });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      Toast.show({
+        type: "error",
+        text1: "Logout Error",
+        text2: "Something went wrong during logout.",
+      });
+    }
+  };
+
   const shareMessage =
-    "Hey, check out this amazing event on HiInida! https://hiindia.com/";
+    "Hey, check out this amazing event on HiIndia! https://hiindia.com/";
 
   const handleShareOption = async (option) => {
     try {
@@ -73,18 +139,21 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <Text style={styles.headerTitle}>My Profile</Text>
 
       <View style={styles.profileSection}>
-        <Image
-          source={require("../../assets/placeholder.jpg")}
-          style={styles.profileImage}
-        />
+        <Image source={getProfileImageSource()} style={styles.profileImage} />
         <View style={styles.profileInfo}>
-          <Text style={styles.userName}>Deep Mehta</Text>
-          <Text style={styles.userEmail}>deep@gmail.com</Text>
+          <Text style={styles.userName}>
+            {profileData
+              ? `${profileData.firstName} ${profileData.lastName}`
+              : "Your Name"}
+          </Text>
+          <Text style={styles.userEmail}>
+            {profileData ? profileData.emailId : "Your Email"}
+          </Text>
         </View>
       </View>
 
@@ -167,7 +236,6 @@ export default function ProfileScreen() {
                 <Ionicons name="copy-outline" size={24} color="#1F2937" />
                 <Text style={styles.shareOptionText}>Copy Link</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.shareOption}
                 onPress={() => handleShareOption("whatsapp")}
@@ -175,7 +243,6 @@ export default function ProfileScreen() {
                 <Ionicons name="logo-whatsapp" size={24} color="#1F2937" />
                 <Text style={styles.shareOptionText}>WhatsApp</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.shareOption}
                 onPress={() => handleShareOption("facebook")}
@@ -183,7 +250,6 @@ export default function ProfileScreen() {
                 <Ionicons name="logo-facebook" size={24} color="#1F2937" />
                 <Text style={styles.shareOptionText}>Facebook</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.shareOption}
                 onPress={() => handleShareOption("email")}
@@ -191,7 +257,6 @@ export default function ProfileScreen() {
                 <Ionicons name="mail-outline" size={24} color="#1F2937" />
                 <Text style={styles.shareOptionText}>Email</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.shareOption}
                 onPress={() => handleShareOption("linkedin")}
@@ -199,7 +264,6 @@ export default function ProfileScreen() {
                 <Ionicons name="logo-linkedin" size={24} color="#1F2937" />
                 <Text style={styles.shareOptionText}>LinkedIn</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.shareOption}
                 onPress={() => handleShareOption("twitter")}
@@ -234,14 +298,17 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.logoutButton}>
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
                 <Text style={styles.logoutButtonText}>Log out</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 

@@ -22,9 +22,8 @@ import { handleGoogleSuccess } from "../../api/auth_api";
 // import { GoogleSignin } from '@react-native-google-signin/google-signin';
 // import { jwtDecode } from 'jwt-decode'
 
-
 const LoginScreen = ({ navigation }) => {
-  const {setLoginEmail} = useAuthContext()
+  const { setLoginEmail } = useAuthContext();
   const validationSchema = Yup.object().shape({
     email: Yup.string()
       .email("Enter a valid email")
@@ -35,12 +34,9 @@ const LoginScreen = ({ navigation }) => {
     Keyboard.dismiss();
   };
   const handleLogin = async (values) => {
-    setLoginEmail(values.email)
+    setLoginEmail(values.email);
     navigation.navigate("LoginPin");
   };
-  
-
- 
 
   return (
     <View style={styles.rootContainer}>
@@ -52,19 +48,6 @@ const LoginScreen = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
             <View style={styles.topSection}>
-              {/* <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => {
-                  if (navigation.canGoBack()) {
-                    navigation.goBack();
-                  } else {
-                    navigation.navigate("Onboarding");
-                  }
-                }}
-              >
-                <Ionicons name="chevron-back" size={24} color="#FFF" />
-              </TouchableOpacity> */}
-
               <Image
                 source={require("../../../assets/logo.png")}
                 style={styles.logo}
@@ -149,7 +132,7 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Email
                         </Text>
                       </TouchableOpacity> */}
-                      <TouchableOpacity style={styles.socialButton} >
+                      <TouchableOpacity style={styles.socialButton}>
                         <Image
                           source={require("../../../assets/google.png")}
                           style={styles.socialIcon}
@@ -195,21 +178,29 @@ const LoginScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  rootContainer: { flex: 1, backgroundColor: "#000000" },
-  container: { flex: 1 },
-  inner: { flex: 1 },
+  rootContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  container: {
+    flex: 1,
+  },
+  inner: {
+    flex: 1,
+  },
   topSection: {
-    flex: 0.3,
     backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    paddingTop: 50,
+    paddingBottom: 50,
+    height: 180,
   },
-  backButton: { position: "absolute", top: 48, left: 16 },
+
   logo: { width: "100%", height: 60, marginTop: 10 },
   headerCard: {
     position: "absolute",
-    bottom: -30,
+    bottom: -40,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -234,13 +225,18 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#666666",
   },
-  whiteContainer: { flex: 0.8, backgroundColor: "#FFFFFF" },
+  whiteContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
   scrollViewContent: {
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 40,
+    paddingTop: 60,
+    paddingBottom: 80,
   },
-  inputContainer: { marginBottom: 20 },
+  inputContainer: {
+    marginBottom: 20,
+  },
   inputLabel: {
     fontSize: 14,
     fontFamily: "Poppins-Regular",
@@ -272,7 +268,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
-  
+
   loginButtonText: {
     color: "#FFFFFF",
     fontSize: 16,

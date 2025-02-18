@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 
-export const AuthContext = createContext();  // ✅ Renamed to match "Auth"
+export const AuthContext = createContext(); 
 export const useAuthContext = () => useContext(AuthContext);
 
 export const ContextProvider = ({ children }) => {  
