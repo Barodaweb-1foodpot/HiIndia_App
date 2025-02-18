@@ -28,9 +28,7 @@ export default function EventsDetail({ navigation, route }) {
 
   const { eventDetail } = route.params || {};
 
-  const { eventDetail } = route.params || {}; // Default to empty object in case params are undefined
-  console.log("00000000",eventDetail)
-  useEffect(() => {
+   useEffect(() => {
     if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
