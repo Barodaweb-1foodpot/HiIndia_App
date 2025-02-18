@@ -75,7 +75,7 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     setEvents([]);
-    console.log(activeTab);
+    // console.log(activeTab);
     fetchEvent();
   }, [activeTab]);
 

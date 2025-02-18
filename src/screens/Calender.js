@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,20 +12,43 @@ import {
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-
-const events = {
-  "2025-02-14": [
-    {
-      id: 1,
-      title: "Global Music Fest",
-      location: "Springfield, IL 62704, USA",
-    },
-  ],
-};
+import { listActiveEvents } from "../api/event_api";
+import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function CalendarScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState("");
+  const [eventsData, setEventsData] = useState({});
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await listActiveEvents();
+        const eventsArray = res.data;
+        const groupedEvents = {};
+        eventsArray.forEach((event) => {
+          if (event.StartDate) {
+            const dateKey = new Date(event.StartDate).toISOString().split("T")[0];
+            if (!groupedEvents[dateKey]) {
+              groupedEvents[dateKey] = [];
+            }
+            groupedEvents[dateKey].push({
+              id: event._id || event.id,
+              title: event.EventName,
+              location: event.EventLocation,
+              image: event.EventImage
+                ? { uri: `${API_BASE_URL_UPLOADS}/${event.EventImage}` }
+                : require("../../assets/placeholder.jpg"),
+            });
+          }
+        });
+        setEventsData(groupedEvents);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const renderHeader = (date) => {
     const monthYear = date.toString("MMMM yyyy");
@@ -36,17 +59,23 @@ export default function CalendarScreen({ navigation }) {
     );
   };
 
+  /**
+   * Mark the following:
+   * 1. Event dates => backgroundColor: "rgba(252, 224, 228, 1)"
+   * 2. Today's date => black border
+   * 3. Selected date => #E3000F background with white text
+   */
   const getMarkedDates = () => {
+    const todayString = new Date().toISOString().split("T")[0];
     const marked = {};
-    Object.keys(events).forEach((date) => {
+
+    // 1) Mark event dates
+    Object.keys(eventsData).forEach((date) => {
       marked[date] = {
-        marked: true,
-        selected: date === selectedDate,
-        selectedColor: "#E3000F",
-        dotColor: "#E3000F",
         customStyles: {
           container: {
             borderRadius: 12,
+            backgroundColor: "rgba(252, 224, 228, 1)",
           },
           text: {
             fontWeight: "600",
@@ -54,6 +83,50 @@ export default function CalendarScreen({ navigation }) {
         },
       };
     });
+
+    // 2) Mark today's date with black border
+    if (!marked[todayString]) {
+      marked[todayString] = {
+        customStyles: {
+          container: {
+            borderRadius: 12,
+            borderColor: "black",
+            borderWidth: 1,
+          },
+          text: {
+            fontWeight: "600",
+          },
+        },
+      };
+    } else {
+      // If today's date is also an event date, add the black border on top
+      marked[todayString].customStyles.container.borderColor = "black";
+      marked[todayString].customStyles.container.borderWidth = 1;
+    }
+
+    // 3) Mark selected date with #E3000F background
+    if (selectedDate) {
+      if (!marked[selectedDate]) {
+        // If the selected date is not an event nor today's date
+        marked[selectedDate] = {
+          customStyles: {
+            container: {
+              borderRadius: 12,
+              backgroundColor: "#E3000F",
+            },
+            text: {
+              fontWeight: "600",
+              color: "#fff",
+            },
+          },
+        };
+      } else {
+        // If the selected date was already marked (as an event or today's date), override
+        marked[selectedDate].customStyles.container.backgroundColor = "#E3000F";
+        marked[selectedDate].customStyles.text.color = "#fff";
+      }
+    }
+
     return marked;
   };
 
@@ -61,7 +134,6 @@ export default function CalendarScreen({ navigation }) {
     if (!dateString) return "";
     const dateObj = new Date(dateString);
     if (isNaN(dateObj)) return "";
-
     return dateObj.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -71,35 +143,20 @@ export default function CalendarScreen({ navigation }) {
 
   const renderEventList = (eventsList = []) => {
     return eventsList.map((event) => (
-      <TouchableOpacity 
-        key={event.id} 
-        style={styles.eventCard}
-        activeOpacity={0.7}
-      >
-        <Image
-          source={require("../../assets/placeholder.jpg")}
-          style={styles.eventImage}
-        />
-
+      <TouchableOpacity key={event.id} style={styles.eventCard} activeOpacity={0.7}>
+        <Image source={event.image} style={styles.eventImage} />
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
             <Text style={styles.eventTitle} numberOfLines={1}>
               {event.title}
             </Text>
             <View style={styles.dateBadge}>
-              <Text style={styles.dateText}>
-                {formatSelectedDate(selectedDate)}
-              </Text>
+              <Text style={styles.dateText}>{formatSelectedDate(selectedDate)}</Text>
             </View>
           </View>
-
           <View style={styles.locationContainer}>
             <View style={styles.locationIconContainer}>
-              <Ionicons
-                name="location-outline"
-                size={16}
-                color="#6B7280"
-              />
+              <Ionicons name="location-outline" size={16} color="#6B7280" />
             </View>
             <Text style={styles.eventLocation} numberOfLines={1}>
               {event.location}
@@ -113,63 +170,48 @@ export default function CalendarScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
       <BlurView intensity={80} tint="light" style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Events Calendar</Text>
-        
         <View style={styles.placeholder} />
       </BlurView>
-
       <Calendar
         style={styles.calendar}
         theme={{
           backgroundColor: "#ffffff",
           calendarBackground: "#ffffff",
           textSectionTitleColor: "#6B7280",
-          selectedDayBackgroundColor: "#E3000F",
-          selectedDayTextColor: "#ffffff",
-          todayTextColor: "#E3000F",
           dayTextColor: "#1F2937",
           textDisabledColor: "#d9e1e8",
-          dotColor: "#E3000F",
-          selectedDotColor: "#ffffff",
           arrowColor: "#1F2937",
           monthTextColor: "#1F2937",
           textDayFontSize: 16,
           textMonthFontSize: 16,
           textDayHeaderFontSize: 14,
         }}
+        markingType="custom"
         markedDates={getMarkedDates()}
         onDayPress={(day) => setSelectedDate(day.dateString)}
         renderHeader={renderHeader}
         enableSwipeMonths
       />
-
       <Animated.ScrollView
         style={styles.eventsContainer}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {selectedDate && events[selectedDate] && (
+        {selectedDate && eventsData[selectedDate] && (
           <View style={styles.eventListContainer}>
             <Text style={styles.eventsHeader}>
               Showing events schedule on{" "}
-              <Text style={styles.selectedDate}>
-                {formatSelectedDate(selectedDate)}
-              </Text>
+              <Text style={styles.selectedDate}>{formatSelectedDate(selectedDate)}</Text>
             </Text>
-            {renderEventList(events[selectedDate])}
+            {renderEventList(eventsData[selectedDate])}
           </View>
         )}
       </Animated.ScrollView>
@@ -199,7 +241,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.05)",
   },
   placeholder: {
-    width: 44,  // Same width as backButton for symmetry
+    width: 44,
   },
   headerTitle: {
     fontSize: 20,
