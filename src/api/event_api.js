@@ -29,7 +29,7 @@ export const fetchEvents = async (pageNo, perPage, query, categoryFilter, filter
     let skip = (pageNo - 1) * perPage;
     if (skip < 0) {
         skip = 0;
-    } 
+    }
     try {
         const response = await axios.post(
             `${API_BASE_URL}/auth/list-by-params/eventforparticipant`,
@@ -43,7 +43,7 @@ export const fetchEvents = async (pageNo, perPage, query, categoryFilter, filter
             }
         );
 
-         return response?.data[0]; // ✅ Now correctly returns the data
+        return response?.data[0]; // ✅ Now correctly returns the data
     } catch (error) {
         console.error("Error during fetching events:", error);
         Toast.show({
@@ -101,3 +101,37 @@ export const SaveEvent = async (values) => {
 };
 
 
+export const ExentRegister = async (payload) => {
+    try {
+
+        const response = await axios.post(`${API_BASE_URL}/auth/create/EventRegister`, payload)
+        return response.data
+    }
+    catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
+        throw new Error(error);
+    }
+}
+
+
+export const EventTicket = async () => {
+    try {
+        const id = await AsyncStorage.getItem("role")
+        const response = await axios.get(`${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`)
+        return response.data
+    }
+    catch (error) {
+        console.error("Error during login:", error);
+        Toast.show({
+            type: "error",
+            text1: "Login Error",
+            text2: "Something went wrong. Please try again.",
+        });
+        throw new Error(error);
+    }
+}

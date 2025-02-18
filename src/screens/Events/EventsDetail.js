@@ -24,7 +24,7 @@ export default function EventsDetail({ navigation, route }) {
   const [titleReadMore, setTitleReadMore] = useState(false);
 
   const { eventDetail } = route.params || {}; // Default to empty object in case params are undefined
-  console.log("00000000",eventDetail)
+
   useEffect(() => {
     if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
@@ -310,7 +310,8 @@ export default function EventsDetail({ navigation, route }) {
           {new Date(eventDetail?.StartDate) > Date.now() &&
             <TouchableOpacity
               style={styles.buyButton}
-              onPress={() => navigation.navigate("BuyTicket")}
+              onPress={() => navigation.navigate("BuyTicket", { eventDetail: eventDetail }
+              )}
             >
               <Text style={styles.buyButtonText}>Buy Ticket</Text>
             </TouchableOpacity>

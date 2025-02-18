@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,12 +11,13 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
+import { EventTicket } from "../api/event_api";
 
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [expandedOrders, setExpandedOrders] = useState({});
   const [animation] = useState(new Animated.Value(0));
-
+  
   // Sample Data
   const tickets = [
     {
@@ -56,6 +57,24 @@ export default function TicketScreen({ navigation }) {
       useNativeDriver: true,
     }).start();
   };
+
+  useEffect(()=>{
+    fetchTicket()
+  },[])
+
+   const fetchTicket = async () => {
+     
+      const res = await EventTicket();
+      console.log("rrrrrrrrrr", res);
+      if (res.data.length > 0) {
+        setCount(res.count)
+        setEvents(res.data);
+      }
+      else {
+        setCount(0)
+        setEvents([])
+      }
+    };
 
   // Calculate total of ticket prices
   const calculateTotal = (ticketsArr) => {

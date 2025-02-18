@@ -13,8 +13,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ExentRegister } from "../../api/event_api"
 const { width } = Dimensions.get("window");
+import Toast from "react-native-toast-message";
 
 const TicketItem = ({ registration, onRemove, index }) => {
   return (
@@ -43,9 +47,7 @@ const TicketItem = ({ registration, onRemove, index }) => {
                 <Text style={styles.ticketName}>
                   {registration.name || "Unnamed"}
                 </Text>
-                <Text style={styles.ticketNumber}>
-                  #{Math.random().toString(36).substr(2, 6).toUpperCase()}
-                </Text>
+
               </View>
             </View>
 
@@ -55,15 +57,15 @@ const TicketItem = ({ registration, onRemove, index }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.priceTagText}>{registration.ticketType}</Text>
+              <Text style={styles.priceTagText}>{registration.TicketType.TicketType}</Text>
             </LinearGradient>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.removeTicketButton}
               onPress={() => onRemove(index)}
             >
               <Ionicons name="close-circle" size={24} color="#666" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </LinearGradient>
@@ -74,11 +76,13 @@ const TicketItem = ({ registration, onRemove, index }) => {
 export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const [titleReadMore, setTitleReadMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(false)
 
-  const { registrations = [], finalTotal = 0 } = route.params || {};
+  const { registrations = [], grandTotal, eventDetail, appliedCoupon } = route.params || {};
 
   const [ticketList, setTicketList] = useState(registrations);
-  const [paymentTotal, setPaymentTotal] = useState(finalTotal);
+  const [paymentTotal, setPaymentTotal] = useState(grandTotal);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState("Razorpay");
@@ -108,8 +112,84 @@ export default function PaymentScreen() {
   };
 
   const handleMakePayment = () => {
+
     console.log("Making Payment with:", selectedPaymentMethod);
+    handleRegister()
   };
+
+  const handleRegister = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("role")
+      setIsLoading(true)
+      // console.log("aaaaaaaaaaaa", ticketList)
+      const formattedParticipants = ticketList.map((participant) => {
+        const sessionTotal = (participant.sessionName || []).reduce(
+          (sum, session) => sum + Number(session.rate || 0),
+          0
+        );
+
+        let ticketCategory = "Participant";
+
+
+        return {
+          byParticipant: userId || null,
+          name: participant.name,
+          dob: participant.dateOfBirth,
+          eventName: eventDetail._id,
+          age: participant.age,
+          sessionName: (participant.sessionName || []).map(session => session.value),
+          ticketCategory,
+          country: eventDetail.countryDetail[0]._id,
+          TicketType: participant.TicketType._id, // Extract the correct value
+          isActive: true,
+          registrationCharge: participant.registrationCharge
+        };
+      });
+      const payload = {
+        couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
+        byParticipant: userId,
+        eventName: eventDetail._id, // Replace with actual event ID
+        country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
+        participants: formattedParticipants,
+        afterDiscountTotal: grandTotal
+      };
+
+
+      const response = await ExentRegister(payload)
+      console.log("-----------------------------", response)
+      if (response.isOk) {
+        Toast.show({
+          type: "success",
+          text1: response.message,
+          position: "top",
+          visibilityTime: 2000,
+        });
+        setTimeout(() => {
+          navigation.navigate("Tab");
+        }, 2000);
+
+      }
+      else {
+        Toast.show({
+          type: "error",
+          text1: res.message || "Someting Went Wrong",
+          position: "top",
+          visibilityTime: 2000,
+        });
+      }
+    }
+    catch (error) {
+      setIsLoading(false)
+      console.error("Error during login:", error);
+      Toast.show({
+        type: "error",
+        text1: "Login Error",
+        text2: "Something went wrong. Please try again.",
+      });
+      throw new Error(error);
+    }
+
+  }
 
   return (
     <View style={styles.rootContainer}>
@@ -123,32 +203,35 @@ export default function PaymentScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
-
         <Image
-          source={require("../../../assets/Atul_bhai.png")}
+          source={{
+            uri: eventDetail?.EventImage
+              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
+          }}
           style={styles.topImage}
           resizeMode="cover"
         />
 
         <View style={styles.headerCard}>
-          <Text style={styles.headerCardTitle}>
-            Register for Atul Purohit Graba
+          <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+            Register for {eventDetail?.EventName}
           </Text>
           <View style={styles.headerCardRow}>
             <Ionicons name="location-outline" size={16} color="#666" />
             <Text style={styles.headerCardSubtitle}>
-              Gelora Bung Karno Stadium, Ahmedabad
+              {eventDetail?.EventLocation}
             </Text>
           </View>
           <View style={styles.headerCardRow}>
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.headerCardSubtitle}>
-              August 30 - September 2, 2024
+              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+
             </Text>
           </View>
           <View style={styles.headerCardRow}>
             <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>09:00 AM - 07:00 PM</Text>
+            <Text style={styles.headerCardSubtitle}>{formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}</Text>
           </View>
         </View>
       </View>
@@ -168,7 +251,7 @@ export default function PaymentScreen() {
               style={[
                 styles.paymentOption,
                 selectedPaymentMethod === "Razorpay" &&
-                  styles.paymentOptionSelected,
+                styles.paymentOptionSelected,
               ]}
               onPress={() => handlePaymentMethodChange("Razorpay")}
             >
@@ -198,7 +281,7 @@ export default function PaymentScreen() {
               style={[
                 styles.paymentOption,
                 selectedPaymentMethod === "PayPal" &&
-                  styles.paymentOptionSelected,
+                styles.paymentOptionSelected,
               ]}
               onPress={() => handlePaymentMethodChange("PayPal")}
             >
@@ -245,7 +328,7 @@ export default function PaymentScreen() {
         <View style={styles.bottomBar}>
           <View style={styles.totalSection}>
             <Text style={styles.grandTotalText}>
-              Grand Total: ${paymentTotal}
+              Grand Total: ${grandTotal}
             </Text>
           </View>
           <TouchableOpacity

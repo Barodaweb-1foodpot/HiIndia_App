@@ -55,7 +55,7 @@ export default function HomeScreen({ navigation }) {
 
   const fetchEvent = async () => {
    
-    const res = await fetchEvents(pageNo, perPage, searchText, filterDate = activeTab);
+    const res = await fetchEvents(pageNo, perPage, searchText,categoryFilter="All", filterDate = activeTab);
     // console.log("kkkkkkkkkkk", res);
     if (res.data.length > 0) {
       setCount(res.count)
