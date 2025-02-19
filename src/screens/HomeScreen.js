@@ -18,6 +18,7 @@ import { fetchEvents, listActiveEvents } from "../api/event_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import moment from "moment";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from '@react-navigation/native';
 
 // A wrapper component for blur effect
 const BlurWrapper = ({ style, children }) => {
@@ -35,7 +36,6 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
-// Custom component to handle image loading with a placeholder
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
 
@@ -67,6 +67,14 @@ export default function HomeScreen({ navigation }) {
   const [pageNo, setPageNo] = useState(0);
   const [activeEvent, setActiveEvents] = useState([]);
   const [count, setCount] = useState(0);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      StatusBar.setHidden(false); 
+      StatusBar.setBarStyle("light-content"); 
+      return () => {};
+    }, [])
+  );
 
   useEffect(() => {
     fetchEvent();

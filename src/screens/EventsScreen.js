@@ -17,6 +17,7 @@ import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatDateRange } from "../helper/helper_Function";
 import moment from "moment";
+import { useFocusEffect } from '@react-navigation/native';
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -216,6 +217,14 @@ export default function EventsScreen({ navigation }) {
   const [pageNo, setPageNo] = useState(0);
   const [count, setCount] = useState(0);
   const [allEvent, setAllEvent] = useState([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      StatusBar.setHidden(false); // Show status bar
+      StatusBar.setBarStyle("light-content"); // Set preferred style
+      return () => {};
+    }, [])
+  );
 
   useEffect(() => {
     fetchCategory();

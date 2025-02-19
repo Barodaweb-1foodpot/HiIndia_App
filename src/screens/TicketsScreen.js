@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getTickets } from "../api/ticket_api";
 import { formatDateRange } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -22,6 +23,14 @@ export default function TicketScreen({ navigation }) {
   const [tickets, setTickets] = useState([]);
   const [animation] = useState(new Animated.Value(0));
   const [titleReadMore, setTitleReadMore] = useState(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      StatusBar.setHidden(false); 
+      StatusBar.setBarStyle("light-content"); 
+      return () => {};
+    }, [])
+  );
 
   useEffect(() => {
     fetchTickets();

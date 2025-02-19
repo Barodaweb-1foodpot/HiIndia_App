@@ -49,6 +49,14 @@ export default function ProfileScreen() {
   };
 
   useFocusEffect(
+    React.useCallback(() => {
+      StatusBar.setHidden(false); 
+      StatusBar.setBarStyle("dark-content");
+      return () => {};
+    }, [])
+  );
+
+  useFocusEffect(
     useCallback(() => {
       loadProfile();
     }, [])
