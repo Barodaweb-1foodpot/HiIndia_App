@@ -28,7 +28,7 @@ export default function EventsDetail({ navigation, route }) {
 
   const { eventDetail } = route.params || {};
 
-   useEffect(() => {
+  useEffect(() => {
     if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
@@ -43,7 +43,9 @@ export default function EventsDetail({ navigation, route }) {
       }
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(
+          2
+        );
         setFileSize(sizeInMB);
       } else {
         console.warn("Content-Length header is missing.");
@@ -58,16 +60,18 @@ export default function EventsDetail({ navigation, route }) {
     try {
       const eventDate =
         eventDetail?.StartDate && eventDetail?.EndDate
-          ? `${moment(eventDetail.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              eventDetail.EndDate
-            ).format("D/M/YY HH:mm")}`
+          ? `${moment(eventDetail.StartDate).format(
+              "D/M/YY HH:mm"
+            )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
           : "Date not available";
       const shareMessage =
         `🎶 Check out this event!\n\n` +
         `Event: ${eventDetail?.EventName}\n` +
         `Location: ${eventDetail?.EventLocation}\n` +
         `Date: ${eventDate}\n` +
-        (eventDetail?.EventImage ? `Image: ${API_BASE_URL_UPLOADS}/${eventDetail.EventImage}\n` : "");
+        (eventDetail?.EventImage
+          ? `Image: ${API_BASE_URL_UPLOADS}/${eventDetail.EventImage}\n`
+          : "");
       await Share.share({ message: shareMessage });
     } catch (error) {
       console.error("Error sharing event", error);
@@ -98,10 +102,7 @@ export default function EventsDetail({ navigation, route }) {
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
         {/* Share Button */}
-        <TouchableOpacity
-          style={styles.shareTopButton}
-          onPress={shareEvent}
-        >
+        <TouchableOpacity style={styles.shareTopButton} onPress={shareEvent}>
           <Ionicons name="share-social-outline" size={20} color="#FFF" />
         </TouchableOpacity>
         <Image
@@ -121,10 +122,13 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardTitle}
               numberOfLines={titleReadMore ? undefined : 2}
             >
-              {eventDetail?.EventName}
+              {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
+
             {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
+              <TouchableOpacity
+                onPress={() => setTitleReadMore(!titleReadMore)}
+              >
                 <Text style={styles.readMoreText}>
                   {titleReadMore ? "Read Less" : "Read More"}
                 </Text>
@@ -140,7 +144,7 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation}
+              {eventDetail?.EventLocation || "Location Unavailable"}
             </Text>
           </View>
           {/* Date row */}
@@ -152,7 +156,8 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
+                "Date not available"}
             </Text>
           </View>
           {/* Time row */}
@@ -164,7 +169,8 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
+                "Time not available"}
             </Text>
           </View>
         </View>
@@ -188,9 +194,11 @@ export default function EventsDetail({ navigation, route }) {
               defaultSource={require("../../../assets/placeholder.jpg")}
             />
             <View style={styles.artistTextContainer}>
-              <Text style={styles.artistName}>{eventDetail?.artistName}</Text>
+              <Text style={styles.artistName}>
+                {eventDetail?.artistName || "Artist Name Unavailable"}
+              </Text>
               <Text style={styles.artistDetail}>
-                {eventDetail?.artistDesc}
+                {eventDetail?.artistDesc || "No artist description available"}
               </Text>
             </View>
           </View>
@@ -200,13 +208,16 @@ export default function EventsDetail({ navigation, route }) {
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.descriptionText}>
               {readMore ? (
-                eventDetail?.EventDescreption.replace(/<[^>]+>/g, "")
+                eventDetail?.EventDescreption?.replace(/<[^>]+>/g, "") ||
+                "No description available"
               ) : (
                 <Text numberOfLines={2} ellipsizeMode="tail">
-                  {eventDetail?.ShortDescreption}
+                  {eventDetail?.ShortDescreption ||
+                    "No short description available"}
                 </Text>
               )}
             </Text>
+
             <TouchableOpacity onPress={() => setReadMore(!readMore)}>
               <Text style={styles.readMoreText}>
                 {readMore ? "Read Less" : "Read More"}
@@ -218,7 +229,11 @@ export default function EventsDetail({ navigation, route }) {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Venue & Location</Text>
             <TouchableOpacity
-              onPress={() => Linking.openURL(eventDetail?.googleMapLink)}
+              onPress={() =>
+                Linking.openURL(
+                  eventDetail?.googleMapLink || "https://maps.google.com"
+                )
+              }
               style={styles.locationLink}
             >
               <Ionicons name="location-sharp" size={20} color="#E3000F" />
@@ -327,19 +342,25 @@ export default function EventsDetail({ navigation, route }) {
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
           <Text style={styles.priceText}>
-            {eventDetail?.eventRates.length > 0
-              ? `Start from ${eventDetail?.countryDetail[0].Currency} ${Math.max(
+            {eventDetail?.eventRates && eventDetail.eventRates.length > 0
+              ? `Start from ${
+                  (eventDetail?.countryDetail &&
+                    eventDetail.countryDetail[0]?.Currency) ||
+                  "$"
+                } ${Math.max(
                   ...eventDetail.eventRates.map(
                     (rate) => rate.ratesForParticipant
                   )
                 )}`
               : "Free Event"}
           </Text>
-          {new Date(eventDetail?.StartDate) > Date.now() && (
+
+          {eventDetail?.StartDate && new Date(eventDetail.StartDate) > Date.now() && (
             <TouchableOpacity
               style={styles.buyButton}
-              onPress={() => navigation.navigate("BuyTicket", { eventDetail: eventDetail }
-              )}
+              onPress={() =>
+                navigation.navigate("BuyTicket", { eventDetail: eventDetail })
+              }
             >
               <Text style={styles.buyButtonText}>Buy Ticket</Text>
             </TouchableOpacity>
