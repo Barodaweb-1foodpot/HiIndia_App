@@ -1,3 +1,4 @@
+// TicketsScreen.js
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -11,41 +12,54 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
-import { EventTicket } from "../api/event_api";
+import { getTickets } from "../api/ticket_api";
+import { formatDateRange } from "../helper/helper_Function";
+import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [expandedOrders, setExpandedOrders] = useState({});
+  const [tickets, setTickets] = useState([]);
   const [animation] = useState(new Animated.Value(0));
-  
-  // Sample Data
-  const tickets = [
-    {
-      id: "ticket-1",
-      title: "Atul Purohit Graba",
-      date: "August 30 - September 2, 2024",
-      image: require("../../assets/Atul_bhai.png"),
-      tickets: [
-        { name: "Deep Mehta", type: "Gold", price: 499 },
-        { name: "Ansh", type: "Silver", price: 299 },
-        { name: "Dev", type: "Platinum", price: 599 },
-      ],
-      coupon: 70,
-    },
-    {
-      id: "ticket-2",
-      title: "Navratri Special",
-      date: "August 30 - September 2, 2024",
-      image: require("../../assets/placeholder.jpg"),
-      tickets: [
-        { name: "Deep Mehta", type: "Gold", price: 499 },
-        { name: "Ansh", type: "Silver", price: 299 },
-        { name: "Dev", type: "Platinum", price: 599 },
-      ],
-    },
-  ];
+  const [titleReadMore, setTitleReadMore] = useState(false);
 
-  // Toggle expand/collapse
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    try {
+      const res = await getTickets();
+      if (res.isOk && res.data && res.data.length > 0) {
+        console.log("Event detail:", res.data[0]);
+        const transformedTickets = res.data.map((order) => ({
+          id: order._id,
+          countryCurrency: order.event?.countryDetail?.Currency,
+          title: order.event?.EventName || "Untitled Event",
+          date:
+            formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
+            "Date Not Available",
+          image: order.event?.EventImage
+            ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
+            : require("../../assets/placeholder.jpg"),
+          tickets: order.registrations.map((reg) => ({
+            name: reg.name,
+            type: reg.TicketType?.name || "Standard",
+            price: reg.total || 0,
+          })),
+          totalRate: order.subTotal, 
+          total: order.totalRate,   
+          coupon: order.couponDiscount || 0,
+        }));
+        setTickets(transformedTickets);
+      } else {
+        setTickets([]);
+      }
+    } catch (error) {
+      console.error("Error fetching tickets: ", error);
+    }
+  };
+
   const toggleOrderDetails = (id) => {
     setExpandedOrders((prev) => ({
       ...prev,
@@ -56,29 +70,6 @@ export default function TicketScreen({ navigation }) {
       toValue: expandedOrders[id] ? 0 : 1,
       useNativeDriver: true,
     }).start();
-  };
-
-  useEffect(()=>{
-    fetchTicket()
-  },[])
-
-   const fetchTicket = async () => {
-     
-      const res = await EventTicket();
-      console.log("rrrrrrrrrr", res);
-      if (res.data.length > 0) {
-        setCount(res.count)
-        setEvents(res.data);
-      }
-      else {
-        setCount(0)
-        setEvents([])
-      }
-    };
-
-  // Calculate total of ticket prices
-  const calculateTotal = (ticketsArr) => {
-    return ticketsArr.reduce((sum, ticket) => sum + ticket.price, 0);
   };
 
   return (
@@ -98,7 +89,9 @@ export default function TicketScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Calender" })}
+              onPress={() =>
+                navigation.navigate("App", { screen: "Calender" })
+              }
             >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
@@ -163,7 +156,6 @@ export default function TicketScreen({ navigation }) {
                 },
               ]}
             >
-              {/* Card Gradient */}
               <LinearGradient
                 colors={["#FFFFFF", "#F8F9FA"]}
                 style={styles.cardGradient}
@@ -183,7 +175,23 @@ export default function TicketScreen({ navigation }) {
                           <Ionicons name="ticket" size={16} color="#FFF" />
                         </LinearGradient>
                       </View>
-                      <Text style={styles.eventTitle}>{ticket.title}</Text>
+                      <View style={{width:"90%" }}>
+                        <Text
+                          style={styles.eventTitle}
+                          numberOfLines={titleReadMore ? undefined : 2}
+                        >
+                          {ticket.title}
+                        </Text>
+                        {ticket.title?.length > 10 && (
+                          <TouchableOpacity
+                            onPress={() => setTitleReadMore(!titleReadMore)}
+                          >
+                            <Text style={styles.readMoreText}>
+                              {titleReadMore ? "Read Less" : "Read More"}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                     <Text style={styles.eventDate}>{ticket.date}</Text>
                     <Text style={styles.ticketCount}>
@@ -192,7 +200,7 @@ export default function TicketScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* Pink Bridging Container */}
+                {/* Order Details Container */}
                 <TouchableOpacity
                   style={[
                     styles.orderDetailsContainer,
@@ -205,7 +213,11 @@ export default function TicketScreen({ navigation }) {
                       <Text style={styles.viewDetailsText}>
                         View Order Details
                       </Text>
-                      <Ionicons name="chevron-down" size={20} color="#1F2937" />
+                      <Ionicons
+                        name="chevron-down"
+                        size={20}
+                        color="#1F2937"
+                      />
                     </View>
                   ) : (
                     <View style={styles.orderDetails}>
@@ -216,25 +228,20 @@ export default function TicketScreen({ navigation }) {
                             <Text style={styles.ticketHolderName}>
                               {t.name}
                             </Text>
-
-                            {/* Price & Type Container */}
                             <View style={styles.priceTypeContainer}>
-                              {/* Purple Gradient for Price ONLY */}
                               <LinearGradient
                                 colors={["#EFEAFF", "#E5E0FF"]}
                                 style={styles.purplePriceBox}
                               >
                                 <Text style={styles.purplePriceText}>
-                                  ${t.price}
+                                  {ticket.countryCurrency} {t.price}
                                 </Text>
                               </LinearGradient>
-                              {/* Type in italic, below the price box */}
                               <Text style={styles.purplePriceType}>
                                 <Text style={styles.italic}>{t.type}</Text>
                               </Text>
                             </View>
                           </View>
-                          {/* Row Separator */}
                           {index < ticket.tickets.length - 1 && (
                             <View style={styles.rowSeparator} />
                           )}
@@ -243,45 +250,50 @@ export default function TicketScreen({ navigation }) {
 
                       {/* Totals */}
                       <View style={styles.longSeparator} />
-                      {/* White Totals Box (aligned narrower, like the design) */}
                       <View style={styles.whiteTotalsBox}>
+                        {/* "Total Rate" */}
                         <View style={styles.whiteTotalsRow}>
                           <Text style={styles.whiteTotalsLabel}>
                             Total Rate
                           </Text>
                           <Text style={styles.whiteTotalsValue}>
-                            ${calculateTotal(ticket.tickets)}
+                            {ticket.countryCurrency}
+                            {ticket.totalRate}
                           </Text>
                         </View>
                         <View style={styles.whiteShortSeparator} />
 
-                        {ticket.coupon && (
+                       
+                        {ticket.coupon ? (
                           <>
                             <View style={styles.whiteTotalsRow}>
                               <Text style={styles.whiteTotalsLabel}>
                                 Coupon applied
                               </Text>
                               <Text style={styles.couponValue}>
-                                -${ticket.coupon}
+                                {ticket.countryCurrency}
+                                {Number(ticket.coupon).toFixed(2)}
                               </Text>
                             </View>
                             <View style={styles.whiteShortSeparator} />
                             <View style={styles.whiteTotalsRow}>
-                              <Text style={styles.whiteTotalsLabel}>Total</Text>
+                              <Text style={styles.whiteTotalsLabel}>
+                                Total
+                              </Text>
                               <Text style={styles.finalTotal}>
-                                $
-                                {calculateTotal(ticket.tickets) - ticket.coupon}
+                                {ticket.countryCurrency}
+                                {ticket.total}
                               </Text>
                             </View>
                             <View style={styles.whiteShortSeparator} />
                           </>
-                        )}
-                        {!ticket.coupon && (
+                        ) : (
                           <>
                             <View style={styles.whiteTotalsRow}>
                               <Text style={styles.whiteTotalsLabel}>Total</Text>
                               <Text style={styles.finalTotal}>
-                                ${calculateTotal(ticket.tickets)}
+                                {ticket.countryCurrency}
+                                {ticket.totalRate}
                               </Text>
                             </View>
                             <View style={styles.whiteShortSeparator} />
@@ -320,13 +332,10 @@ export default function TicketScreen({ navigation }) {
 
 /* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
-  /* Root Container */
   container: {
     flex: 1,
     backgroundColor: "#000",
   },
-
-  /* Header Gradient */
   header: {
     height: "15%",
     paddingHorizontal: 16,
@@ -360,8 +369,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-
-  /* White Section */
   whiteSection: {
     flex: 1,
     backgroundColor: "#fff",
@@ -377,8 +384,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     letterSpacing: 0.5,
   },
-
-  /* Tabs */
   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -401,13 +406,9 @@ const styles = StyleSheet.create({
     color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
   },
-
-  /* Scroll Area */
   scrollView: {
     flex: 1,
   },
-
-  /* Ticket Card */
   ticketCard: {
     marginBottom: 16,
     borderRadius: 16,
@@ -441,6 +442,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   eventInfo: {
+    width:'100%',
     marginLeft: 16,
     flex: 1,
     justifyContent: "center",
@@ -449,6 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
+    width: "100%"
   },
   ticketIconContainer: {
     marginRight: 8,
@@ -467,6 +470,12 @@ const styles = StyleSheet.create({
     flex: 1,
     letterSpacing: 0.5,
   },
+  readMoreText: {
+    fontSize: 14,
+    color: "#1F2937",
+    fontWeight: "600",
+    marginTop: 4,
+  },
   eventDate: {
     fontSize: 14,
     color: "#6B7280",
@@ -477,8 +486,6 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontWeight: "500",
   },
-
-  /* Pink Bridging Container (Order Details) */
   orderDetailsContainer: {
     backgroundColor: "#FFF5F5",
     paddingVertical: 12,
@@ -503,8 +510,6 @@ const styles = StyleSheet.create({
   orderDetails: {
     paddingTop: 2,
   },
-
-  /* Ticket Holder Row */
   ticketHolderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -516,8 +521,6 @@ const styles = StyleSheet.create({
     color: "#000",
     fontFamily: "Poppins-Medium",
   },
-
-  /* Price & Type Container */
   priceTypeContainer: {
     alignItems: "center",
   },
@@ -541,8 +544,6 @@ const styles = StyleSheet.create({
   italic: {
     fontStyle: "italic",
   },
-
-  /* Row Separator (shorter from both sides) */
   rowSeparator: {
     height: 1,
     width: "100%",
@@ -550,16 +551,12 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginVertical: 1,
   },
-
-  /* Long Separator above Totals */
   longSeparator: {
     height: 1,
     width: "100%",
     backgroundColor: "#E5E7EB",
     marginVertical: 8,
   },
-
-  /* White Totals Box (slightly narrower) */
   whiteTotalsBox: {
     backgroundColor: "#fff",
     borderRadius: 8,
@@ -602,8 +599,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "Poppins-Medium",
   },
-
-  /* Hide Details Button Row */
   hideDetailsButtonRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
