@@ -12,7 +12,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { listActiveEvents } from "../api/event_api";
+import { fetchEvents } from "../api/event_api"; // Using fetchEvents instead of listActiveEvents
 import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function CalendarScreen({ navigation }) {
@@ -23,23 +23,21 @@ export default function CalendarScreen({ navigation }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await listActiveEvents();
-        const eventsArray = res.data;
+        // Fetch events with pageNo=1, perPage=1000, no search query, category "All", filterDate "All"
+        const res = await fetchEvents(1, 1000, "", "All", "All");
+        const eventsArray = res.data || [];
         const groupedEvents = {};
+
         eventsArray.forEach((event) => {
           if (event.StartDate) {
-            const dateKey = new Date(event.StartDate).toISOString().split("T")[0];
+            const dateKey = new Date(event.StartDate)
+              .toISOString()
+              .split("T")[0];
             if (!groupedEvents[dateKey]) {
               groupedEvents[dateKey] = [];
             }
-            groupedEvents[dateKey].push({
-              id: event._id || event.id,
-              title: event.EventName,
-              location: event.EventLocation,
-              image: event.EventImage
-                ? { uri: `${API_BASE_URL_UPLOADS}/${event.EventImage}` }
-                : require("../../assets/placeholder.jpg"),
-            });
+            // Push the entire event object so that the details page receives all fields
+            groupedEvents[dateKey].push(event);
           }
         });
         setEventsData(groupedEvents);
@@ -69,7 +67,7 @@ export default function CalendarScreen({ navigation }) {
     const todayString = new Date().toISOString().split("T")[0];
     const marked = {};
 
-    // 1) Mark event dates
+    // Mark event dates
     Object.keys(eventsData).forEach((date) => {
       marked[date] = {
         customStyles: {
@@ -84,7 +82,7 @@ export default function CalendarScreen({ navigation }) {
       };
     });
 
-    // 2) Mark today's date with black border
+    // Mark today's date with a black border
     if (!marked[todayString]) {
       marked[todayString] = {
         customStyles: {
@@ -99,15 +97,13 @@ export default function CalendarScreen({ navigation }) {
         },
       };
     } else {
-      // If today's date is also an event date, add the black border on top
       marked[todayString].customStyles.container.borderColor = "black";
       marked[todayString].customStyles.container.borderWidth = 1;
     }
 
-    // 3) Mark selected date with #E3000F background
+    // Mark selected date with #E3000F background
     if (selectedDate) {
       if (!marked[selectedDate]) {
-        // If the selected date is not an event nor today's date
         marked[selectedDate] = {
           customStyles: {
             container: {
@@ -121,12 +117,10 @@ export default function CalendarScreen({ navigation }) {
           },
         };
       } else {
-        // If the selected date was already marked (as an event or today's date), override
         marked[selectedDate].customStyles.container.backgroundColor = "#E3000F";
         marked[selectedDate].customStyles.text.color = "#fff";
       }
     }
-
     return marked;
   };
 
@@ -141,17 +135,37 @@ export default function CalendarScreen({ navigation }) {
     });
   };
 
+  // Render event cards for the selected date.
   const renderEventList = (eventsList = []) => {
-    return eventsList.map((event) => (
-      <TouchableOpacity key={event.id} style={styles.eventCard} activeOpacity={0.7}>
-        <Image source={event.image} style={styles.eventImage} />
+    return eventsList.map((event, index) => (
+      <TouchableOpacity
+        key={event._id ? event._id : index}
+        style={styles.eventCard}
+        activeOpacity={0.7}
+        onPress={() =>
+          navigation.navigate("App", {
+            screen: "EventsDetail",
+            params: { eventDetail: event },
+          })
+        }
+      >
+        <Image
+          source={
+            event.EventImage
+              ? { uri: `${API_BASE_URL_UPLOADS}/${event.EventImage}` }
+              : require("../../assets/placeholder.jpg")
+          }
+          style={styles.eventImage}
+        />
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
             <Text style={styles.eventTitle} numberOfLines={1}>
-              {event.title}
+              {event.EventName}
             </Text>
             <View style={styles.dateBadge}>
-              <Text style={styles.dateText}>{formatSelectedDate(selectedDate)}</Text>
+              <Text style={styles.dateText}>
+                {formatSelectedDate(selectedDate)}
+              </Text>
             </View>
           </View>
           <View style={styles.locationContainer}>
@@ -159,7 +173,7 @@ export default function CalendarScreen({ navigation }) {
               <Ionicons name="location-outline" size={16} color="#6B7280" />
             </View>
             <Text style={styles.eventLocation} numberOfLines={1}>
-              {event.location}
+              {event.EventLocation}
             </Text>
           </View>
         </View>
@@ -171,7 +185,10 @@ export default function CalendarScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <BlurView intensity={80} tint="light" style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Events Calendar</Text>
@@ -199,9 +216,10 @@ export default function CalendarScreen({ navigation }) {
       />
       <Animated.ScrollView
         style={styles.eventsContainer}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          useNativeDriver: true,
-        })}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
@@ -209,7 +227,9 @@ export default function CalendarScreen({ navigation }) {
           <View style={styles.eventListContainer}>
             <Text style={styles.eventsHeader}>
               Showing events schedule on{" "}
-              <Text style={styles.selectedDate}>{formatSelectedDate(selectedDate)}</Text>
+              <Text style={styles.selectedDate}>
+                {formatSelectedDate(selectedDate)}
+              </Text>
             </Text>
             {renderEventList(eventsData[selectedDate])}
           </View>
