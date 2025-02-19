@@ -83,14 +83,22 @@ const Dropdown = ({
     {dropdownOpen && (
       <View style={styles.dropdownList}>
         {category?.map((cat, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.dropdownItem}
-            onPress={() => onSelectCategory(cat)}
-          >
-            <Text style={styles.dropdownItemText}>{cat.name}</Text>
-          </TouchableOpacity>
+          <View key={index}>
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => onSelectCategory(cat)}
+            >
+              <Text style={styles.dropdownItemText}>{cat.name}</Text>
+            </TouchableOpacity>
+            {index < category.length - 1 && (
+              <View style={styles.dropdownSeparator} />
+            )}
+          </View>
         ))}
+        {/* Optionally, if you want a separator before "All" */}
+        {category && category.length > 0 && (
+          <View style={styles.dropdownSeparator} />
+        )}
         <TouchableOpacity
           style={styles.dropdownItem}
           onPress={() => onSelectCategory({ _id: "All", name: "All" })}
@@ -650,5 +658,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
+  },
+  dropdownSeparator: {
+    height: 1,
+    width: "100%",
+    backgroundColor: "#ccc",
   },
 });

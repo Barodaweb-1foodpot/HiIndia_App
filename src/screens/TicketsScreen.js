@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(0, 0, 0, 1)",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#6B7280",
   },
   activeTabText: {

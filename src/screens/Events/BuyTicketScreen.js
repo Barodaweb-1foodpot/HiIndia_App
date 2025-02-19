@@ -188,7 +188,7 @@ export default function BuyTicketScreen({ route }) {
     const newTotal = grandTotal - discount;
     console.log("disc", discount);
     setAppliedCoupon(coupon);
-    setGrandTotal(newTotal); 
+    setGrandTotal(newTotal);
     setShowCouponsModal(false);
   };
 
@@ -318,9 +318,10 @@ export default function BuyTicketScreen({ route }) {
         >
           <Text style={styles.shortText}>
             {showMore
-             ? (eventDetail?.EventDescreption?.replace(/<[^>]+>/g, "") || "No description available")
-             : (eventDetail?.ShortDescreption || "No short description available")
-           }
+              ? eventDetail?.EventDescreption?.replace(/<[^>]+>/g, "") ||
+                "No description available"
+              : eventDetail?.ShortDescreption ||
+                "No short description available"}
             <Text
               style={styles.readMore}
               onPress={() => setShowMore(!showMore)}
@@ -487,29 +488,28 @@ export default function BuyTicketScreen({ route }) {
                           style={styles.ticketOption}
                           onPress={() => {
                             setActiveRegIndexTicket(index);
-
                             setShowTicketModal(true);
                           }}
                         >
                           <Text style={styles.ticketLabel}>
-                            {reg
-                              ? reg.TicketType.TicketType ||
-                                eventDetail.eventRates[0].TicketTypeDetail
-                                  .TicketType
-                              : reg[index].reg.TicketType.TicketType}{" "}
-                            -{" "}
+                            {reg?.TicketType?.TicketType
+                              ? `${reg.TicketType.TicketType} - `
+                              : "Select Ticket"}
                           </Text>
-                          <Text style={styles.ticketPrice}>
-                            {eventDetail.countryDetail[0]?.Currency}{" "}
-                            {reg
-                              ? reg.registrationCharge ||
-                                eventDetail.eventRates[0].ratesForParticipant
-                              : reg[index].registrationCharge}
-                          </Text>
+
+                          {/* Only show price if a ticket is selected */}
+                          {reg?.TicketType?.TicketType ? (
+                            <Text style={styles.ticketPrice}>
+                              {eventDetail.countryDetail[0]?.Currency}{" "}
+                              {reg.registrationCharge ||
+                                eventDetail.eventRates[0].ratesForParticipant}
+                            </Text>
+                          ) : null}
                         </TouchableOpacity>
 
                         <Ionicons name="chevron-down" size={24} color="#666" />
                       </TouchableOpacity>
+
                       {ticketTypeInvalid && (
                         <Text style={styles.errorText}>
                           Please enter your Ticket
@@ -642,7 +642,12 @@ export default function BuyTicketScreen({ route }) {
                 eventDetail.eventRates?.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
-                    style={styles.ticketOption}
+                    style={[
+                      styles.ticketOption,
+                      idx === eventDetail.eventRates.length - 1 && {
+                        borderBottomWidth: 0,
+                      },
+                    ]}
                     onPress={() => handleTicketTypeSelect(item)}
                   >
                     <View style={styles.ticketOptionContent}>

@@ -185,50 +185,35 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Tabs Section */}
-          <View style={styles.tabsContainer}>
-            <View style={styles.tabsWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === "All" && styles.activeTab,
-                ]}
-                onPress={() => {
-                  setActiveTab("All");
-                  setPerPage(2);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "All" && styles.activeTabText,
-                  ]}
-                >
-                  All
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === "Past" && styles.activeTab,
-                ]}
-                onPress={() => {
-                  setActiveTab("Past");
-                  setPerPage(2);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "Past" && styles.activeTabText,
-                  ]}
-                >
-                  Past
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* Tabs */}
+               <View style={styles.tabsContainer}>
+                 <TouchableOpacity
+                   style={[styles.tab, activeTab === "All" && styles.activeTab]}
+                   onPress={() => setActiveTab("All")}
+                 >
+                   <Text
+                     style={[
+                       styles.tabText,
+                       activeTab === "All" && styles.activeTabText,
+                     ]}
+                   >
+                     All
+                   </Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity
+                   style={[styles.tab, activeTab === "Past" && styles.activeTab]}
+                   onPress={() => setActiveTab("Past")}
+                 >
+                   <Text
+                     style={[
+                       styles.tabText,
+                       activeTab === "Past" && styles.activeTabText,
+                     ]}
+                   >
+                     Past
+                   </Text>
+                 </TouchableOpacity>
+               </View>
 
           {/* Trending Events Section */}
           <View style={styles.section}>
@@ -467,9 +452,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   eventsTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
     color: "#000",
+    marginBottom: 10,
   },
   searchWrapper: {
     marginBottom: 20,
@@ -483,9 +469,9 @@ const styles = StyleSheet.create({
     height: 46,
     elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 2,
   },
   searchInput: {
     flex: 1,
@@ -493,31 +479,30 @@ const styles = StyleSheet.create({
     color: "#000",
     marginLeft: 8,
   },
-  tabsContainer: {
-    marginBottom: 24,
-  },
-  tabsWrapper: {
+   /* Tabs */
+   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#E5E7EB",
+    marginBottom: 16,
   },
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+  tab: {
+    paddingBottom: 8,
+    marginRight: 24,
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "#E3000F",
+    borderBottomColor: "rgba(0, 0, 0, 1)",
   },
   tabText: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 16,
+    color: "#6B7280",
   },
   activeTabText: {
-    fontSize: 14,
+    color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
-    color: "#E3000F",
   },
+
   section: {
     marginBottom: 16,
   },
