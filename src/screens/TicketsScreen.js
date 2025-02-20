@@ -15,7 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getTickets } from "../api/ticket_api";
 import { formatDateRange } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -26,8 +26,8 @@ export default function TicketScreen({ navigation }) {
 
   useFocusEffect(
     React.useCallback(() => {
-      StatusBar.setHidden(false); 
-      StatusBar.setBarStyle("light-content"); 
+      StatusBar.setHidden(false);
+      StatusBar.setBarStyle("light-content");
       return () => {};
     }, [])
   );
@@ -48,6 +48,7 @@ export default function TicketScreen({ navigation }) {
           date:
             formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
             "Date Not Available",
+          endDate: order.event?.EndDate, 
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
             : require("../../assets/placeholder.jpg"),
@@ -56,8 +57,8 @@ export default function TicketScreen({ navigation }) {
             type: reg.TicketType?.name || "Standard",
             price: reg.total || 0,
           })),
-          totalRate: order.subTotal, 
-          total: order.totalRate,   
+          totalRate: order.subTotal,
+          total: order.totalRate,
           coupon: order.couponDiscount || 0,
         }));
         setTickets(transformedTickets);
@@ -80,6 +81,15 @@ export default function TicketScreen({ navigation }) {
       useNativeDriver: true,
     }).start();
   };
+
+  const now = new Date();
+  const displayedTickets = tickets.filter((ticket) => {
+    if (ticket.endDate) {
+      const eventEnd = new Date(ticket.endDate);
+      return activeTab === "Past" ? eventEnd < now : eventEnd >= now;
+    }
+    return activeTab === "Upcoming";
+  });
 
   return (
     <View style={styles.container}>
@@ -148,198 +158,203 @@ export default function TicketScreen({ navigation }) {
           style={styles.scrollView}
           contentContainerStyle={{ paddingBottom: 110 }}
         >
-          {tickets.map((ticket) => (
-            <Animated.View
-              key={ticket.id}
-              style={[
-                styles.ticketCard,
-                {
-                  transform: [
-                    {
-                      scale: animation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.02],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={["#FFFFFF", "#F8F9FA"]}
-                style={styles.cardGradient}
+          {displayedTickets.length === 0 ? (
+            <Text style={styles.noTicketsText}>
+              {activeTab === "Past" ? "No past tickets" : "No upcoming tickets"}
+            </Text>
+          ) : (
+            displayedTickets.map((ticket) => (
+              <Animated.View
+                key={ticket.id}
+                style={[
+                  styles.ticketCard,
+                  {
+                    transform: [
+                      {
+                        scale: animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.02],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
               >
-                {/* Ticket Header */}
-                <View style={styles.ticketHeader}>
-                  <View style={styles.imageContainer}>
-                    <Image source={ticket.image} style={styles.eventImage} />
-                  </View>
-                  <View style={styles.eventInfo}>
-                    <View style={styles.titleContainer}>
-                      <View style={styles.ticketIconContainer}>
-                        <LinearGradient
-                          colors={["#FF1A1A", "#E3000F"]}
-                          style={styles.ticketIconBg}
-                        >
-                          <Ionicons name="ticket" size={16} color="#FFF" />
-                        </LinearGradient>
-                      </View>
-                      <View style={{width:"90%" }}>
-                        <Text
-                          style={styles.eventTitle}
-                          numberOfLines={titleReadMore ? undefined : 2}
-                        >
-                          {ticket.title}
-                        </Text>
-                        {ticket.title?.length > 10 && (
-                          <TouchableOpacity
-                            onPress={() => setTitleReadMore(!titleReadMore)}
-                          >
-                            <Text style={styles.readMoreText}>
-                              {titleReadMore ? "Read Less" : "Read More"}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                    <Text style={styles.eventDate}>{ticket.date}</Text>
-                    <Text style={styles.ticketCount}>
-                      {ticket.tickets.length} Ticket's
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Order Details Container */}
-                <TouchableOpacity
-                  style={[
-                    styles.orderDetailsContainer,
-                    expandedOrders[ticket.id] && styles.expandedContainer,
-                  ]}
-                  onPress={() => toggleOrderDetails(ticket.id)}
+                <LinearGradient
+                  colors={["#FFFFFF", "#F8F9FA"]}
+                  style={styles.cardGradient}
                 >
-                  {!expandedOrders[ticket.id] ? (
-                    <View style={styles.viewDetailsRow}>
-                      <Text style={styles.viewDetailsText}>
-                        View Order Details
-                      </Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={20}
-                        color="#1F2937"
-                      />
+                  {/* Ticket Header */}
+                  <View style={styles.ticketHeader}>
+                    <View style={styles.imageContainer}>
+                      <Image source={ticket.image} style={styles.eventImage} />
                     </View>
-                  ) : (
-                    <View style={styles.orderDetails}>
-                      {/* Ticket Holders Rows */}
-                      {ticket.tickets.map((t, index) => (
-                        <View key={index}>
-                          <View style={styles.ticketHolderRow}>
-                            <Text style={styles.ticketHolderName}>
-                              {t.name}
-                            </Text>
-                            <View style={styles.priceTypeContainer}>
-                              <LinearGradient
-                                colors={["#EFEAFF", "#E5E0FF"]}
-                                style={styles.purplePriceBox}
-                              >
-                                <Text style={styles.purplePriceText}>
-                                  {ticket.countryCurrency} {t.price}
-                                </Text>
-                              </LinearGradient>
-                              <Text style={styles.purplePriceType}>
-                                <Text style={styles.italic}>{t.type}</Text>
+                    <View style={styles.eventInfo}>
+                      <View style={styles.titleContainer}>
+                        <View style={styles.ticketIconContainer}>
+                          <LinearGradient
+                            colors={["#FF1A1A", "#E3000F"]}
+                            style={styles.ticketIconBg}
+                          >
+                            <Ionicons name="ticket" size={16} color="#FFF" />
+                          </LinearGradient>
+                        </View>
+                        <View style={{ width: "90%" }}>
+                          <Text
+                            style={styles.eventTitle}
+                            numberOfLines={titleReadMore ? undefined : 2}
+                          >
+                            {ticket.title}
+                          </Text>
+                          {ticket.title?.length > 10 && (
+                            <TouchableOpacity
+                              onPress={() => setTitleReadMore(!titleReadMore)}
+                            >
+                              <Text style={styles.readMoreText}>
+                                {titleReadMore ? "Read Less" : "Read More"}
                               </Text>
-                            </View>
-                          </View>
-                          {index < ticket.tickets.length - 1 && (
-                            <View style={styles.rowSeparator} />
+                            </TouchableOpacity>
                           )}
                         </View>
-                      ))}
-
-                      {/* Totals */}
-                      <View style={styles.longSeparator} />
-                      <View style={styles.whiteTotalsBox}>
-                        {/* "Total Rate" */}
-                        <View style={styles.whiteTotalsRow}>
-                          <Text style={styles.whiteTotalsLabel}>
-                            Total Rate
-                          </Text>
-                          <Text style={styles.whiteTotalsValue}>
-                            {ticket.countryCurrency}
-                            {ticket.totalRate}
-                          </Text>
-                        </View>
-                        <View style={styles.whiteShortSeparator} />
-
-                       
-                        {ticket.coupon ? (
-                          <>
-                            <View style={styles.whiteTotalsRow}>
-                              <Text style={styles.whiteTotalsLabel}>
-                                Coupon applied
-                              </Text>
-                              <Text style={styles.couponValue}>
-                                {ticket.countryCurrency}
-                                {Number(ticket.coupon).toFixed(2)}
-                              </Text>
-                            </View>
-                            <View style={styles.whiteShortSeparator} />
-                            <View style={styles.whiteTotalsRow}>
-                              <Text style={styles.whiteTotalsLabel}>
-                                Total
-                              </Text>
-                              <Text style={styles.finalTotal}>
-                                {ticket.countryCurrency}
-                                {ticket.total}
-                              </Text>
-                            </View>
-                            <View style={styles.whiteShortSeparator} />
-                          </>
-                        ) : (
-                          <>
-                            <View style={styles.whiteTotalsRow}>
-                              <Text style={styles.whiteTotalsLabel}>Total</Text>
-                              <Text style={styles.finalTotal}>
-                                {ticket.countryCurrency}
-                                {ticket.totalRate}
-                              </Text>
-                            </View>
-                            <View style={styles.whiteShortSeparator} />
-                          </>
-                        )}
                       </View>
-
-                      {/* Hide Order Details Button */}
-                      <View style={styles.hideDetailsButtonRow}>
-                        <TouchableOpacity
-                          style={styles.hideDetailsButton}
-                          onPress={() => toggleOrderDetails(ticket.id)}
-                        >
-                          <Text style={styles.hideDetailsText}>
-                            Hide Order Details
-                          </Text>
-                          <Ionicons
-                            name="chevron-up"
-                            size={20}
-                            color="#1F2937"
-                            style={{ marginLeft: 4 }}
-                          />
-                        </TouchableOpacity>
-                      </View>
+                      <Text style={styles.eventDate}>{ticket.date}</Text>
+                      <Text style={styles.ticketCount}>
+                        {ticket.tickets.length} Ticket's
+                      </Text>
                     </View>
-                  )}
-                </TouchableOpacity>
-              </LinearGradient>
-            </Animated.View>
-          ))}
+                  </View>
+
+                  {/* Order Details Container */}
+                  <TouchableOpacity
+                    style={[
+                      styles.orderDetailsContainer,
+                      expandedOrders[ticket.id] && styles.expandedContainer,
+                    ]}
+                    onPress={() => toggleOrderDetails(ticket.id)}
+                  >
+                    {!expandedOrders[ticket.id] ? (
+                      <View style={styles.viewDetailsRow}>
+                        <Text style={styles.viewDetailsText}>
+                          View Order Details
+                        </Text>
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#1F2937"
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.orderDetails}>
+                        {/* Ticket Holders Rows */}
+                        {ticket.tickets.map((t, index) => (
+                          <View key={index}>
+                            <View style={styles.ticketHolderRow}>
+                              <Text style={styles.ticketHolderName}>
+                                {t.name}
+                              </Text>
+                              <View style={styles.priceTypeContainer}>
+                                <LinearGradient
+                                  colors={["#EFEAFF", "#E5E0FF"]}
+                                  style={styles.purplePriceBox}
+                                >
+                                  <Text style={styles.purplePriceText}>
+                                    {ticket.countryCurrency} {t.price}
+                                  </Text>
+                                </LinearGradient>
+                                <Text style={styles.purplePriceType}>
+                                  <Text style={styles.italic}>{t.type}</Text>
+                                </Text>
+                              </View>
+                            </View>
+                            {index < ticket.tickets.length - 1 && (
+                              <View style={styles.rowSeparator} />
+                            )}
+                          </View>
+                        ))}
+
+                        {/* Totals */}
+                        <View style={styles.longSeparator} />
+                        <View style={styles.whiteTotalsBox}>
+                          <View style={styles.whiteTotalsRow}>
+                            <Text style={styles.whiteTotalsLabel}>
+                              Total Rate
+                            </Text>
+                            <Text style={styles.whiteTotalsValue}>
+                              {ticket.countryCurrency}
+                              {ticket.totalRate}
+                            </Text>
+                          </View>
+                          <View style={styles.whiteShortSeparator} />
+
+                          {ticket.coupon ? (
+                            <>
+                              <View style={styles.whiteTotalsRow}>
+                                <Text style={styles.whiteTotalsLabel}>
+                                  Coupon applied
+                                </Text>
+                                <Text style={styles.couponValue}>
+                                  {ticket.countryCurrency}
+                                  {Number(ticket.coupon).toFixed(2)}
+                                </Text>
+                              </View>
+                              <View style={styles.whiteShortSeparator} />
+                              <View style={styles.whiteTotalsRow}>
+                                <Text style={styles.whiteTotalsLabel}>
+                                  Total
+                                </Text>
+                                <Text style={styles.finalTotal}>
+                                  {ticket.countryCurrency}
+                                  {ticket.total}
+                                </Text>
+                              </View>
+                              <View style={styles.whiteShortSeparator} />
+                            </>
+                          ) : (
+                            <>
+                              <View style={styles.whiteTotalsRow}>
+                                <Text style={styles.whiteTotalsLabel}>
+                                  Total
+                                </Text>
+                                <Text style={styles.finalTotal}>
+                                  {ticket.countryCurrency}
+                                  {ticket.totalRate}
+                                </Text>
+                              </View>
+                              <View style={styles.whiteShortSeparator} />
+                            </>
+                          )}
+                        </View>
+
+                        {/* Hide Order Details Button */}
+                        <View style={styles.hideDetailsButtonRow}>
+                          <TouchableOpacity
+                            style={styles.hideDetailsButton}
+                            onPress={() => toggleOrderDetails(ticket.id)}
+                          >
+                            <Text style={styles.hideDetailsText}>
+                              Hide Order Details
+                            </Text>
+                            <Ionicons
+                              name="chevron-up"
+                              size={20}
+                              color="#1F2937"
+                              style={{ marginLeft: 4 }}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </LinearGradient>
+              </Animated.View>
+            ))
+          )}
         </ScrollView>
       </View>
     </View>
   );
 }
 
-/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -451,7 +466,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   eventInfo: {
-    width:'100%',
+    width: "100%",
     marginLeft: 16,
     flex: 1,
     justifyContent: "center",
@@ -460,7 +475,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
-    width: "100%"
+    width: "100%",
   },
   ticketIconContainer: {
     marginRight: 8,
@@ -622,5 +637,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginRight: 2,
     fontFamily: "Poppins-Medium",
+  },
+  noTicketsText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#666",
   },
 });
