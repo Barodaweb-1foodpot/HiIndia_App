@@ -79,6 +79,8 @@ export default function ProfileScreen() {
       setShowLogoutModal(false);
       await AsyncStorage.removeItem("role");
       await AsyncStorage.removeItem("Token");
+      await AsyncStorage.removeItem("RefreshToken");
+
       Toast.show({
         type: "info",
         text1: "Logged Out",

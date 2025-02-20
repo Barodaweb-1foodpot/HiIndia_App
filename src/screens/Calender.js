@@ -24,7 +24,7 @@ export default function CalendarScreen({ navigation }) {
     const fetchData = async () => {
       try {
         // Fetch events with pageNo=1, perPage=1000, no search query, category "All", filterDate "All"
-        const res = await fetchEvents(1, 1000, "", "All", "All");
+        const res = await fetchEvents( "", "All", "All");
         const eventsArray = res.data || [];
         const groupedEvents = {};
 

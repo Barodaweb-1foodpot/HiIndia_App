@@ -51,18 +51,16 @@ const MainNavigator = () => {
 
   return (
     <Stack.Navigator
-      // initialRouteName="Onboarding"
+      initialRouteName={!isAuthenticated ?"Onboarding" :"Tab" }
       screenOptions={{
         headerShown: false,
         gestureEnabled: false,
       }}
     >
-      {!isAuthenticated && (
-        <>
-          <Stack.Screen name="Onboarding" component={Onboarding} />
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        </>
-      )}
+
+      <Stack.Screen name="Onboarding" component={Onboarding} />
+      <Stack.Screen name="Auth" component={AuthNavigator} />
+
 
       <Stack.Screen name="Tab" component={TabNavigator} />
       <Stack.Screen name="App" component={ScreenNavigator} />
