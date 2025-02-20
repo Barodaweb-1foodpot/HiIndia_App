@@ -219,18 +219,19 @@ export default function EventsScreen({ navigation }) {
 
   const fetchEvent = async () => {
     const res = await fetchEvents(
-      pageNo,
-      perPage,
+      // pageNo,
+      // perPage,
       searchText,
       (categoryFilter = catId)
     );
-    console.log("Response:", res);
-    if (res.data.length > 0) {
+    console.log("Responsepppppppppppppppppp:", res);
+    if (res?.data?.length > 0) {
       setCount(res.count);
       if (firstTime) setAllEvent(res.data);
       setEvents(res.data);
       setFirstTime(false);
     } else {
+      console.log("pp")
       setCount(0);
       setEvents([]);
     }
@@ -317,7 +318,7 @@ export default function EventsScreen({ navigation }) {
                   navigation={navigation}
                 />
               ))}
-              {count > perPage && (
+              {/* {count > perPage && (
                 <View style={styles.viewMoreContainer}>
                   <TouchableOpacity
                     style={styles.viewMoreButton}
@@ -329,7 +330,7 @@ export default function EventsScreen({ navigation }) {
                     </View>
                   </TouchableOpacity>
                 </View>
-              )}
+              )} */}
             </>
           )}
           {/* Other Events Section */}

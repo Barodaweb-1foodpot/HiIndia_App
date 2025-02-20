@@ -9,7 +9,7 @@ import {
   Animated,
   Platform,
   SafeAreaView,
-} from "react-native";
+} from "react-native"; 
 
 const { width, height } = Dimensions.get("window");
 
