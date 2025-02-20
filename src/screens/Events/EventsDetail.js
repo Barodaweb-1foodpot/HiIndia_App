@@ -33,7 +33,7 @@ export default function EventsDetail({ navigation, route }) {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
   }, [eventDetail?.EventCatalogue]);
-
+    
   const fetchFileSize = async (url) => {
     try {
       const encodedUrl = encodeURI(url);

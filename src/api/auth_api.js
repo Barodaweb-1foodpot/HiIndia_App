@@ -16,6 +16,8 @@ export const handleLogin = async (values) => {
       console.log("Login successful:", res.data.data);
       await AsyncStorage.setItem("role", res.data.data._id);
       await AsyncStorage.setItem("Token", res.data.token);
+      await AsyncStorage.setItem("RefreshToken", res.data.refreshtoken);
+
 
       Toast.show({
         type: "success",

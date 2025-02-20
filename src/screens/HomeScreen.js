@@ -82,16 +82,16 @@ export default function HomeScreen({ navigation }) {
   }, [searchText, perPage, pageNo]);
 
   useEffect(() => {
-    setEvents([]);
+    setEvents([]); 
     // console.log(activeTab);
     fetchEvent();
   }, [activeTab]);
-
+ 
   const fetchEvent = async () => {
    
-    const res = await fetchEvents(pageNo, perPage, searchText,categoryFilter="All", filterDate = activeTab);
-    // console.log("kkkkkkkkkkk", res);
-    if (res.data.length > 0) {
+    const res = await fetchEvents( searchText,categoryFilter="All", filterDate = activeTab);
+    console.log("kkkkkkkkkkk", res);
+    if (res?.data?.length > 0) {
       setCount(res.count);
       setEvents(res.data);
     } else {

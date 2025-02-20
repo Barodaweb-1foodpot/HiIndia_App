@@ -25,24 +25,25 @@ export const listActiveEvents = async () => {
 
 };
 
-export const fetchEvents = async (pageNo, perPage, query, categoryFilter, filterDate) => {
-    let skip = (pageNo - 1) * perPage;
-    if (skip < 0) {
-        skip = 0;
-    }
+export const fetchEvents = async (query, categoryFilter, filterDate) => {
+     
     try {
+        console.log("object")
         const response = await axios.post(
-            `${API_BASE_URL}/auth/list-by-params/eventforparticipant`,
+            `${API_BASE_URL}/auth/list-by-params/eventforApp`,
             {
-                skip: skip,
-                per_page: perPage,
+                // skip: skip,
+                // per_page: perPage,
                 match: query,
                 IsActive: true,
                 filterDate,
                 categoryFilter
             }
         );
-
+        console.log(response.data)
+        if(!response.data[0]) {
+            console.log("---------",response.data)
+        }
         return response?.data[0]; // ✅ Now correctly returns the data
     } catch (error) {
         console.error("Error during fetching events:", error);
