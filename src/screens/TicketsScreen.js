@@ -47,7 +47,7 @@ export default function TicketScreen({ navigation }) {
           date:
             formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
             "Date Not Available",
-          endDate: order.event?.EndDate, 
+          endDate: order.event?.EndDate, // For filtering
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
             : require("../../assets/placeholder.jpg"),
@@ -81,12 +81,14 @@ export default function TicketScreen({ navigation }) {
     }).start();
   };
 
+  // Filter tickets based on the event end date
   const now = new Date();
   const displayedTickets = tickets.filter((ticket) => {
     if (ticket.endDate) {
       const eventEnd = new Date(ticket.endDate);
       return activeTab === "Past" ? eventEnd < now : eventEnd >= now;
     }
+    // If no endDate is given, treat it as upcoming
     return activeTab === "Upcoming";
   });
 
@@ -102,14 +104,18 @@ export default function TicketScreen({ navigation }) {
             style={styles.logo}
           />
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconCircle}>
-              <Ionicons name="notifications-outline" size={20} color="#000" />
-            </TouchableOpacity>
+           
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() =>
-                navigation.navigate("App", { screen: "Calender" })
-              }
+              onPress={() => navigation.navigate("App", { screen: "Notification" })}
+            >
+              <Ionicons name="notifications-outline" size={20} color="#000" />
+            </TouchableOpacity>
+
+            {/* Calendar Icon */}
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() => navigation.navigate("App", { screen: "Calender" })}
             >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>

@@ -18,7 +18,7 @@ import { fetchEvents, listActiveEvents } from "../api/event_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import moment from "moment";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "@react-navigation/native";
 
 // A wrapper component for blur effect
 const BlurWrapper = ({ style, children }) => {
@@ -70,8 +70,8 @@ export default function HomeScreen({ navigation }) {
 
   useFocusEffect(
     React.useCallback(() => {
-      StatusBar.setHidden(false); 
-      StatusBar.setBarStyle("light-content"); 
+      StatusBar.setHidden(false);
+      StatusBar.setBarStyle("light-content");
       return () => {};
     }, [])
   );
@@ -82,14 +82,17 @@ export default function HomeScreen({ navigation }) {
   }, [searchText, perPage, pageNo]);
 
   useEffect(() => {
-    setEvents([]); 
+    setEvents([]);
     // console.log(activeTab);
     fetchEvent();
   }, [activeTab]);
- 
+
   const fetchEvent = async () => {
-   
-    const res = await fetchEvents( searchText,categoryFilter="All", filterDate = activeTab);
+    const res = await fetchEvents(
+      searchText,
+      (categoryFilter = "All"),
+      (filterDate = activeTab)
+    );
     console.log("kkkkkkkkkkk", res);
     if (res?.data?.length > 0) {
       setCount(res.count);
@@ -146,7 +149,12 @@ export default function HomeScreen({ navigation }) {
             style={styles.logo}
           />
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconCircle}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() =>
+                navigation.navigate("App", { screen: "Notification" })
+              }
+            >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity
@@ -193,35 +201,35 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-        {/* Tabs */}
-               <View style={styles.tabsContainer}>
-                 <TouchableOpacity
-                   style={[styles.tab, activeTab === "All" && styles.activeTab]}
-                   onPress={() => setActiveTab("All")}
-                 >
-                   <Text
-                     style={[
-                       styles.tabText,
-                       activeTab === "All" && styles.activeTabText,
-                     ]}
-                   >
-                     All
-                   </Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity
-                   style={[styles.tab, activeTab === "Past" && styles.activeTab]}
-                   onPress={() => setActiveTab("Past")}
-                 >
-                   <Text
-                     style={[
-                       styles.tabText,
-                       activeTab === "Past" && styles.activeTabText,
-                     ]}
-                   >
-                     Past
-                   </Text>
-                 </TouchableOpacity>
-               </View>
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "All" && styles.activeTab]}
+              onPress={() => setActiveTab("All")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "All" && styles.activeTabText,
+                ]}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "Past" && styles.activeTab]}
+              onPress={() => setActiveTab("Past")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Past" && styles.activeTabText,
+                ]}
+              >
+                Past
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Trending Events Section */}
           <View style={styles.section}>
@@ -487,8 +495,8 @@ const styles = StyleSheet.create({
     color: "#000",
     marginLeft: 8,
   },
-   /* Tabs */
-   tabsContainer: {
+  /* Tabs */
+  tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
@@ -565,9 +573,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     flexDirection: "row",
   },
-  eventDetailsColumn: {
-    
-  },
+  eventDetailsColumn: {},
   dflex: {
     flexDirection: "row",
     justifyContent: "space-between",

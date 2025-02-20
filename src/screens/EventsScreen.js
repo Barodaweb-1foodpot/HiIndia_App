@@ -17,7 +17,7 @@ import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatDateRange } from "../helper/helper_Function";
 import moment from "moment";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "@react-navigation/native";
 
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
@@ -40,7 +40,10 @@ const Header = ({ navigation }) => (
     <View style={styles.headerContent}>
       <Image source={require("../../assets/logo.png")} style={styles.logo} />
       <View style={styles.headerIcons}>
-        <TouchableOpacity style={styles.iconCircle}>
+        <TouchableOpacity
+          style={styles.iconCircle}
+          onPress={() => navigation.navigate("App", { screen: "Notification" })}
+        >
           <Ionicons name="notifications-outline" size={20} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity
@@ -248,7 +251,7 @@ export default function EventsScreen({ navigation }) {
       setEvents(res.data);
       setFirstTime(false);
     } else {
-      console.log("pp")
+      console.log("pp");
       setCount(0);
       setEvents([]);
     }
