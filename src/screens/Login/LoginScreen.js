@@ -18,9 +18,19 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
 import { handleGoogleSuccess } from "../../api/auth_api";
+// import {
+//   GoogleSignin,
+//   isSuccessResponse,
+//   statusCodes,
+// } from '@react-native-google-signin/google-signin';
 
 // import { GoogleSignin } from '@react-native-google-signin/google-signin';
 // import { jwtDecode } from 'jwt-decode'
+
+
+// GoogleSignin.configure({
+//   webClientId:"936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com"
+// });
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
@@ -37,6 +47,34 @@ const LoginScreen = ({ navigation }) => {
     setLoginEmail(values.email);
     navigation.navigate("LoginPin");
   };
+
+  const handleGoogleSignIn=async()=>{
+    // try {
+    //   await GoogleSignin.hasPlayServices();
+    //   const response = await GoogleSignin.signIn();
+    //   if (isSuccessResponse(response)) {
+    //   console.log(response.data)
+    //   console.log(res.data.user.email);
+    //   } else {
+    //     // sign in was cancelled by user
+    //   }
+    // } catch (error) {
+    //   if (isErrorWithCode(error)) {
+    //     switch (error.code) {
+    //       case statusCodes.IN_PROGRESS:
+    //         // operation (eg. sign in) already in progress
+    //         break;
+    //       case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+    //         // Android only, play services not available or outdated
+    //         break;
+    //       default:
+    //       // some other error happened
+    //     }
+    //   } else {
+    //     // an error that's not related to google sign in occurred
+    //   }
+    // }
+  }
 
   return (
     <View style={styles.rootContainer}>
@@ -132,7 +170,7 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Email
                         </Text>
                       </TouchableOpacity> */}
-                      <TouchableOpacity style={styles.socialButton}>
+                      <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
                         <Image
                           source={require("../../../assets/google.png")}
                           style={styles.socialIcon}

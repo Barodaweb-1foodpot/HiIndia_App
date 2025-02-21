@@ -2,6 +2,7 @@
   "expo": {
     "name": "HiIndia",
     "slug": "HiIndia_App",
+    "scheme": "hiindiaapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,9 +10,11 @@
     "newArchEnabled": true,
     "splash": {},
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.deep_1012.HiIndia_App"
     },
     "android": {
+      "package": "com.deep_1012.HiIndia_App",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -22,6 +25,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "12097d52-a643-46a9-85ec-1b2b469c02df"
+      }
+    }
   }
 }
