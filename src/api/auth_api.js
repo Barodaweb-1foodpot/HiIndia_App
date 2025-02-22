@@ -106,7 +106,9 @@ export const handleSignup = async (values) => {
     console.log("Signing up with:", values);
     const res = await axios.post(
       `${API_BASE_URL}/auth/create/participant`,
-      values,
+      values, {
+        validateStatus: () => true,
+      }
        
     );
     if (res.data.isOk) {
@@ -189,3 +191,71 @@ export const updateProfileByApp = async (participantId, formData) => {
     throw error;
   }
 };
+
+
+export const handleGoogleLogin = async(email)=>{
+  try{
+    console.log(email)
+    const res = await axios.post(`${API_BASE_URL}/participant/participantHandleGoogleLogin`,{email:email}, {
+      validateStatus: () => true,
+    })
+     return res.data
+  }
+  catch (error) {
+    console.error("Error updating profile by app:", error);
+    Toast.show({
+      type: "error",
+      text1: "Update Error",
+      text2: "Something went wrong while updating profile.",
+    });
+    throw error;
+  }
+}
+
+
+export const verifyGoogleToken = async(token)=>{
+  try{
+    const res = await axios.post(`${API_BASE_URL}/verify/googleToken` , {token:token})
+    console.log("-------------",res.data)
+    if(res.data.isOk)
+    {
+      const response = await handleGoogleLogin(res.data.email)
+      console.log("reeeeeeeeeee",response)
+      if(response.status===200)
+      {
+        console.log(response.refreshToken)
+        await AsyncStorage.setItem("role", response.data._id);
+        await AsyncStorage.setItem("Token", response.token);
+        await AsyncStorage.setItem("RefreshToken", response.refreshToken);
+  
+  
+        Toast.show({
+          type: "success",
+          text1: "Login Successful",
+          text2: "Welcome back!",
+        })
+
+        // navigation.navigate("Tab");
+        return true
+      
+      }
+      else{
+        
+        Toast.show({
+          type: "success",
+          text1: response.message, 
+        });
+        return false
+      }
+    }
+  }
+  catch (error) {
+    console.error("Error updating profile by app:", error);
+    Toast.show({
+      type: "error",
+      text1: "Update Error",
+      text2: "Something went wrong while updating profile.",
+    });
+    throw error;
+  }
+}

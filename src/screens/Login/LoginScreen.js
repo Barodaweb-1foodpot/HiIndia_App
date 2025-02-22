@@ -17,19 +17,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
-import { handleGoogleSuccess } from "../../api/auth_api";
+import {
+  handleGoogleLogin,
+  handleGoogleSuccess,
+  verifyGoogleToken,
+} from "../../api/auth_api";
 // import {
 //   GoogleSignin,
 //   isSuccessResponse,
 //   statusCodes,
-// } from '@react-native-google-signin/google-signin';
-
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import { jwtDecode } from 'jwt-decode'
-
+// } from "@react-native-google-signin/google-signin";
+import { jwtDecode } from "jwt-decode";
 
 // GoogleSignin.configure({
-//   webClientId:"936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com"
+//   webClientId:
+//     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
 // });
 
 const LoginScreen = ({ navigation }) => {
@@ -48,17 +50,39 @@ const LoginScreen = ({ navigation }) => {
     navigation.navigate("LoginPin");
   };
 
-  const handleGoogleSignIn=async()=>{
+  const handleGoogleSignIn = async () => {
     // try {
     //   await GoogleSignin.hasPlayServices();
     //   const response = await GoogleSignin.signIn();
+    //   console.log(response);
     //   if (isSuccessResponse(response)) {
-    //   console.log(response.data)
-    //   console.log(res.data.user.email);
+    //     const res = await verifyGoogleToken(response.data.idToken);
+    //     console.log(res);
+    //     if (res === true) {
+    //       navigation.navigate("Tab");
+    //     }
+    //     // console.log(response.data)
+    //     // const decoded= jwtDecode(response.data.idToken)
+    //     // console.log("-----",decoded)
+    //     // if(decoded.email_verified===true)
+    //     // {
+    //     //   const email = decoded.email
+    //     //   console.log(email)
+    //     //   const res = await handleGoogleLogin(email)
+    //     //   console.log(res)
+    //     // }
+
+    //     // console.log(res.data.user.email);
     //   } else {
+    //     Toast.show({
+    //       type: "info",
+    //       text1: "Someting went wrong try again after sometime",
+    //       // text2: "Welcome back!",
+    //     });
     //     // sign in was cancelled by user
     //   }
     // } catch (error) {
+    //   console.log(error);
     //   if (isErrorWithCode(error)) {
     //     switch (error.code) {
     //       case statusCodes.IN_PROGRESS:
@@ -74,11 +98,16 @@ const LoginScreen = ({ navigation }) => {
     //     // an error that's not related to google sign in occurred
     //   }
     // }
-  }
+  };
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+        animated={true}
+      />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -170,7 +199,10 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Email
                         </Text>
                       </TouchableOpacity> */}
-                      <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
+                      <TouchableOpacity
+                        style={styles.socialButton}
+                        onPress={handleGoogleSignIn}
+                      >
                         <Image
                           source={require("../../../assets/google.png")}
                           style={styles.socialIcon}
