@@ -40,7 +40,7 @@ const MainNavigator = () => {
 
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
-    }, 3000);
+    }, 2000);
 
     return () => clearTimeout(splashTimer);
   }, []);

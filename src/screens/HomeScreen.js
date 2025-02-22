@@ -139,7 +139,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+       <StatusBar style="auto" />
 
       {/* Header Section */}
       <View style={styles.header}>

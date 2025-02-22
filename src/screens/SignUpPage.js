@@ -123,7 +123,7 @@ const SignUpPage = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" />
+     <StatusBar style="auto" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}

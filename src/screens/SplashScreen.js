@@ -49,11 +49,11 @@ const SplashScreen = () => {
           resizeMode="contain"
         />
 
-        <Animated.View style={[styles.footerContainer, { opacity: fadeAnim }]}>
+        {/* <Animated.View style={[styles.footerContainer, { opacity: fadeAnim }]}>
           <Text style={styles.footerText}>
             Events, Experiences, Connections
           </Text>
-        </Animated.View>
+        </Animated.View> */}
       </View>
     </SafeAreaView>
   );

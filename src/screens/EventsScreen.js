@@ -297,7 +297,7 @@ export default function EventsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+       <StatusBar style="auto" />
       <Header navigation={navigation} />
       <View style={styles.whiteSection}>
         <ScrollView

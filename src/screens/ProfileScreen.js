@@ -32,7 +32,7 @@ export default function ProfileScreen() {
       if (participantId) {
         const res = await fetchProfile(participantId);
         if (res && res._id) {
-          console.log(">>>>>>>>",res.profileImage)
+          console.log(">>>>>>>>", res.profileImage);
           setProfileData(res);
         } else {
           Toast.show({
@@ -50,7 +50,7 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      StatusBar.setHidden(false); 
+      StatusBar.setHidden(false);
       StatusBar.setBarStyle("dark-content");
       return () => {};
     }, [])
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
   );
 
   const getProfileImageSource = () => {
-    console.log("oooooooooo",profileData)
+    console.log("oooooooooo", profileData);
     if (
       !profileData ||
       !profileData.profileImage ||
@@ -150,7 +150,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar style="auto" />
       <Text style={styles.headerTitle}>My Profile</Text>
 
       <View style={styles.profileSection}>

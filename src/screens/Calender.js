@@ -183,7 +183,7 @@ export default function CalendarScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar style="auto" />
       <BlurView intensity={80} tint="light" style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
