@@ -26,7 +26,7 @@ const MainNavigator = () => {
         });
 
         const res = await CheckAccessToken();
-        console.log(res)
+        console.log("mmmmmmmmmmmm",res)
         setIsAuthenticated(res); // Set auth status
 
 
