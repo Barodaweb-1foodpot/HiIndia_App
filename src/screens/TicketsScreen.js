@@ -94,7 +94,7 @@ export default function TicketScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+       <StatusBar style="auto" />
 
       {/* Black Header Gradient */}
       <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>

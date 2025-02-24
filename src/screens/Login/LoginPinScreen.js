@@ -19,7 +19,7 @@ import { handleLogin } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
 const LoginPinScreen = ({ navigation }) => {
-  const { loginEmail } = useAuthContext()
+  const { loginEmail } = useAuthContext();
   const inputRefs = useRef([]);
   const [isPinVisible, setIsPinVisible] = useState(false);
 
@@ -37,9 +37,9 @@ const LoginPinScreen = ({ navigation }) => {
       .matches(/^\d{6}$/, "PIN must be exactly 6 digits"),
   });
   const handleSubmit2 = async (values) => {
-    const temp = { email: loginEmail, password: values.pin }; 
-    const res = await handleLogin(temp); 
-    if (res.isOk) { 
+    const temp = { email: loginEmail, password: values.pin };
+    const res = await handleLogin(temp);
+    if (res.isOk) {
       Toast.show({
         type: "success",
         text1: "Email entered successfully",
@@ -49,21 +49,19 @@ const LoginPinScreen = ({ navigation }) => {
       setTimeout(() => {
         navigation.navigate("Tab");
       }, 2000);
-
-    }
-    else{
+    } else {
       Toast.show({
         type: "error",
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
-      }); 
+      });
     }
   };
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="auto" />
       <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
@@ -81,7 +79,9 @@ const LoginPinScreen = ({ navigation }) => {
                 resizeMode="contain"
               />
               <View style={styles.headerCard}>
-                <Text style={styles.headerCardTitle}>Log in to your account</Text>
+                <Text style={styles.headerCardTitle}>
+                  Log in to your account
+                </Text>
                 <Text style={styles.headerCardSubtitle}>
                   Enter your PIN to proceed
                 </Text>
@@ -172,7 +172,9 @@ const LoginPinScreen = ({ navigation }) => {
                           style={styles.eyeIcon}
                         >
                           <Ionicons
-                            name={isPinVisible ? "eye-off-outline" : "eye-outline"}
+                            name={
+                              isPinVisible ? "eye-off-outline" : "eye-outline"
+                            }
                             size={20}
                             color="#666666"
                           />
@@ -203,7 +205,6 @@ const LoginPinScreen = ({ navigation }) => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       <Toast />
-
     </View>
   );
 };

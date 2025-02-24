@@ -13,6 +13,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   SafeAreaView,
+  StatusBar,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-toast-message";
@@ -227,6 +228,7 @@ export default function EditProfile({ navigation }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <StatusBar style="auto" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

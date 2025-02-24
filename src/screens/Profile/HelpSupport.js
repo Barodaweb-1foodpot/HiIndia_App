@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Animated,
+  StatusBar,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-toast-message";
@@ -56,6 +57,7 @@ export default function HelpSupport() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="auto" />
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

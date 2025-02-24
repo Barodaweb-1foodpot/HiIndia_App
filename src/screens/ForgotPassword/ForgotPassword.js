@@ -70,7 +70,7 @@ const ForgotPassword = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" />
+    <StatusBar style="auto" />
       <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>

@@ -6,12 +6,14 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
+  StatusBar,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 export default function PrivacyPolicy({ navigation }) {
   return (
     <View style={styles.container}>
+      <StatusBar style="auto" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

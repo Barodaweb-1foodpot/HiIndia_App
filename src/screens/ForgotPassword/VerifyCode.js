@@ -73,7 +73,7 @@ const VerifyCode = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" />
+     <StatusBar style="auto" />
       <KeyboardAvoidingView
         style={styles.container}
       >
