@@ -9,6 +9,7 @@ import HelpSupport from "../screens/Profile/HelpSupport";
 import PrivacyPolicy from "../screens/Profile/PrivacyPolicy";
 import License from "../screens/Profile/License";
 import CalendarScreen from "../screens/Calender";
+import NotificationScreen from "../screens/Notification";
 
 const ScreenStack = createStackNavigator();
 
@@ -21,6 +22,7 @@ const ScreenNavigator = () => {
       }}
     >
       <ScreenStack.Screen name="Calender" component={CalendarScreen} />
+      <ScreenStack.Screen name="Notification" component={NotificationScreen} />
       <ScreenStack.Screen name="EventsDetail" component={EventsDetail} />
       <ScreenStack.Screen name="BuyTicket" component={BuyTicketScreen} />
       <ScreenStack.Screen name="PaymentScreen" component={PaymentScreen} />
