@@ -60,8 +60,6 @@ const MainNavigator = () => {
 
       <Stack.Screen name="Onboarding" component={Onboarding} />
       <Stack.Screen name="Auth" component={AuthNavigator} />
-
-
       <Stack.Screen name="Tab" component={TabNavigator} />
       <Stack.Screen name="App" component={ScreenNavigator} />
 
