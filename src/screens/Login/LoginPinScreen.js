@@ -18,28 +18,46 @@ import { useAuthContext } from "../../context/AuthContext";
 import { handleLogin } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
+/**
+ * LoginPinScreen Component
+ *
+ * This screen allows users to enter their 6-digit security PIN.
+ * It handles input focus management, toggling of PIN visibility,
+ * form submission (calling the login API), and navigation to the Tab screen.
+ *
+ * Console logs have been added to help trace user interactions and debugging.
+ */
 const LoginPinScreen = ({ navigation }) => {
   const { loginEmail } = useAuthContext();
   const inputRefs = useRef([]);
   const [isPinVisible, setIsPinVisible] = useState(false);
 
+  // Dismiss the keyboard when the user taps outside the input fields.
   const dismissKeyboard = () => {
     Keyboard.dismiss();
+    console.log("Keyboard dismissed");
   };
 
+  // Toggle the visibility of the PIN (for secure text entry).
   const togglePinVisibility = () => {
     setIsPinVisible(!isPinVisible);
+    console.log("PIN visibility toggled. Now visible:", !isPinVisible);
   };
 
+  // Validation schema to ensure the PIN is exactly 6 digits.
   const validationSchema = Yup.object().shape({
     pin: Yup.string()
       .required("PIN is required")
       .matches(/^\d{6}$/, "PIN must be exactly 6 digits"),
   });
+
+  // Handle the PIN submission and call the login API.
   const handleSubmit2 = async (values) => {
+    console.log("Submitting PIN for login:", values.pin);
     const temp = { email: loginEmail, password: values.pin };
     const res = await handleLogin(temp);
     if (res.isOk) {
+      console.log("Login successful:", res);
       Toast.show({
         type: "success",
         text1: "Email entered successfully",
@@ -47,9 +65,11 @@ const LoginPinScreen = ({ navigation }) => {
         visibilityTime: 2000,
       });
       setTimeout(() => {
+        console.log("Navigating to Tab screen");
         navigation.navigate("Tab");
       }, 2000);
     } else {
+      console.log("Login failed:", res);
       Toast.show({
         type: "error",
         text1: res.message,
@@ -61,18 +81,26 @@ const LoginPinScreen = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+        animated={true}
+      />
       <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
+            {/* Top Section: Back button, Logo, and Header Card */}
             <View style={styles.topSection}>
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => navigation.navigate("Login")}
+                onPress={() => {
+                  console.log("Navigating back to Login screen");
+                  navigation.navigate("Login");
+                }}
               >
-                <Ionicons name="chevron-back" size={24} color="#FFF" />
+                <Ionicons name="chevron-back" size={30} color="#FFF" />
               </TouchableOpacity>
-
               <Image
                 source={require("../../../assets/logo.png")}
                 style={styles.logo}
@@ -88,6 +116,7 @@ const LoginPinScreen = ({ navigation }) => {
               </View>
             </View>
 
+            {/* White Container: Formik form for PIN input */}
             <View style={styles.whiteContainer}>
               <Formik
                 initialValues={{ pin: "" }}
@@ -109,7 +138,6 @@ const LoginPinScreen = ({ navigation }) => {
                       <Text style={styles.inputSubtitle}>
                         Enter your 6 digit SECURITY PIN.
                       </Text>
-
                       <View style={styles.pinContainer}>
                         {[...Array(6)].map((_, index) => (
                           <TextInput
@@ -128,6 +156,10 @@ const LoginPinScreen = ({ navigation }) => {
                                 value +
                                 values.pin.substring(index + 1);
                               handleChange("pin")(newPin);
+                              console.log(
+                                `Updated PIN at index ${index}:`,
+                                newPin
+                              );
                               if (value && index < 5) {
                                 inputRefs.current[index + 1].focus();
                               }
@@ -142,26 +174,32 @@ const LoginPinScreen = ({ navigation }) => {
                                   " " +
                                   values.pin.substring(index + 1);
                                 handleChange("pin")(newPin);
+                                console.log(
+                                  `Backspace pressed at index ${index}. New PIN:`,
+                                  newPin
+                                );
                                 inputRefs.current[index - 1].focus();
                               }
                             }}
                             onBlur={() => {
                               setFieldTouched("pin", true);
                               handleBlur("pin");
+                              console.log(`Input at index ${index} blurred`);
                             }}
                             secureTextEntry={!isPinVisible}
-                            placeholder="-"
-                            placeholderTextColor="#999"
+                            // Removed the placeholder property as requested.
                           />
                         ))}
                       </View>
                       {touched.pin && errors.pin && (
                         <Text style={styles.errorText}>{errors.pin}</Text>
                       )}
-
                       <View style={styles.forgotPinRow}>
                         <TouchableOpacity
-                          onPress={() => navigation.navigate("ForgotPassword")}
+                          onPress={() => {
+                            console.log("Navigating to ForgotPassword screen");
+                            navigation.navigate("ForgotPassword");
+                          }}
                         >
                           <Text style={styles.forgotPinText}>
                             Forgot SECURITY PIN?
@@ -184,13 +222,15 @@ const LoginPinScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
                     </View>
-
                     <TouchableOpacity
                       style={styles.loginButton}
                       onPress={() => {
                         setFieldTouched("pin", true);
                         if (values.pin.length === 6) {
-                          handleSubmit(); // ✅ This will now call `handleSubmit2`
+                          console.log("PIN complete, submitting form");
+                          handleSubmit();
+                        } else {
+                          console.log("PIN incomplete. Current PIN:", values.pin);
                         }
                       }}
                       activeOpacity={0.8}
@@ -224,13 +264,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 50,
+    paddingTop: 30,
     paddingBottom: 50,
     height: 180,
   },
   backButton: {
     position: "absolute",
-    top: 50,
+    top: 45,
     left: 16,
     zIndex: 1,
   },
@@ -241,7 +281,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: -40,
+    bottom: -45,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -280,7 +320,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins-Bold",
     color: "#000000",
-    marginBottom: 8,
+    marginBottom: 10,
+    marginTop: 20,
   },
   inputSubtitle: {
     fontSize: 12,
@@ -300,9 +341,12 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
     borderRadius: 8,
     textAlign: "center",
+    textAlignVertical: "center",
     fontSize: 18,
     fontFamily: "Poppins-Regular",
     backgroundColor: "#FFFFFF",
+    includeFontPadding: false,
+    lineHeight: 28,
   },
   pinInputFilled: {
     backgroundColor: "#F5F5F5",
