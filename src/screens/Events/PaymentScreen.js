@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ExentRegister } from "../../api/event_api"
 const { width } = Dimensions.get("window");
 import Toast from "react-native-toast-message";
+import { sendEventTicketByOrderId } from "../../api/ticket_api";
 
 const TicketItem = ({ registration, onRemove, index }) => {
   return (
@@ -158,18 +159,11 @@ export default function PaymentScreen() {
       const response = await ExentRegister(payload)
       console.log("-----------------------------", response)
       if (response.isOk) {
-        Toast.show({
-          type: "success",
-          text1: response.message,
-          position: "top",
-          visibilityTime: 2000,
-        });
-        setTimeout(() => {
-          navigation.navigate("Tab");
-        }, 2000);
-
+        await handlesendMial(response.data[0].orderId)
+        
       }
       else {
+        setIsLoading(false)
         Toast.show({
           type: "error",
           text1: res.message || "Someting Went Wrong",
@@ -189,6 +183,47 @@ export default function PaymentScreen() {
       throw new Error(error);
     }
 
+  }
+
+
+  const handlesendMial = async(orderId)=>{
+    try {
+       const response = await sendEventTicketByOrderId(orderId)
+      console.log("-----------------------------", response)
+      if (response.isOk) {
+        setIsLoading(false)
+        Toast.show({
+          type: "success",
+          text1: response.message,
+          position: "top",
+          visibilityTime: 2000,
+        });
+        setTimeout(() => {
+          navigation.navigate("Tab");
+        }, 2000);
+
+        
+      }
+      else {
+        setIsLoading(false)
+        Toast.show({
+          type: "error",
+          text1: "Something went wrong send the mail",
+          position: "top",
+          visibilityTime: 2000,
+        });
+      }
+    }
+    catch (error) {
+      setIsLoading(false)
+        console.error("Error during login:", error);
+      Toast.show({
+        type: "error",
+        text1: "Login Error",
+        text2: "Something went wrong. Please try again.",
+      });
+      throw new Error(error);
+    }
   }
 
   return (
@@ -332,10 +367,11 @@ export default function PaymentScreen() {
             </Text>
           </View>
           <TouchableOpacity
+          disabled={isLoading}
             style={styles.makePaymentButton}
             onPress={handleMakePayment}
           >
-            <Text style={styles.makePaymentButtonText}>Make Payment</Text>
+            <Text style={styles.makePaymentButtonText}>{isLoading ? "Processing..." : "Make Payment"}</Text>
             <Ionicons
               name="arrow-forward"
               size={20}
