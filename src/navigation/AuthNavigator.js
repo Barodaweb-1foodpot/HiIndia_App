@@ -18,7 +18,7 @@ const AuthNavigator = () => {
         headerShown: false,
         gestureEnabled: false,
       }}
-      // initialRouteName="SignUp" 
+      // initialRouteName="UpdatedPin" 
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpPage} />

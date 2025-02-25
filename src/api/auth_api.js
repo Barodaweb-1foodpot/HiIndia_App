@@ -1,37 +1,33 @@
-// import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import axios from "axios";
-import jwtDecode from "jwt-decode";
 import Toast from "react-native-toast-message";
 import { API_BASE_URL } from "@env";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const handleLogin = async (values) => {
   try {
-    console.log("Logging in with:", values);
+    console.log("[handleLogin] Logging in with:", values);
     const res = await axios.post(`${API_BASE_URL}/participantLogin`, values, {
       validateStatus: () => true,
     });
-
+    console.log("[handleLogin] Response received:", res.data);
     if (res.data.isOk) {
-      console.log("Login successful:", res.data.data);
+      console.log("[handleLogin] Login successful:", res.data.data);
       await AsyncStorage.setItem("role", res.data.data._id);
       await AsyncStorage.setItem("Token", res.data.token);
       await AsyncStorage.setItem("RefreshToken", res.data.refreshtoken);
-
 
       Toast.show({
         type: "success",
         text1: "Login Successful",
         text2: "Welcome back!",
       });
-
       return res.data;
     } else {
-      console.log("Login failed:", res.data);
+      console.log("[handleLogin] Login failed:", res.data);
       return res.data;
     }
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("[handleLogin] Error during login:", error);
     Toast.show({
       type: "error",
       text1: "Login Error",
@@ -43,16 +39,16 @@ export const handleLogin = async (values) => {
 
 export const requestOTP = async (values) => {
   try {
-    console.log(values);
+    console.log("[requestOTP] Requesting OTP for email:", values);
     const response = await axios.post(
       `${API_BASE_URL}/auth/participant/otp-Forget-password-request`,
       { email: values },
       { validateStatus: () => true }
     );
-    console.log(response.data);
+    console.log("[requestOTP] Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error during OTP request:", error);
+    console.error("[requestOTP] Error during OTP request:", error);
     Toast.show({
       type: "error",
       text1: "OTP Request Error",
@@ -64,14 +60,15 @@ export const requestOTP = async (values) => {
 
 export const verifyOTP = async (values) => {
   try {
+    console.log("[verifyOTP] Verifying OTP with payload:", values);
     const response = await axios.post(
       `${API_BASE_URL}/auth/participant/verify-otp-login`,
       values
     );
-    console.log(response.data);
+    console.log("[verifyOTP] Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error during OTP verification:", error);
+    console.error("[verifyOTP] Error during OTP verification:", error);
     Toast.show({
       type: "error",
       text1: "OTP Verification Error",
@@ -83,15 +80,15 @@ export const verifyOTP = async (values) => {
 
 export const handleSetPassword = async (id, password) => {
   try {
+    console.log(`[handleSetPassword] Setting new password for id: ${id}`);
     const response = await axios.post(
       `${API_BASE_URL}/auth/participant/set-password/${id}`,
       { password }
     );
-
-    console.log(response.data);
+    console.log("[handleSetPassword] Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error during set password:", error);
+    console.error("[handleSetPassword] Error during set password:", error);
     Toast.show({
       type: "error",
       text1: "Set Password Error",
@@ -103,24 +100,25 @@ export const handleSetPassword = async (id, password) => {
 
 export const handleSignup = async (values) => {
   try {
-    console.log("Signing up with:", values);
+    console.log("[handleSignup] Signing up with:", values);
     const res = await axios.post(
       `${API_BASE_URL}/auth/create/participant`,
-      values, {
-        validateStatus: () => true,
-      }
-       
+      values,
+      { validateStatus: () => true }
     );
+    console.log("[handleSignup] Signup response:", res.data);
     if (res.data.isOk) {
       Toast.show({
         type: "success",
         text1: "Signup Successful",
         text2: "Account created successfully",
       });
+    } else {
+      console.log("[handleSignup] Signup failed:", res.data);
     }
     return res.data;
   } catch (error) {
-    console.error("Error during signup:", error);
+    console.error("[handleSignup] Error during signup:", error);
     Toast.show({
       type: "error",
       text1: "Signup Error",
@@ -132,13 +130,14 @@ export const handleSignup = async (values) => {
 
 export const fetchActiveCountries = async () => {
   try {
+    console.log("[fetchActiveCountries] Fetching active countries...");
     const res = await axios.get(
       `${API_BASE_URL}/auth/location/activeCountries`
     );
-
+    console.log("[fetchActiveCountries] Fetched data:", res.data);
     return res.data;
   } catch (error) {
-    console.error("Error fetching active countries:", error);
+    console.error("[fetchActiveCountries] Error fetching active countries:", error);
     Toast.show({
       type: "error",
       text1: "Country Codes Error",
@@ -150,14 +149,14 @@ export const fetchActiveCountries = async () => {
 
 export const fetchProfile = async (participantId) => {
   try {
-    console.log("Fetching profile for participantId:", participantId);
+    console.log("[fetchProfile] Fetching profile for participantId:", participantId);
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`
     );
-    console.log("Profile fetch result:", res.data);
-    return res.data; 
+    console.log("[fetchProfile] Profile data:", res.data);
+    return res.data;
   } catch (error) {
-    console.error("Error fetching profile:", error);
+    console.error("[fetchProfile] Error fetching profile:", error);
     Toast.show({
       type: "error",
       text1: "Profile Error",
@@ -169,6 +168,7 @@ export const fetchProfile = async (participantId) => {
 
 export const updateProfileByApp = async (participantId, formData) => {
   try {
+    console.log(`[updateProfileByApp] Updating profile for participantId: ${participantId}`);
     const token = await AsyncStorage.getItem("Token");
     const res = await axios.patch(
       `${API_BASE_URL}/auth/updateProfileByApp/${participantId}`,
@@ -176,13 +176,14 @@ export const updateProfileByApp = async (participantId, formData) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
-          // Authorization: `Bearer ${token}`, 
+          // Authorization: `Bearer ${token}`,
         },
       }
     );
+    console.log("[updateProfileByApp] Response:", res.data);
     return res.data;
   } catch (error) {
-    console.error("Error updating profile by app:", error);
+    console.error("[updateProfileByApp] Error updating profile by app:", error);
     Toast.show({
       type: "error",
       text1: "Update Error",
@@ -192,70 +193,63 @@ export const updateProfileByApp = async (participantId, formData) => {
   }
 };
 
-
-export const handleGoogleLogin = async(email)=>{
-  try{
-    console.log(email)
-    const res = await axios.post(`${API_BASE_URL}/participant/participantHandleGoogleLogin`,{email:email}, {
-      validateStatus: () => true,
-    })
-     return res.data
-  }
-  catch (error) {
-    console.error("Error updating profile by app:", error);
+export const handleGoogleLogin = async (email) => {
+  try {
+    console.log("[handleGoogleLogin] Handling Google login for email:", email);
+    const res = await axios.post(
+      `${API_BASE_URL}/participant/participantHandleGoogleLogin`,
+      { email: email },
+      { validateStatus: () => true }
+    );
+    console.log("[handleGoogleLogin] Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("[handleGoogleLogin] Error during Google login:", error);
     Toast.show({
       type: "error",
-      text1: "Update Error",
-      text2: "Something went wrong while updating profile.",
+      text1: "Google Login Error",
+      text2: "Something went wrong during Google login.",
     });
     throw error;
   }
-}
+};
 
-
-export const verifyGoogleToken = async(token)=>{
-  try{
-    const res = await axios.post(`${API_BASE_URL}/verify/googleToken` , {token:token})
-    console.log("-------------",res.data)
-    if(res.data.isOk)
-    {
-      const response = await handleGoogleLogin(res.data.email)
-      console.log("reeeeeeeeeee",response)
-      if(response.status===200)
-      {
-        console.log(response.refreshToken)
+export const verifyGoogleToken = async (token) => {
+  try {
+    console.log("[verifyGoogleToken] Verifying Google token:", token);
+    const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, { token: token });
+    console.log("[verifyGoogleToken] Token verification response:", res.data);
+    if (res.data.isOk) {
+      const response = await handleGoogleLogin(res.data.email);
+      console.log("[verifyGoogleToken] handleGoogleLogin response:", response);
+      if (response.status === 200) {
+        console.log("[verifyGoogleToken] Setting AsyncStorage items for Google login");
         await AsyncStorage.setItem("role", response.data._id);
         await AsyncStorage.setItem("Token", response.token);
         await AsyncStorage.setItem("RefreshToken", response.refreshToken);
-  
   
         Toast.show({
           type: "success",
           text1: "Login Successful",
           text2: "Welcome back!",
-        })
-
-        // navigation.navigate("Tab");
-        return true
-      
-      }
-      else{
-        
+        });
+        return true;
+      } else {
+        console.log("[verifyGoogleToken] Google login failed with response:", response);
         Toast.show({
           type: "success",
-          text1: response.message, 
+          text1: response.message,
         });
-        return false
+        return false;
       }
     }
-  }
-  catch (error) {
-    console.error("Error updating profile by app:", error);
+  } catch (error) {
+    console.error("[verifyGoogleToken] Error during Google token verification:", error);
     Toast.show({
       type: "error",
-      text1: "Update Error",
-      text2: "Something went wrong while updating profile.",
+      text1: "Google Token Verification Error",
+      text2: "Something went wrong during token verification.",
     });
-    throw error;
+    throw new Error(error);
   }
-}
+};

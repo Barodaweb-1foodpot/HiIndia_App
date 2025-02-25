@@ -10,10 +10,9 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  ScrollView,
   StatusBar,
+  Linking,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
@@ -27,11 +26,9 @@ import {
 //   isSuccessResponse,
 //   statusCodes,
 // } from "@react-native-google-signin/google-signin";
-import { jwtDecode } from "jwt-decode";
+
 // const {OAuth2Client} = require('google-auth-library');
 // const client = new OAuth2Client();
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import { jwtDecode } from 'jwt-decode'
 
 // GoogleSignin.configure({
 //   webClientId:
@@ -40,6 +37,7 @@ import { jwtDecode } from "jwt-decode";
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
+
   const validationSchema = Yup.object().shape({
     email: Yup.string()
       .email("Enter a valid email")
@@ -49,7 +47,9 @@ const LoginScreen = ({ navigation }) => {
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
+
   const handleLogin = async (values) => {
+    console.log("Attempting login with email:", values.email);
     setLoginEmail(values.email);
     navigation.navigate("LoginPin");
   };
@@ -58,49 +58,21 @@ const LoginScreen = ({ navigation }) => {
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
-      console.log(response);
+      console.log("Google Sign-In response:", response);
       if (isSuccessResponse(response)) {
         const res = await verifyGoogleToken(response.data.idToken);
-        console.log(res);
+        console.log("Google token verification result:", res);
         if (res === true) {
           navigation.navigate("Tab");
         }
-        // console.log(response.data)
-        // const decoded= jwtDecode(response.data.idToken)
-        // console.log("-----",decoded)
-        // if(decoded.email_verified===true)
-        // {
-        //   const email = decoded.email
-        //   console.log(email)
-        //   const res = await handleGoogleLogin(email)
-        //   console.log(res)
-        // }
-
-        // console.log(res.data.user.email);
       } else {
         Toast.show({
           type: "info",
-          text1: "Someting went wrong try again after sometime",
-          // text2: "Welcome back!",
+          text1: "Something went wrong. Try again later.",
         });
-        // sign in was cancelled by user
       }
     } catch (error) {
-      console.log(error);
-      if (isErrorWithCode(error)) {
-        switch (error.code) {
-          case statusCodes.IN_PROGRESS:
-            // operation (eg. sign in) already in progress
-            break;
-          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            // Android only, play services not available or outdated
-            break;
-          default:
-          // some other error happened
-        }
-      } else {
-        // an error that's not related to google sign in occurred
-      }
+      console.log("Error during Google Sign-In:", error);
     }
   };
 
@@ -112,10 +84,7 @@ const LoginScreen = ({ navigation }) => {
         translucent={true}
         animated={true}
       />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
             <View style={styles.topSection}>
@@ -134,10 +103,7 @@ const LoginScreen = ({ navigation }) => {
               </View>
             </View>
             <View style={styles.whiteContainer}>
-              <ScrollView
-                contentContainerStyle={styles.scrollViewContent}
-                showsVerticalScrollIndicator={false}
-              >
+              <View style={styles.contentContainer}>
                 <Formik
                   initialValues={{ email: "" }}
                   validationSchema={validationSchema}
@@ -194,15 +160,6 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
                       </View>
-                      {/* <TouchableOpacity style={styles.socialButton}>
-                        <Image
-                          source={require("../../../assets/email.png")}
-                          style={styles.socialIcon}
-                        />
-                        <Text style={styles.socialButtonText}>
-                          Continue with Email
-                        </Text>
-                      </TouchableOpacity> */}
                       <TouchableOpacity
                         style={styles.socialButton}
                         // onPress={handleGoogleSignIn}
@@ -214,35 +171,26 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                        {/* <GoogleOAuthProvider clientId="535563161021-tf03ktunqb831r8ob13jmb2irpn4tq21.apps.googleusercontent.com">
-                        <GoogleLogin
-                          onSuccess={handleGoogleSuccess}
-                          onError={() => {
-                            // setError("Login failed. Please try again.");
-                          }}
-                        />
-                      </GoogleOAuthProvider> */}
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.appleButton}>
-                        <Image
-                          source={require("../../../assets/apple.png")}
-                          style={[styles.socialIcon, styles.appleIcon]}
-                        />
-                        <Text style={styles.appleButtonText}>
-                          Continue with Apple
-                        </Text>
                       </TouchableOpacity>
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
                           By continuing, you agree to our{" "}
-                          <Text style={styles.linkText}>Privacy Policy</Text>{" "}
-                          and <Text style={styles.linkText}>Terms of Use</Text>
+                          <Text
+                            style={styles.linkText}
+                            onPress={() =>
+                              Linking.openURL(
+                                "https://participanthiindia.barodaweb.org/terms-and-condition"
+                              )
+                            }
+                          >
+                            Terms and conditions
+                          </Text>
                         </Text>
                       </View>
                     </>
                   )}
                 </Formik>
-              </ScrollView>
+              </View>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -270,7 +218,6 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     height: 180,
   },
-
   logo: { width: "100%", height: 60, marginTop: 10 },
   headerCard: {
     position: "absolute",
@@ -303,7 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
-  scrollViewContent: {
+  contentContainer: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 80,
@@ -342,7 +289,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
-
   loginButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
@@ -393,24 +339,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins-Medium",
     color: "#000000",
-    marginRight: 32,
-  },
-  appleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 48,
-    borderRadius: 24,
-    marginBottom: 24,
-    paddingHorizontal: 20,
-    backgroundColor: "#000000",
-  },
-  appleIcon: { tintColor: "#FFFFFF" },
-  appleButtonText: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 14,
-    fontFamily: "Poppins-Medium",
-    color: "#FFFFFF",
     marginRight: 32,
   },
   termsContainer: { marginBottom: 24 },
