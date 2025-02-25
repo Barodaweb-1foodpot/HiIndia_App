@@ -17,26 +17,24 @@ import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
 import { requestOTP, verifyOTP } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
-// import { isLoading } from "expo-font";
 
 const VerifyOtp = ({ navigation }) => {
   const inputRefs = useRef([]);
-  const { forgotEmail } = useAuthContext()
-  const [timeLeft, setTimeLeft] = useState(90); // Set 90 seconds for the timer
-  const [isloading, setIsLoading] = useState(false)
-  const [er, setEr] = useState('')
+  const { forgotEmail } = useAuthContext();
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 0) {
-          clearInterval(timer); // Stop the timer when it reaches 0
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
           return 0;
         }
-        return prevTime - 1;
+        return prev - 1;
       });
     }, 1000);
-
-    return () => clearInterval(timer); // Cleanup the interval on component unmount
+    return () => clearInterval(timer);
   }, []);
 
   const dismissKeyboard = () => {
@@ -49,76 +47,32 @@ const VerifyOtp = ({ navigation }) => {
       .matches(/^\d{6}$/, "OTP must be exactly 6 digits"),
   });
 
-  const formatTime = () => {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  };
-  const handleSendOTP = async (values) => {
-    setIsLoading(true)
-    console.log("-------------")
-    const res = await requestOTP(forgotEmail)
-    console.log(res)
-    if (res.isOk) {
-      setIsLoading(false)
-      Toast.show({
-        type: "success",
-        text1: res.message,
-        position: "bottom",
-        visibilityTime: 2000,
-      });
-
-    }
-    else {
-      setIsLoading(false)
-      Toast.show({
-        type: "error",
-        text1: res.message,
-        position: "bottom",
-        visibilityTime: 2000,
-      });
-
-    }
-    // navigation.navigate("VerifyOtp");
-  };
-
   const handleSendAgain = async () => {
-    setIsLoading(true)
-    console.log("-------------")
-    const res = await requestOTP(forgotEmail)
-    console.log(res)
+    setIsLoading(true);
+    const res = await requestOTP(forgotEmail);
     if (res.isOk) {
-      setIsLoading(false)
       Toast.show({
         type: "success",
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
       });
-
-    }
-    else {
-      setIsLoading(false)
+    } else {
       Toast.show({
         type: "error",
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
       });
-
     }
+    setIsLoading(false);
   };
 
-  const handleVerifyAndContinue = async(values) => {
-    console.log("hello", values.otp);
-    const value = { email:forgotEmail, otp:values.otp }
-    const res = await verifyOTP(value)
-    console.log(res)
+  const handleVerifyAndContinue = async (values) => {
+    setIsLoading(true);
+    const payload = { email: forgotEmail, otp: values.otp };
+    const res = await verifyOTP(payload);
     if (res.isOk) {
-      
-      setIsLoading(false)
       Toast.show({
         type: "success",
         text1: res.message,
@@ -128,21 +82,16 @@ const VerifyOtp = ({ navigation }) => {
       setTimeout(() => {
         navigation.navigate("VerifyCode");
       }, 1000);
-
-    }
-    else {
-      setIsLoading(false)
+    } else {
       Toast.show({
         type: "error",
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
       });
-
     }
+    setIsLoading(false);
   };
-
-
 
   return (
     <View style={styles.rootContainer}>
@@ -157,7 +106,6 @@ const VerifyOtp = ({ navigation }) => {
               >
                 <Ionicons name="chevron-back" size={24} color="#FFF" />
               </TouchableOpacity>
-
               <Image
                 source={require("../../../assets/logo.png")}
                 style={styles.logo}
@@ -166,8 +114,7 @@ const VerifyOtp = ({ navigation }) => {
               <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>Verification Code</Text>
                 <Text style={styles.headerCardSubtitle}>
-                  Verification code sent successfully to your registered email
-                  address **{forgotEmail}**
+                  Verification code sent to {forgotEmail}
                 </Text>
               </View>
             </View>
@@ -176,13 +123,11 @@ const VerifyOtp = ({ navigation }) => {
               <Formik
                 initialValues={{ otp: "" }}
                 validationSchema={validationSchema}
-                onSubmit={handleSendOTP}
-
+                onSubmit={() => {}}
               >
                 {({
                   handleChange,
                   handleBlur,
-                  handleSubmit,
                   values,
                   errors,
                   touched,
@@ -201,13 +146,13 @@ const VerifyOtp = ({ navigation }) => {
                             keyboardType="numeric"
                             maxLength={1}
                             value={values.otp[index]}
-                            onChangeText={(value) => {
+                            onChangeText={(val) => {
                               const newOtp =
                                 values.otp.substring(0, index) +
-                                value +
+                                val +
                                 values.otp.substring(index + 1);
                               handleChange("otp")(newOtp);
-                              if (value && index < 5) {
+                              if (val && index < 5) {
                                 inputRefs.current[index + 1].focus();
                               }
                             }}
@@ -225,35 +170,38 @@ const VerifyOtp = ({ navigation }) => {
                               }
                             }}
                             onBlur={handleBlur("otp")}
-                            placeholder="-"
-                            placeholderTextColor="#999"
                           />
                         ))}
                       </View>
                       {touched.otp && errors.otp && (
                         <Text style={styles.errorText}>{errors.otp}</Text>
                       )}
+                      <View style={styles.timerRow}>
+                        <Text style={styles.timerText}>Didn’t receive code? </Text>
+                        {timeLeft > 0 ? (
+                          <Text style={styles.timer}>Wait {timeLeft}s</Text>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={handleSendAgain}
+                            activeOpacity={0.7}
+                            disabled={isLoading}
+                          >
+                            <Text style={styles.timer}>Send Again</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* Button placed here, so it's below the "Didn’t receive code?" text */}
                       <TouchableOpacity
-                        onPress={handleSendAgain}
-                        activeOpacity={0.7}
-                        disabled={isloading}
+                        style={styles.verifyButton}
+                        onPress={() => handleVerifyAndContinue(values)}
+                        activeOpacity={0.8}
                       >
-                        <Text style={styles.timerText}>
-                          Didn’t receive code?{" "}
-                          <Text style={styles.timer}>{isloading ? "Sending Again ....." : "Send Again"}</Text>
+                        <Text style={styles.verifyButtonText}>
+                          Verify and Continue
                         </Text>
                       </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                      style={styles.verifyButton}
-                      onPress={() => handleVerifyAndContinue(values)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.verifyButtonText}>
-                        Verify and Continue
-                      </Text>
-                    </TouchableOpacity>
                   </>
                 )}
               </Formik>
@@ -269,7 +217,7 @@ const VerifyOtp = ({ navigation }) => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
   },
   container: {
     flex: 1,
@@ -278,16 +226,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topSection: {
-    flex: 0.3,
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    paddingTop: 30,
+    paddingBottom: 50,
+    height: 180,
   },
   backButton: {
     position: "absolute",
-    top: 48,
+    top: 45,
     left: 16,
+    zIndex: 1,
   },
   logo: {
     width: "100%",
@@ -298,9 +248,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -50,
     alignSelf: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     borderRadius: 12,
-    paddingVertical: 10,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     width: "85%",
     shadowColor: "#000",
@@ -313,25 +263,22 @@ const styles = StyleSheet.create({
   headerCardTitle: {
     fontSize: 22,
     fontFamily: "Poppins-Bold",
-    color: "#000000",
+    color: "#000",
   },
   headerCardSubtitle: {
-    marginTop: 4,
+    marginTop: 5,
     fontSize: 12,
     fontFamily: "Poppins-Regular",
-    color: "#666666",
-    lineHeight: 18,
-    textAlign: "left",
+    color: "#666",
   },
   whiteContainer: {
-    flex: 0.7,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "flex-start",
+    flex: 1,
+    backgroundColor: "#FFF",
     paddingHorizontal: 20,
-    paddingVertical: 80,
+    paddingVertical: 40,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginTop: 40,
   },
   otpContainer: {
     flexDirection: "row",
@@ -347,23 +294,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 18,
     fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
   },
   otpInputFilled: {
     backgroundColor: "#F5F5F5",
-    borderColor: "#000000",
+    borderColor: "#000",
   },
   errorText: {
-    color: "#FF0000",
+    color: "#F00",
     fontSize: 12,
     marginBottom: 8,
     fontFamily: "Poppins-Regular",
   },
+  timerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+    marginBottom: 20, 
+  },
   timerText: {
-    color: "#666666",
+    color: "#666",
     fontSize: 14,
     fontFamily: "Poppins-Regular",
-    textAlign: "center",
   },
   timer: {
     color: "#E3000F",
@@ -376,10 +328,9 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
   },
   verifyButtonText: {
-    color: "#FFFFFF",
+    color: "#FFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",
   },

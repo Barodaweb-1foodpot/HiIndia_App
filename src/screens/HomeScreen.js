@@ -10,17 +10,17 @@ import {
   StatusBar,
   Platform,
   Share,
-  StyleSheet as RNStyleSheet,
+  Animated,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
 import { fetchEvents, listActiveEvents } from "../api/event_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import moment from "moment";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 
-// A wrapper component for blur effect
+// Wrapper for blur effect (iOS uses BlurView; Android gets a fallback background)
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -36,23 +36,62 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
+// Skeleton Loader Component for Images
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, []);
+  
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+  
+  return (
+    <View style={[style, { backgroundColor: '#E0E0E0', overflow: 'hidden' }]}>
+      <Animated.View
+        style={{
+          width: '100%',
+          height: '100%',
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// Component for handling event images with a skeleton loader until loaded
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
 
   return (
     <View style={style}>
-      {!loaded && (
-        <Image
-          source={require("../../assets/placeholder.jpg")}
-          style={[StyleSheet.absoluteFill, style]}
-          resizeMode="cover"
-        />
-      )}
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri ? { uri } : require("../../assets/placeholder.jpg")}
-        style={style}
+        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
       />
     </View>
   );
@@ -63,11 +102,9 @@ export default function HomeScreen({ navigation }) {
   const [searchText, setSearchText] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [events, setEvents] = useState([]);
-  const [perPage, setPerPage] = useState(2);
-  const [pageNo, setPageNo] = useState(0);
   const [activeEvent, setActiveEvents] = useState([]);
-  const [count, setCount] = useState(0);
 
+  // Configure status bar when the screen is focused
   useFocusEffect(
     React.useCallback(() => {
       StatusBar.setHidden(false);
@@ -76,41 +113,38 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
+  // Fetch events and active events when search text changes
   useEffect(() => {
     fetchEvent();
     fetchActiveEvent();
-  }, [searchText, perPage, pageNo]);
+  }, [searchText]);
 
+  // Re-fetch events when the active tab changes
   useEffect(() => {
     setEvents([]);
-    // console.log(activeTab);
     fetchEvent();
   }, [activeTab]);
 
+  // Fetch events based on search text and active tab
   const fetchEvent = async () => {
-    const res = await fetchEvents(
-      searchText,
-      (categoryFilter = "All"),
-      (filterDate = activeTab)
-    );
-    console.log("kkkkkkkkkkk", res);
-    if (res?.data?.length > 0) {
-      setCount(res.count);
+    const res = await fetchEvents(searchText, "All", activeTab);
+    console.log("Fetched events:", res);
+    if (res && res.data && res.data.length > 0) {
       setEvents(res.data);
     } else {
-      setCount(0);
       setEvents([]);
     }
   };
 
+  // Fetch active events for the Event Hub section
   const fetchActiveEvent = async () => {
     const res = await listActiveEvents();
-    if (res.data.length > 0) {
+    if (res && res.data && res.data.length > 0) {
       setActiveEvents(res.data);
     }
   };
 
-  // Function to share event details
+  // Share event details using the device's share functionality
   const shareEvent = async (event) => {
     try {
       const eventDate =
@@ -128,10 +162,7 @@ export default function HomeScreen({ navigation }) {
         `📍 *Location:* ${event.EventLocation}\n` +
         `🗓️ *Date:* ${eventDate}\n` +
         (eventImageUri ? `🖼️ *Image:* ${eventImageUri}\n` : "");
-
-      await Share.share({
-        message: shareMessage,
-      });
+      await Share.share({ message: shareMessage });
     } catch (error) {
       console.error("Error sharing event", error);
     }
@@ -139,7 +170,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-       <StatusBar style="auto" />
+      <StatusBar style="auto" />
 
       {/* Header Section */}
       <View style={styles.header}>
@@ -186,7 +217,7 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Search Wrapper */}
+          {/* Search Input */}
           {searchVisible && (
             <View style={styles.searchWrapper}>
               <View style={styles.searchContainer}>
@@ -231,11 +262,9 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Trending Events Section */}
+          {/* Event Cards */}
           <View style={styles.section}>
-            {activeTab === "All"}
-
-            {events?.map((event, index) => {
+            {events.map((event, index) => {
               const eventImageUri = event.EventImage
                 ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
                 : null;
@@ -248,10 +277,7 @@ export default function HomeScreen({ navigation }) {
 
               return (
                 <View key={index} style={styles.eventCard}>
-                  {/* Event image with placeholder until load */}
                   <EventImage uri={eventImageUri} style={styles.eventImage} />
-
-                  {/* Share Button */}
                   <TouchableOpacity
                     style={styles.shareButton}
                     onPress={() => shareEvent(event)}
@@ -262,7 +288,6 @@ export default function HomeScreen({ navigation }) {
                       color="#000"
                     />
                   </TouchableOpacity>
-
                   <BlurWrapper style={styles.eventContent}>
                     <View style={styles.eventDetailsColumn}>
                       <Text style={styles.eventTitle} numberOfLines={1}>
@@ -290,7 +315,6 @@ export default function HomeScreen({ navigation }) {
                             {eventDate}
                           </Text>
                         </View>
-
                         <View style={styles.registerContainer}>
                           <TouchableOpacity
                             style={styles.registerButton}
@@ -310,26 +334,9 @@ export default function HomeScreen({ navigation }) {
                 </View>
               );
             })}
-
-            {count > events.length && (
-              <View style={styles.viewMoreContainer}>
-                <TouchableOpacity
-                  style={styles.viewMoreButton}
-                  onPress={() => {
-                    setPerPage(perPage + 5);
-                    console.log(perPage + 5);
-                  }}
-                >
-                  <View style={styles.viewMoreButtonContent}>
-                    <Text style={styles.viewMoreText}>View More</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#000" />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
 
-          {/* Event Hub Section (shown only in the All tab) */}
+          {/* Event Hub Section (visible only in "All" tab) */}
           {activeTab === "All" && (
             <View style={styles.hubSection}>
               <Text style={styles.sectionTitle}>The Event Hub</Text>
@@ -352,7 +359,7 @@ export default function HomeScreen({ navigation }) {
                     <TouchableOpacity
                       key={index}
                       onPress={() => {
-                        console.log("Selected Item ID:", item._id);
+                        // Navigate to event details if found in the main events list
                         const selectedEvent = events.find(
                           (e) => e._id === item._id
                         );
@@ -392,15 +399,6 @@ export default function HomeScreen({ navigation }) {
                             >
                               {item.EventLocation}
                             </Text>
-                          </View>
-                          <View style={styles.dflex2}>
-                            {item.EventCategory?.map((data, index) => (
-                              <View style={styles.categoryPill} key={index}>
-                                <Text style={styles.categoryText}>
-                                  {data.category}
-                                </Text>
-                              </View>
-                            ))}
                           </View>
                         </View>
                       </View>

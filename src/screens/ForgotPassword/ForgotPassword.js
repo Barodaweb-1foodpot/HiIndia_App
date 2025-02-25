@@ -17,13 +17,14 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
 import { requestOTP } from "../../api/auth_api";
-import { isLoaded } from "expo-font";
 
 const ForgotPassword = ({ navigation }) => {
-  const { setForgotEmail, forgotEmail , forgot_id , setForgot_Id} = useAuthContext()
-  const [isloading, setIsLoading] = useState(false)
+  const { setForgotEmail, forgotEmail, setForgot_Id } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
+
   const dismissKeyboard = () => {
     Keyboard.dismiss();
+    console.log("Keyboard dismissed");
   };
 
   const validationSchema = Yup.object().shape({
@@ -32,14 +33,15 @@ const ForgotPassword = ({ navigation }) => {
       .required("Email is required"),
   });
 
+  // Requests an OTP for the entered email
   const handleSendOTP = async (values) => {
-    setIsLoading(true)
+    console.log("Requesting OTP for:", values.email);
+    setIsLoading(true);
     setForgotEmail(values.email);
-    const res = await requestOTP(values.email)
-    console.log("--------",res)
+    const res = await requestOTP(values.email);
+    console.log("OTP request response:", res);
     if (res.isOk) {
-      setForgot_Id(res.data._id)
-      setIsLoading(false)
+      setForgot_Id(res.data._id);
       Toast.show({
         type: "success",
         text1: res.message,
@@ -47,37 +49,38 @@ const ForgotPassword = ({ navigation }) => {
         visibilityTime: 2000,
       });
       setTimeout(() => {
+        console.log("Navigating to VerifyOtp screen");
         navigation.navigate("VerifyOtp");
       }, 2000);
-
-    }
-    else {
-      setIsLoading(false)
+    } else {
       Toast.show({
         type: "error",
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
       });
-
     }
-    setIsLoading(false)
-    // navigation.navigate("VerifyOtp");
+    setIsLoading(false);
   };
-
-
-
 
   return (
     <View style={styles.rootContainer}>
-    <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
             <View style={styles.topSection}>
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => navigation.navigate("Login")}
+                onPress={() => {
+                  console.log("Navigating back to Login");
+                  navigation.navigate("Login");
+                }}
               >
                 <Ionicons name="chevron-back" size={24} color="#FFF" />
               </TouchableOpacity>
@@ -90,8 +93,7 @@ const ForgotPassword = ({ navigation }) => {
               <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>Forgot Password</Text>
                 <Text style={styles.headerCardSubtitle}>
-                  Enter your registered email address below to recover your
-                  password.
+                  Enter your registered email address below to recover your password.
                 </Text>
               </View>
             </View>
@@ -127,14 +129,18 @@ const ForgotPassword = ({ navigation }) => {
                         <Text style={styles.errorText}>{errors.email}</Text>
                       )}
                     </View>
-
                     <TouchableOpacity
                       style={styles.sendOTPButton}
-                      onPress={handleSubmit}
+                      onPress={() => {
+                        console.log("Send OTP pressed for:", values.email);
+                        handleSubmit();
+                      }}
                       activeOpacity={0.8}
-                      disabled={isloading}
+                      disabled={isLoading}
                     >
-                      <Text style={styles.sendOTPButtonText}>{isloading ? "Sending...." : "Send OTP"}</Text>
+                      <Text style={styles.sendOTPButtonText}>
+                        {isLoading ? "Sending..." : "Send OTP"}
+                      </Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -144,7 +150,6 @@ const ForgotPassword = ({ navigation }) => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       <Toast />
-
     </View>
   );
 };
@@ -152,7 +157,7 @@ const ForgotPassword = ({ navigation }) => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
   },
   container: {
     flex: 1,
@@ -161,16 +166,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topSection: {
-    flex: 0.3,
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    paddingTop: 30,
+    paddingBottom: 50,
+    height: 180,
   },
   backButton: {
     position: "absolute",
-    top: 48,
+    top: 45,
     left: 16,
+    zIndex: 1,
   },
   logo: {
     width: "100%",
@@ -179,9 +186,9 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: -30,
+    bottom: -50,
     alignSelf: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -192,37 +199,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     zIndex: 10,
-    textAlign: "left",
   },
   headerCardTitle: {
     fontSize: 22,
     fontFamily: "Poppins-Bold",
-    color: "#000000",
-    textAlign: "left",
+    color: "#000",
   },
   headerCardSubtitle: {
     marginTop: 5,
     fontSize: 12,
     fontFamily: "Poppins-Regular",
-    color: "#666666",
-    textAlign: "left",
-    lineHeight: 18,
+    color: "#666",
   },
   whiteContainer: {
-    flex: 0.7,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "flex-start",
+    flex: 1,
+    backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginTop: 35,
   },
   inputLabel: {
     fontSize: 14,
-    fontFamily: "Poppins-Regular",
-    color: "#000000",
-    marginBottom: 8,
+    fontFamily: "Poppins-Medium",
+    color: "#000",
+    marginBottom: 10,
   },
   input: {
     height: 48,
@@ -232,11 +234,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFFFFF",
-    color: "#000000",
+    backgroundColor: "#FFF",
+    color: "#000",
   },
   errorText: {
-    color: "#FF0000",
+    color: "#F00",
     fontSize: 12,
     marginTop: 4,
     fontFamily: "Poppins-Regular",
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   sendOTPButtonText: {
-    color: "#FFFFFF",
+    color: "#FFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",
   },
