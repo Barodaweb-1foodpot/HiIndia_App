@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StatusBar,
   Platform,
   Share,
+  Animated,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
@@ -18,7 +19,76 @@ import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatDateRange } from "../helper/helper_Function";
 import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 
+// --- Skeleton Loader Component ---
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, [animation]);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// --- EventImage with Skeleton Loader ---
+const EventImage = ({ uri, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      <Image
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
+};
+
+// --- Blur Wrapper ---
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -34,31 +104,42 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
-// Header component
-const Header = ({ navigation }) => (
-  <View style={styles.header}>
-    <View style={styles.headerContent}>
-      <Image source={require("../../assets/logo.png")} style={styles.logo} />
-      <View style={styles.headerIcons}>
-        <TouchableOpacity
-          style={styles.iconCircle}
-          onPress={() => navigation.navigate("App", { screen: "Notification" })}
-        >
-          <Ionicons name="notifications-outline" size={20} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.iconCircle}
-          onPress={() => navigation.navigate("App", { screen: "Calender" })}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#000" />
-        </TouchableOpacity>
+// --- Header Component ---
+const Header = React.memo(({ navigation }) => {
+  const handleNotificationPress = useCallback(() => {
+    navigation.navigate("App", { screen: "Notification" });
+  }, [navigation]);
+
+  const handleCalenderPress = useCallback(() => {
+    navigation.navigate("App", { screen: "Calender" });
+  }, [navigation]);
+
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerContent}>
+        <Image source={require("../../assets/logo.png")} style={styles.logo} />
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.iconCircle}
+            onPress={handleNotificationPress}
+          >
+            <Ionicons name="notifications-outline" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconCircle}
+            onPress={handleCalenderPress}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
-  </View>
-);
+  );
+});
 
-const SearchBar = ({ visible, searchText, setSearchText }) =>
-  visible && (
+// --- SearchBar Component ---
+const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
+  visible ? (
     <View style={styles.searchWrapper}>
       <View style={styles.searchContainer}>
         <TextInput
@@ -70,51 +151,55 @@ const SearchBar = ({ visible, searchText, setSearchText }) =>
         />
       </View>
     </View>
-  );
-
-const Dropdown = ({
-  dropdownOpen,
-  selectedCategory,
-  category,
-  onToggle,
-  onSelectCategory,
-}) => (
-  <View style={styles.dropdownWrapper}>
-    <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
-      <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
-      <Ionicons name="chevron-down-outline" size={20} color="#000" />
-    </TouchableOpacity>
-    {dropdownOpen && (
-      <View style={styles.dropdownList}>
-        {category?.map((cat, index) => (
-          <View key={index}>
-            <TouchableOpacity
-              style={styles.dropdownItem}
-              onPress={() => onSelectCategory(cat)}
-            >
-              <Text style={styles.dropdownItemText}>{cat.name}</Text>
-            </TouchableOpacity>
-            {index < category.length - 1 && (
-              <View style={styles.dropdownSeparator} />
-            )}
-          </View>
-        ))}
-        {/* Optionally, if you want a separator before "All" */}
-        {category && category.length > 0 && (
-          <View style={styles.dropdownSeparator} />
-        )}
-        <TouchableOpacity
-          style={styles.dropdownItem}
-          onPress={() => onSelectCategory({ _id: "All", name: "All" })}
-        >
-          <Text style={styles.dropdownItemText}>All</Text>
-        </TouchableOpacity>
-      </View>
-    )}
-  </View>
+  ) : null
 );
 
-const CategoryCard = ({ item, navigation }) => (
+// --- Dropdown Component ---
+const Dropdown = React.memo(
+  ({
+    dropdownOpen,
+    selectedCategory,
+    category,
+    onToggle,
+    onSelectCategory,
+  }) => (
+    <View style={styles.dropdownWrapper}>
+      <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
+        <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
+        <Ionicons name="chevron-down-outline" size={20} color="#000" />
+      </TouchableOpacity>
+      {dropdownOpen && (
+        <View style={styles.dropdownList}>
+          {category?.map((cat, index) => (
+            <View key={index}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => onSelectCategory(cat)}
+              >
+                <Text style={styles.dropdownItemText}>{cat.name}</Text>
+              </TouchableOpacity>
+              {index < category.length - 1 && (
+                <View style={styles.dropdownSeparator} />
+              )}
+            </View>
+          ))}
+          {category && category.length > 0 && (
+            <View style={styles.dropdownSeparator} />
+          )}
+          <TouchableOpacity
+            style={styles.dropdownItem}
+            onPress={() => onSelectCategory({ _id: "All", name: "All" })}
+          >
+            <Text style={styles.dropdownItemText}>All</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  )
+);
+
+// --- CategoryCard Component ---
+const CategoryCard = React.memo(({ item, navigation }) => (
   <TouchableOpacity
     onPress={() =>
       navigation.navigate("App", {
@@ -124,14 +209,13 @@ const CategoryCard = ({ item, navigation }) => (
     }
   >
     <View style={styles.categoryCard}>
-      <Image
-        source={{
-          uri: item.EventImage
+      <EventImage
+        uri={
+          item.EventImage
             ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-            : undefined,
-        }}
+            : undefined
+        }
         style={styles.categoryCardImage}
-        defaultSource={require("../../assets/placeholder.jpg")}
       />
       <View style={styles.categoryCardContent}>
         <Text style={styles.categoryCardTitle} numberOfLines={1}>
@@ -156,18 +240,18 @@ const CategoryCard = ({ item, navigation }) => (
       </View>
     </View>
   </TouchableOpacity>
-);
+));
 
-const OtherEventCard = ({ item, navigation, onShare }) => (
+// --- OtherEventCard Component ---
+const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
   <View style={styles.eventCard}>
-    <Image
-      source={{
-        uri: item.EventImage
+    <EventImage
+      uri={
+        item.EventImage
           ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-          : undefined,
-      }}
+          : undefined
+      }
       style={styles.eventImage}
-      defaultSource={require("../../assets/placeholder.jpg")}
     />
     <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
       <Ionicons name="share-social-outline" size={20} color="#000" />
@@ -205,7 +289,7 @@ const OtherEventCard = ({ item, navigation, onShare }) => (
       </View>
     </BlurWrapper>
   </View>
-);
+));
 
 export default function EventsScreen({ navigation }) {
   const [searchVisible, setSearchVisible] = useState(false);
@@ -214,17 +298,14 @@ export default function EventsScreen({ navigation }) {
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState([]);
   const [events, setEvents] = useState([]);
-  const [perPage, setPerPage] = useState(2);
   const [catId, setCatId] = useState("");
   const [firstTime, setFirstTime] = useState(true);
-  const [pageNo, setPageNo] = useState(0);
-  const [count, setCount] = useState(0);
   const [allEvent, setAllEvent] = useState([]);
 
   useFocusEffect(
-    React.useCallback(() => {
-      StatusBar.setHidden(false); // Show status bar
-      StatusBar.setBarStyle("light-content"); // Set preferred style
+    useCallback(() => {
+      StatusBar.setHidden(false);
+      StatusBar.setBarStyle("light-content");
       return () => {};
     }, [])
   );
@@ -235,37 +316,31 @@ export default function EventsScreen({ navigation }) {
 
   useEffect(() => {
     fetchEvent();
-  }, [searchText, perPage, pageNo, selectedCategory]);
+  }, [searchText, selectedCategory]);
 
   const fetchEvent = async () => {
-    const res = await fetchEvents(
-      // pageNo,
-      // perPage,
-      searchText,
-      (categoryFilter = catId)
-    );
-    console.log("Responsepppppppppppppppppp:", res);
+    const res = await fetchEvents(searchText, (categoryFilter = catId));
+    console.log("Fetched events:", res);
     if (res?.data?.length > 0) {
-      setCount(res.count);
-      if (firstTime) setAllEvent(res.data);
+      if (firstTime) {
+        setAllEvent(res.data);
+      }
       setEvents(res.data);
       setFirstTime(false);
     } else {
-      console.log("pp");
-      setCount(0);
       setEvents([]);
     }
   };
 
   const fetchCategory = async () => {
     const res = await getEventCategoriesByPartner();
-    console.log(res.data);
+    console.log("Categories:", res.data);
     if (res.data.data?.length > 0) {
       setCategory(res.data.data);
     }
   };
 
-  const shareEvent = async (event) => {
+  const shareEvent = useCallback(async (event) => {
     try {
       const eventDate =
         event.StartDate && event.EndDate
@@ -286,18 +361,22 @@ export default function EventsScreen({ navigation }) {
     } catch (error) {
       console.error("Error sharing event", error);
     }
-  };
+  }, []);
 
-  // Handler for dropdown selection
-  const handleSelectCategory = (cat) => {
+  const handleSelectCategory = useCallback((cat) => {
     setCatId(cat._id);
     setSelectedCategory(cat.name);
     setDropdownOpen(false);
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
-       <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       <Header navigation={navigation} />
       <View style={styles.whiteSection}>
         <ScrollView
@@ -338,19 +417,6 @@ export default function EventsScreen({ navigation }) {
                   navigation={navigation}
                 />
               ))}
-              {/* {count > perPage && (
-                <View style={styles.viewMoreContainer}>
-                  <TouchableOpacity
-                    style={styles.viewMoreButton}
-                    onPress={() => setPerPage(perPage + 5)}
-                  >
-                    <View style={styles.viewMoreButtonContent}>
-                      <Text style={styles.viewMoreText}>View More</Text>
-                      <Ionicons name="chevron-forward" size={16} color="#000" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              )} */}
             </>
           )}
           {/* Other Events Section */}
@@ -485,6 +551,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000",
   },
+  dropdownSeparator: {
+    height: 1,
+    width: "100%",
+    backgroundColor: "#ccc",
+  },
   categoryCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -505,9 +576,7 @@ const styles = StyleSheet.create({
   },
   categoryCardImage: {
     width: 120,
-    height: "100%",
-    maxHeight: 140,
-    minHeight: 140,
+    height: 140,
     resizeMode: "cover",
   },
   categoryCardContent: {
@@ -537,10 +606,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   dflex2: {
-    gap: 10,
     flexDirection: "row",
     alignItems: "center",
-    width: "100%",
+    gap: 10,
   },
   categoryPill: {
     backgroundColor: "#f5f5f5",
@@ -554,35 +622,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
   },
-  viewMoreContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  viewMoreButton: {
-    borderWidth: 1,
-    borderColor: "#000",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  viewMoreButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  viewMoreText: {
-    fontSize: 14,
-    color: "#000",
-    fontWeight: "600",
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: "#000",
-    marginBottom: 16,
-    marginTop: 16,
+    marginVertical: 16,
   },
   eventCard: {
     borderRadius: 16,
@@ -671,10 +715,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
-  },
-  dropdownSeparator: {
-    height: 1,
-    width: "100%",
-    backgroundColor: "#ccc",
   },
 });

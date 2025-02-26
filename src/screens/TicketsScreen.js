@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,73 @@ import { formatDateRange } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 
+// --- Skeleton Loader Component ---
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, [animation]);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// --- TicketImage Component with Skeleton Loader ---
+const TicketImage = ({ source, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      <Image
+        source={
+          source && !error ? source : require("../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
+};
+
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [expandedOrders, setExpandedOrders] = useState({});
@@ -24,7 +91,7 @@ export default function TicketScreen({ navigation }) {
   const [titleReadMore, setTitleReadMore] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
       return () => {};
@@ -48,6 +115,7 @@ export default function TicketScreen({ navigation }) {
             formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
             "Date Not Available",
           endDate: order.event?.EndDate, // For filtering
+          // Using TicketImage component later so we pass the image source here
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
             : require("../../assets/placeholder.jpg"),
@@ -94,7 +162,12 @@ export default function TicketScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-       <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
 
       {/* Black Header Gradient */}
       <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>
@@ -104,14 +177,14 @@ export default function TicketScreen({ navigation }) {
             style={styles.logo}
           />
           <View style={styles.headerIcons}>
-           
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Notification" })}
+              onPress={() =>
+                navigation.navigate("App", { screen: "Notification" })
+              }
             >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-
             {/* Calendar Icon */}
             <TouchableOpacity
               style={styles.iconCircle}
@@ -192,7 +265,10 @@ export default function TicketScreen({ navigation }) {
                   {/* Ticket Header */}
                   <View style={styles.ticketHeader}>
                     <View style={styles.imageContainer}>
-                      <Image source={ticket.image} style={styles.eventImage} />
+                      <TicketImage
+                        source={ticket.image}
+                        style={styles.eventImage}
+                      />
                     </View>
                     <View style={styles.eventInfo}>
                       <View style={styles.titleContainer}>
