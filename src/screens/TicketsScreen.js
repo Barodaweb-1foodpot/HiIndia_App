@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
-import { getTickets } from "../api/ticket_api";
+import { getTickets, getTicketsByOrderId } from "../api/ticket_api";
 import { formatDateRange } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
@@ -145,6 +145,61 @@ export default function TicketScreen({ navigation }) {
       toValue: expandedOrders[id] ? 0 : 1,
       useNativeDriver: true,
     }).start();
+  };
+
+  const handleViewTicket = async (ticket) => {
+    try {
+          const orderDetails = {
+          totalRate: ticket.totalRate,
+          couponDiscount: ticket.coupon,
+          total: ticket.total,
+        };
+
+      console.log(ticket.id);
+      navigation.navigate("App", {
+        screen: "TicketDetails",
+        params: { orderId:ticket.id ,orderDetails},
+      });
+      // const response = await getTicketsByOrderId(ticket.id);
+      // if (response.isOk && response.data && response.data.length > 0) {
+      //   const registrations = response.data;
+      //   const eventData = registrations[0];
+
+      //   const eventDetails = {
+      //     image: eventData.eventName?.EventImage
+      //       ? { uri: `${API_BASE_URL_UPLOADS}/${eventData.eventName.EventImage}` }
+      //       : ticket.image,
+      //     name: eventData.eventName?.EventName || ticket.title,
+      //     date: ticket.date,
+      //     time: eventData.eventName?.Time || "",
+      //     location: eventData.eventName?.Location || "",
+      //   };
+
+      //   // Even if there's only one registration, map returns an array with one element.
+      //   const ticketDetails = registrations.map((reg) => ({
+      //     type: reg.TicketType?.name || "Standard",
+      //     quantity: reg.quantity || 1,
+      //     qrData: reg.qrData || reg._id,
+      //     name: reg.name,
+      //   }));
+
+      //   const orderDetails = {
+      //     totalRate: ticket.totalRate,
+      //     couponDiscount: ticket.coupon,
+      //     total: ticket.total,
+      //   };
+
+      //   navigation.navigate("App", {
+      //     screen: "TicketDetails",
+      //     params: { eventDetails, ticketDetails, orderDetails },
+      //   });
+      // } else {
+      //   alert("No ticket details found.");
+      // }
+    } catch (error) {
+      console.error("Error fetching ticket details:", error);
+      alert("Error fetching ticket details.");
+    }
   };
 
   // Filter tickets: upcoming vs past
@@ -302,14 +357,10 @@ export default function TicketScreen({ navigation }) {
                     </View>
                   </View>
 
+                  {/* View Details Button */}
                   <TouchableOpacity
                     style={styles.floatingButtonRight}
-                    onPress={() =>
-                      navigation.navigate("App", {
-                        screen: "TicketDetails",
-                        // params: { registerId: ticket.id },
-                      })
-                    }
+                    onPress={() => handleViewTicket(ticket)}
                   >
                     <Ionicons name="eye-outline" size={18} color="#fff" />
                   </TouchableOpacity>
@@ -375,7 +426,6 @@ export default function TicketScreen({ navigation }) {
                             </Text>
                           </View>
                           <View style={styles.whiteShortSeparator} />
-
                           {ticket.coupon ? (
                             <>
                               <View style={styles.whiteTotalsRow}>
@@ -608,7 +658,6 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontWeight: "500",
   },
-
   floatingButtonRight: {
     position: "absolute",
     top: 5,
@@ -747,11 +796,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginRight: 2,
     fontFamily: "Poppins-Medium",
-  },
-  noTicketsText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-    color: "#666",
   },
 });
