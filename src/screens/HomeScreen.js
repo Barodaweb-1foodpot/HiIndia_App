@@ -39,7 +39,7 @@ const BlurWrapper = ({ style, children }) => {
 // Skeleton Loader Component for Images
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
-  
+
   useEffect(() => {
     Animated.loop(
       Animated.timing(animation, {
@@ -49,26 +49,30 @@ const SkeletonLoader = ({ style }) => {
       })
     ).start();
   }, []);
-  
+
   const translateX = animation.interpolate({
     inputRange: [0, 1],
     outputRange: [-300, 300],
   });
-  
+
   return (
-    <View style={[style, { backgroundColor: '#E0E0E0', overflow: 'hidden' }]}>
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
       <Animated.View
         style={{
-          width: '100%',
-          height: '100%',
+          width: "100%",
+          height: "100%",
           transform: [{ translateX }],
         }}
       >
         <LinearGradient
-          colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0)']}
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: "100%", height: "100%" }}
         />
       </Animated.View>
     </View>
@@ -84,7 +88,9 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -170,7 +176,12 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
 
       {/* Header Section */}
       <View style={styles.header}>
