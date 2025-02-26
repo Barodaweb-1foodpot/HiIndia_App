@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,73 @@ import { formatDateRange } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 
+// --- Skeleton Loader Component ---
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, [animation]);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// --- TicketImage Component with Skeleton Loader ---
+const TicketImage = ({ source, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      <Image
+        source={
+          source && !error ? source : require("../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
+};
+
 export default function TicketScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [expandedOrders, setExpandedOrders] = useState({});
@@ -24,7 +91,7 @@ export default function TicketScreen({ navigation }) {
   const [titleReadMore, setTitleReadMore] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
       return () => {};
@@ -39,15 +106,14 @@ export default function TicketScreen({ navigation }) {
     try {
       const res = await getTickets();
       if (res.isOk && res.data && res.data.length > 0) {
-        console.log("Event detail:", res.data[0]);
         const transformedTickets = res.data.map((order) => ({
           id: order._id,
-          countryCurrency: order.event?.countryDetail?.Currency,
+          countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
           date:
             formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
             "Date Not Available",
-          endDate: order.event?.EndDate, // For filtering
+          endDate: order.event?.EndDate, // for filtering Past vs Upcoming
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
             : require("../../assets/placeholder.jpg"),
@@ -81,20 +147,24 @@ export default function TicketScreen({ navigation }) {
     }).start();
   };
 
-  // Filter tickets based on the event end date
+  // Filter tickets: upcoming vs past
   const now = new Date();
   const displayedTickets = tickets.filter((ticket) => {
     if (ticket.endDate) {
       const eventEnd = new Date(ticket.endDate);
       return activeTab === "Past" ? eventEnd < now : eventEnd >= now;
     }
-    // If no endDate is given, treat it as upcoming
     return activeTab === "Upcoming";
   });
 
   return (
     <View style={styles.container}>
-       <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
 
       {/* Black Header Gradient */}
       <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>
@@ -104,14 +174,14 @@ export default function TicketScreen({ navigation }) {
             style={styles.logo}
           />
           <View style={styles.headerIcons}>
-           
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Notification" })}
+              onPress={() =>
+                navigation.navigate("App", { screen: "Notification" })
+              }
             >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-
             {/* Calendar Icon */}
             <TouchableOpacity
               style={styles.iconCircle}
@@ -192,7 +262,10 @@ export default function TicketScreen({ navigation }) {
                   {/* Ticket Header */}
                   <View style={styles.ticketHeader}>
                     <View style={styles.imageContainer}>
-                      <Image source={ticket.image} style={styles.eventImage} />
+                      <TicketImage
+                        source={ticket.image}
+                        style={styles.eventImage}
+                      />
                     </View>
                     <View style={styles.eventInfo}>
                       <View style={styles.titleContainer}>
@@ -228,6 +301,18 @@ export default function TicketScreen({ navigation }) {
                       </Text>
                     </View>
                   </View>
+
+                  <TouchableOpacity
+                    style={styles.floatingButtonRight}
+                    onPress={() =>
+                      navigation.navigate("App", {
+                        screen: "TicketDetails",
+                        // params: { registerId: ticket.id },
+                      })
+                    }
+                  >
+                    <Ionicons name="eye-outline" size={18} color="#fff" />
+                  </TouchableOpacity>
 
                   {/* Order Details Container */}
                   <TouchableOpacity
@@ -360,6 +445,7 @@ export default function TicketScreen({ navigation }) {
   );
 }
 
+// ------ STYLES ------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -438,6 +524,12 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  noTicketsText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#666",
+  },
   ticketCard: {
     marginBottom: 16,
     borderRadius: 16,
@@ -450,6 +542,7 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 16,
     overflow: "hidden",
+    position: "relative",
   },
   ticketHeader: {
     flexDirection: "row",
@@ -514,6 +607,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     fontWeight: "500",
+  },
+
+  floatingButtonRight: {
+    position: "absolute",
+    top: 5,
+    left: 5,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
   },
   orderDetailsContainer: {
     backgroundColor: "#FFF5F5",

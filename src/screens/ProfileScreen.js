@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,9 @@ import {
   Modal,
   Platform,
   Share,
-  StatusBar,
   ScrollView,
   Linking,
+  StatusBar
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
@@ -26,15 +26,17 @@ export default function ProfileScreen() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigation = useNavigation();
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
+      console.log("[ProfileScreen] Loading profile data...");
       const participantId = await AsyncStorage.getItem("role");
       if (participantId) {
         const res = await fetchProfile(participantId);
         if (res && res._id) {
-          console.log(">>>>>>>>", res.profileImage);
+          console.log("[ProfileScreen] Profile loaded successfully:", res);
           setProfileData(res);
         } else {
+          console.log("[ProfileScreen] Profile load failed. Invalid response:", res);
           Toast.show({
             type: "error",
             text1: "Profile Error",
@@ -42,53 +44,51 @@ export default function ProfileScreen() {
             position: "bottom",
           });
         }
+      } else {
+        console.log("[ProfileScreen] No participantId found in storage.");
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
+      console.error("[ProfileScreen] Error loading profile:", error);
     }
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      StatusBar.setHidden(false);
-      StatusBar.setBarStyle("dark-content");
-      return () => {};
-    }, [])
-  );
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      console.log("[ProfileScreen] Screen focused. Setting StatusBar and loading profile.");
+      // Using React Native's StatusBar (or switch to Expo's if you prefer)
+      StatusBar.setBarStyle("dark-content");
       loadProfile();
-    }, [])
+      return () => {
+        console.log("[ProfileScreen] Screen unfocused.");
+      };
+    }, [loadProfile])
   );
 
-  const getProfileImageSource = () => {
-    console.log("oooooooooo", profileData);
-    if (
-      !profileData ||
-      !profileData.profileImage ||
-      !profileData.profileImage.trim()
-    ) {
+  const profileImageSource = useMemo(() => {
+    if (!profileData || !profileData.profileImage || !profileData.profileImage.trim()) {
+      console.log("[ProfileScreen] Using default placeholder image.");
       return require("../../assets/placeholder.jpg");
     }
+    console.log("[ProfileScreen] Using profile image from API.");
     return { uri: `${API_BASE_URL_UPLOADS}/${profileData.profileImage}` };
-  };
+  }, [profileData]);
 
   const handleLogout = async () => {
     try {
+      console.log("[ProfileScreen] Logging out...");
       setShowLogoutModal(false);
       await AsyncStorage.removeItem("role");
       await AsyncStorage.removeItem("Token");
       await AsyncStorage.removeItem("RefreshToken");
-
       Toast.show({
         type: "info",
         text1: "Logged Out",
         text2: "You have been logged out successfully!",
       });
+      console.log("[ProfileScreen] Logout successful, navigating to Login.");
       navigation.navigate("Auth", { screen: "Login" });
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("[ProfileScreen] Error during logout:", error);
       Toast.show({
         type: "error",
         text1: "Logout Error",
@@ -100,8 +100,9 @@ export default function ProfileScreen() {
   const shareMessage =
     "Hey, check out this amazing event on HiIndia! https://hiindia.com/";
 
-  const handleShareOption = async (option) => {
+  const handleShareOption = useCallback(async (option) => {
     try {
+      console.log("[ProfileScreen] Handling share option:", option);
       switch (option) {
         case "copyLink":
           await Clipboard.setStringAsync(shareMessage);
@@ -112,49 +113,49 @@ export default function ProfileScreen() {
           });
           break;
         case "whatsapp":
-          Linking.openURL(
-            `whatsapp://send?text=${encodeURIComponent(shareMessage)}`
-          );
+          Linking.openURL(`whatsapp://send?text=${encodeURIComponent(shareMessage)}`);
           break;
         case "facebook":
           await Share.share({ message: shareMessage });
           break;
         case "email":
           Linking.openURL(
-            `mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(
-              shareMessage
-            )}`
+            `mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(shareMessage)}`
           );
           break;
         case "linkedin":
           await Share.share({ message: shareMessage });
           break;
         case "twitter":
-          Linking.openURL(
-            `twitter://post?message=${encodeURIComponent(shareMessage)}`
-          );
+          Linking.openURL(`twitter://post?message=${encodeURIComponent(shareMessage)}`);
           break;
         default:
+          console.log("[ProfileScreen] Unknown share option:", option);
           break;
       }
       setShowShareModal(false);
     } catch (error) {
-      console.error(error);
+      console.error("[ProfileScreen] Error sharing event:", error);
       Toast.show({
         type: "error",
         text1: "Error",
         text2: "Something went wrong with sharing.",
       });
     }
-  };
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       <Text style={styles.headerTitle}>My Profile</Text>
 
       <View style={styles.profileSection}>
-        <Image source={getProfileImageSource()} style={styles.profileImage} />
+        <Image source={profileImageSource} style={styles.profileImage} />
         <View style={styles.profileInfo}>
           <Text style={styles.userName}>
             {profileData
@@ -221,6 +222,7 @@ export default function ProfileScreen() {
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </TouchableOpacity>
 
+      {/* Share Modal */}
       <Modal
         animationType="fade"
         transparent
@@ -286,6 +288,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Logout Modal */}
       <Modal
         animationType="fade"
         transparent
