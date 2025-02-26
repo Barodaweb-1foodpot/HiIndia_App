@@ -58,7 +58,7 @@ const TicketItem = ({ registration, onRemove, index }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.priceTagText}>{registration.TicketType.TicketType}</Text>
+              <Text style={styles.priceTagText}>{registration.TicketType.TicketType || "Free Event ticket"}</Text>
             </LinearGradient>
 
             {/* <TouchableOpacity
@@ -160,7 +160,7 @@ export default function PaymentScreen() {
       console.log("-----------------------------", response)
       if (response.isOk) {
         await handlesendMial(response.data[0].orderId)
-        
+
       }
       else {
         setIsLoading(false)
@@ -186,11 +186,11 @@ export default function PaymentScreen() {
   }
 
 
-  const handlesendMial = async(orderId)=>{
+  const handlesendMial = async (orderId) => {
     try {
-       const response = await sendEventTicketByOrderId(orderId)
+      const response = await sendEventTicketByOrderId(orderId)
       console.log("-----------------------------", response)
-      if (response.isOk) {
+      if (response.isOk || response.status===200) {
         setIsLoading(false)
         Toast.show({
           type: "success",
@@ -202,7 +202,7 @@ export default function PaymentScreen() {
           navigation.navigate("Tab");
         }, 2000);
 
-        
+
       }
       else {
         setIsLoading(false)
@@ -216,7 +216,7 @@ export default function PaymentScreen() {
     }
     catch (error) {
       setIsLoading(false)
-        console.error("Error during login:", error);
+      console.error("Error during login:", error);
       Toast.show({
         type: "error",
         text1: "Login Error",
@@ -228,7 +228,7 @@ export default function PaymentScreen() {
 
   return (
     <View style={styles.rootContainer}>
-     <StatusBar style="auto" />
+      <StatusBar style="auto" />
 
       {/* TOP SECTION */}
       <View style={styles.topSection}>
@@ -280,66 +280,69 @@ export default function PaymentScreen() {
           <Text style={styles.sectionTitle}>Complete Event Registration</Text>
 
           {/* Payment Methods */}
-          <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
-          <View style={styles.paymentMethodContainer}>
-            <TouchableOpacity
-              style={[
-                styles.paymentOption,
-                selectedPaymentMethod === "Razorpay" &&
-                styles.paymentOptionSelected,
-              ]}
-              onPress={() => handlePaymentMethodChange("Razorpay")}
-            >
-              <View style={styles.paymentOptionRow}>
+          {grandTotal > 0 && <>
+            <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
+            <View style={styles.paymentMethodContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentOption,
+                  selectedPaymentMethod === "Razorpay" &&
+                  styles.paymentOptionSelected,
+                ]}
+                onPress={() => handlePaymentMethodChange("Razorpay")}
+              >
+                <View style={styles.paymentOptionRow}>
+                  <Ionicons
+                    name="card-outline"
+                    size={24}
+                    color="#000"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.paymentOptionText}>Razorpay</Text>
+                </View>
                 <Ionicons
-                  name="card-outline"
+                  name={
+                    selectedPaymentMethod === "Razorpay"
+                      ? "radio-button-on"
+                      : "radio-button-off"
+                  }
                   size={24}
-                  color="#000"
-                  style={{ marginRight: 8 }}
+                  color={
+                    selectedPaymentMethod === "Razorpay" ? "#E3000F" : "#999"
+                  }
                 />
-                <Text style={styles.paymentOptionText}>Razorpay</Text>
-              </View>
-              <Ionicons
-                name={
-                  selectedPaymentMethod === "Razorpay"
-                    ? "radio-button-on"
-                    : "radio-button-off"
-                }
-                size={24}
-                color={
-                  selectedPaymentMethod === "Razorpay" ? "#E3000F" : "#999"
-                }
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.paymentOption,
-                selectedPaymentMethod === "PayPal" &&
-                styles.paymentOptionSelected,
-              ]}
-              onPress={() => handlePaymentMethodChange("PayPal")}
-            >
-              <View style={styles.paymentOptionRow}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentOption,
+                  selectedPaymentMethod === "PayPal" &&
+                  styles.paymentOptionSelected,
+                ]}
+                onPress={() => handlePaymentMethodChange("PayPal")}
+              >
+                <View style={styles.paymentOptionRow}>
+                  <Ionicons
+                    name="logo-paypal"
+                    size={24}
+                    color="#003087"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.paymentOptionText}>PayPal</Text>
+                </View>
                 <Ionicons
-                  name="logo-paypal"
+                  name={
+                    selectedPaymentMethod === "PayPal"
+                      ? "radio-button-on"
+                      : "radio-button-off"
+                  }
                   size={24}
-                  color="#003087"
-                  style={{ marginRight: 8 }}
+                  color={selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"}
                 />
-                <Text style={styles.paymentOptionText}>PayPal</Text>
-              </View>
-              <Ionicons
-                name={
-                  selectedPaymentMethod === "PayPal"
-                    ? "radio-button-on"
-                    : "radio-button-off"
-                }
-                size={24}
-                color={selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"}
-              />
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+            </View>
+          </>}
+
 
           {/* Tickets Booked */}
           {ticketList.length > 0 && (
@@ -367,11 +370,11 @@ export default function PaymentScreen() {
             </Text>
           </View>
           <TouchableOpacity
-          disabled={isLoading}
+            disabled={isLoading}
             style={styles.makePaymentButton}
             onPress={handleMakePayment}
           >
-            <Text style={styles.makePaymentButtonText}>{isLoading ? "Processing..." : "Make Payment"}</Text>
+            <Text style={styles.makePaymentButtonText}>{isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}</Text>
             <Ionicons
               name="arrow-forward"
               size={20}
