@@ -552,17 +552,23 @@ export default function EventsDetail({ navigation, route }) {
                 : "Free Event"}
             </Text>
 
-          {eventDetail?.StartDate && new Date(eventDetail.StartDate) > Date.now() && (
-            <TouchableOpacity
-              style={styles.buyButton}
-              onPress={() =>
-                navigation.navigate("BuyTicket", { eventDetail: eventDetail })
-              }
-            >
-              <Text style={styles.buyButtonText}>Buy Ticket</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            {eventDetail?.StartDate && new Date(eventDetail.StartDate) > Date.now() && (
+              <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => {
+                  if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+                    Linking.openURL(eventDetail.externalLink);
+                  } else {
+                    navigation.navigate("BuyTicket", { eventDetail: eventDetail });
+                  }
+                }}
+              >
+                <Text style={styles.buyButtonText}>Buy Ticket</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
       </View>
     </View>
   );
