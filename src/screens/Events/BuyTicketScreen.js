@@ -516,10 +516,9 @@ export default function BuyTicketScreen({ route }) {
                         </Text>
                       )}
                     </View>
-                  )}
-
+                  )} 
                   {/* Copy Details Option */}
-                  {index === 0 && (
+                  {index === 0 &&  registrations.length> 1 && (
                     <TouchableOpacity
                       style={styles.copyDetailsButton}
                       onPress={() => {
@@ -537,6 +536,7 @@ export default function BuyTicketScreen({ route }) {
                         )}
                       </View>
                       <Text style={styles.copyDetailsText}>
+                       
                         Copy these details for other tickets
                       </Text>
                     </TouchableOpacity>

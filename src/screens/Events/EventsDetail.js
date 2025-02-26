@@ -13,7 +13,7 @@ import {
   Share,
   Animated,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import RenderHTML from "react-native-render-html";
 import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
@@ -109,7 +109,7 @@ export default function EventsDetail({ navigation, route }) {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
   }, [eventDetail?.EventCatalogue]);
-
+    
   const fetchFileSize = async (url) => {
     try {
       const encodedUrl = encodeURI(url);
@@ -207,8 +207,8 @@ export default function EventsDetail({ navigation, route }) {
       const eventDate =
         eventDetail?.StartDate && eventDetail?.EndDate
           ? `${moment(eventDetail.StartDate).format(
-              "D/M/YY HH:mm"
-            )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
+            "D/M/YY HH:mm"
+          )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
           : "Date not available";
       const shareMessage =
         `🎶 Check out this event!\n\n` +
@@ -329,6 +329,23 @@ export default function EventsDetail({ navigation, route }) {
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
+          {console.log("llllllllll", eventDetail?.EventRegisterDetail?.length)}
+          {eventDetail?.EventRegisterDetail?.length >= eventDetail?.NoOfParticipants ? (
+            <View style={styles.container}>
+              <View style={styles.warningBox}>
+                <FontAwesome name="exclamation-triangle" size={18} color="red" />
+                <Text style={styles.warningText}>Registrations are full!</Text>
+              </View>
+            </View>
+          ) : eventDetail?.EventRegisterDetail?.length > (eventDetail?.NoOfParticipants / 2) ? (
+            <View style={styles.container}>
+              <View style={styles.warningBox}>
+                <FontAwesome name="exclamation-triangle" size={18} color="orange" />
+                <Text style={styles.warningText}>Tickets filling fast!</Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* Artist Info */}
           <View style={styles.artistInfoContainer}>
             <EventImage
@@ -428,7 +445,7 @@ export default function EventsDetail({ navigation, route }) {
           {selectedTab === "Event Catalogue" && (
             <View style={styles.catalogueContainer}>
               {eventDetail?.EventCatalogue &&
-              eventDetail?.EventCatalogue !== "null" ? (
+                eventDetail?.EventCatalogue !== "null" ? (
                 <View style={styles.pdfCard}>
                   <View style={styles.pdfHeader}>
                     <Ionicons
@@ -487,7 +504,7 @@ export default function EventsDetail({ navigation, route }) {
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
               {eventDetail?.GalleryImages &&
-              eventDetail?.GalleryImages.length > 0 ? (
+                eventDetail?.GalleryImages.length > 0 ? (
                 eventDetail.GalleryImages.map((image, index) => (
                   <View key={index} style={styles.galleryItem}>
                     <EventImage
@@ -519,33 +536,39 @@ export default function EventsDetail({ navigation, route }) {
         </ScrollView>
 
         {/* Bottom Bar */}
-        <View style={styles.bottomBar}>
-          <Text style={styles.priceText}>
-            {eventDetail?.eventRates && eventDetail.eventRates.length > 0
-              ? `Start from ${
-                  (eventDetail?.countryDetail &&
-                    eventDetail.countryDetail[0]?.Currency) ||
-                  "$"
+        {eventDetail?.EventRegisterDetail?.length < eventDetail?.NoOfParticipants && (
+          <View style={styles.bottomBar}>
+            {console.log("pppppppppp", eventDetail.hasExternalLink)}
+
+            <Text style={[styles.priceText, eventDetail.hasExternalLink ? { opacity: 0 } : {}]}>
+              {eventDetail?.eventRates && eventDetail.eventRates.length > 0 && eventDetail.IsPaid
+                ? `Start from ${(eventDetail?.countryDetail &&
+                  eventDetail.countryDetail[0]?.Currency) || "$"
                 } ${Math.max(
                   ...eventDetail.eventRates.map(
                     (rate) => rate.ratesForParticipant
                   )
                 )}`
-              : "Free Event"}
-          </Text>
+                : "Free Event"}
+            </Text>
 
-          {eventDetail?.StartDate &&
-            new Date(eventDetail.StartDate) > Date.now() && (
+            {eventDetail?.StartDate && new Date(eventDetail.StartDate) > Date.now() && (
               <TouchableOpacity
                 style={styles.buyButton}
-                onPress={() =>
-                  navigation.navigate("BuyTicket", { eventDetail: eventDetail })
-                }
+                onPress={() => {
+                  if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+                    Linking.openURL(eventDetail.externalLink);
+                  } else {
+                    navigation.navigate("BuyTicket", { eventDetail: eventDetail });
+                  }
+                }}
               >
                 <Text style={styles.buyButtonText}>Buy Ticket</Text>
               </TouchableOpacity>
             )}
-        </View>
+          </View>
+        )}
+
       </View>
     </View>
   );
@@ -555,6 +578,30 @@ const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  container: {
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f694003d',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderColor: "orange",
+    borderWidth: 1,
+    color: "orange"
+  },
+  warningText: {
+    color: 'orange',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   topSection: {
     position: "relative",

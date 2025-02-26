@@ -28,22 +28,21 @@ export const getTickets = async () => {
   }
 };
 
-export const getTicketsByOrderId = async (orderId) => {
+
+
+export const sendEventTicketByOrderId = async (orderId) => {
   try {
-    console.log("orderId,orderId",orderId)
+    
     const response = await axios.post(
-      `${API_BASE_URL}/auth/get/getTicketsByOrderId`,
-      {orderId}
+      `${API_BASE_URL}/auth/send/sendEventTicketByOrderId`,{orderId:orderId}
     );
-    console.log("xxxxxxxxxxxxxxxxxxxxxxxxx",response.data.data.length)
     return response.data;
   } catch (error) {
-    console.error("Error fetching tickets by order id:", error);
+    console.error("Error fetching tickets:", error);
     Toast.show({
       type: "error",
-      text1: "Ticket Details Fetch Error",
-      text2:
-        "Something went wrong while fetching ticket details. Please try again.",
+      text1: "Ticket Fetch Error",
+      text2: "Something went wrong while fetching tickets. Please try again.",
     });
     throw error;
   }
