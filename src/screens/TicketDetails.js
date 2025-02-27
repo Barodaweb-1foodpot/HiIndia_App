@@ -85,17 +85,6 @@ const EventImage = ({ uri, style }) => {
           setLoaded(true);
         }}
       />
-      <LinearGradient
-        colors={[
-          "rgba(0,0,0,0.7)",
-          "rgba(0,0,0,0.3)",
-          "transparent",
-          "rgba(0,0,0,0.4)",
-          "rgba(0,0,0,0.8)",
-        ]}
-        locations={[0, 0.2, 0.5, 0.8, 1]}
-        style={StyleSheet.absoluteFill}
-      />
     </View>
   );
 };

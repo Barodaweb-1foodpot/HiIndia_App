@@ -21,19 +21,19 @@ import {
   handleGoogleSuccess,
   verifyGoogleToken,
 } from "../../api/auth_api";
-// import {
-//   GoogleSignin,
-//   isSuccessResponse,
-//   statusCodes,
-// } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 
 // const {OAuth2Client} = require('google-auth-library');
 // const client = new OAuth2Client();
 
-// GoogleSignin.configure({
-//   webClientId:
-//     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
-// });
+GoogleSignin.configure({
+  webClientId:
+    "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
+});
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
@@ -162,7 +162,7 @@ const LoginScreen = ({ navigation }) => {
                       </View>
                       <TouchableOpacity
                         style={styles.socialButton}
-                        // onPress={handleGoogleSignIn}
+                        onPress={handleGoogleSignIn}
                       >
                         <Image
                           source={require("../../../assets/google.png")}
