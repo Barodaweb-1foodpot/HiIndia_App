@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import RenderHTML from "react-native-render-html";
 import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
 import moment from "moment";
 import * as FileSystem from "expo-file-system";
@@ -25,8 +24,8 @@ import * as WebBrowser from "expo-web-browser";
 
 const { width, height } = Dimensions.get("window");
 
-// Skeleton Loader Component for Images
-const SkeletonLoader = ({ style }) => {
+// Skeleton Loader Component for Images wrapped in React.memo
+const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -34,10 +33,10 @@ const SkeletonLoader = ({ style }) => {
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
-        useNativeDriver: false,
+        useNativeDriver: false, // Only transforms are fully supported by native driver
       })
     ).start();
-  }, []);
+  }, [animation]);
 
   const translateX = animation.interpolate({
     inputRange: [0, 1],
@@ -66,10 +65,10 @@ const SkeletonLoader = ({ style }) => {
       </Animated.View>
     </View>
   );
-};
+});
 
-// Component for handling event images with a skeleton loader until loaded
-const EventImage = ({ uri, style, defaultSource }) => {
+// Component for handling event images with a skeleton loader until loaded, wrapped in React.memo
+const EventImage = React.memo(({ uri, style, defaultSource }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -92,7 +91,7 @@ const EventImage = ({ uri, style, defaultSource }) => {
       />
     </View>
   );
-};
+});
 
 export default function EventsDetail({ navigation, route }) {
   const [readMore, setReadMore] = useState(false);
@@ -109,7 +108,7 @@ export default function EventsDetail({ navigation, route }) {
       fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
     }
   }, [eventDetail?.EventCatalogue]);
-    
+
   const fetchFileSize = async (url) => {
     try {
       const encodedUrl = encodeURI(url);
@@ -119,9 +118,7 @@ export default function EventsDetail({ navigation, route }) {
       }
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(
-          2
-        );
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
         setFileSize(sizeInMB);
       } else {
         console.warn("Content-Length header is missing.");
@@ -133,10 +130,7 @@ export default function EventsDetail({ navigation, route }) {
 
   // Download PDF file
   const downloadPDF = async () => {
-    if (
-      !eventDetail?.EventCatalogue ||
-      eventDetail?.EventCatalogue === "null"
-    ) {
+    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
       return;
     }
 
@@ -154,10 +148,10 @@ export default function EventsDetail({ navigation, route }) {
         encodedPdfUrl,
         fileUri,
         {},
-        (downloadProgress) => {
+        (downloadProgressData) => {
           const progress =
-            downloadProgress.totalBytesWritten /
-            downloadProgress.totalBytesExpectedToWrite;
+            downloadProgressData.totalBytesWritten /
+            downloadProgressData.totalBytesExpectedToWrite;
           setDownloadProgress(progress);
         }
       );
@@ -184,10 +178,7 @@ export default function EventsDetail({ navigation, route }) {
 
   // Preview PDF in browser
   const previewPDF = async () => {
-    if (
-      !eventDetail?.EventCatalogue ||
-      eventDetail?.EventCatalogue === "null"
-    ) {
+    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
       return;
     }
 
@@ -206,9 +197,9 @@ export default function EventsDetail({ navigation, route }) {
     try {
       const eventDate =
         eventDetail?.StartDate && eventDetail?.EndDate
-          ? `${moment(eventDetail.StartDate).format(
-            "D/M/YY HH:mm"
-          )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
+          ? `${moment(eventDetail.StartDate).format("D/M/YY HH:mm")} to ${moment(
+              eventDetail.EndDate
+            ).format("D/M/YY HH:mm")}`
           : "Date not available";
       const shareMessage =
         `🎶 Check out this event!\n\n` +
@@ -233,6 +224,16 @@ export default function EventsDetail({ navigation, route }) {
       console.error("Error sharing gallery image", error);
     }
   };
+
+  // ---------------------------------------------
+  // Calculate TICKETS SOLD and place an indicator
+  // ---------------------------------------------
+  const ticketsSold = eventDetail?.EventRegisterDetail?.length || 0;
+  const totalTickets = eventDetail?.NoOfParticipants || 0;
+  const percentageSold =
+    totalTickets > 0 ? (ticketsSold / totalTickets) * 100 : 0;
+
+  console.log("Tickets sold percentage:", percentageSold);
 
   return (
     <View style={styles.rootContainer}>
@@ -273,9 +274,7 @@ export default function EventsDetail({ navigation, route }) {
             </Text>
 
             {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity
-                onPress={() => setTitleReadMore(!titleReadMore)}
-              >
+              <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
                 <Text style={styles.readMoreText}>
                   {titleReadMore ? "Read Less" : "Read More"}
                 </Text>
@@ -329,19 +328,72 @@ export default function EventsDetail({ navigation, route }) {
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
-          {console.log("llllllllll", eventDetail?.EventRegisterDetail?.length)}
-          {eventDetail?.EventRegisterDetail?.length >= eventDetail?.NoOfParticipants ? (
-            <View style={styles.container}>
-              <View style={styles.warningBox}>
-                <FontAwesome name="exclamation-triangle" size={18} color="red" />
-                <Text style={styles.warningText}>Registrations are full!</Text>
+          {percentageSold >= 100 ? (
+            <View style={styles.ticketIndicatorContainer}>
+              <View
+                style={[
+                  styles.ticketIndicatorBox,
+                  {
+                    backgroundColor: "#fdecea",
+                    borderColor: "#f5c6cb",
+                  },
+                ]}
+              >
+                <FontAwesome
+                  name="exclamation-triangle"
+                  size={18}
+                  color="#721c24"
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={[
+                    styles.ticketIndicatorText,
+                    { color: "#721c24" },
+                  ]}
+                >
+                  Registrations are full!
+                </Text>
               </View>
             </View>
-          ) : eventDetail?.EventRegisterDetail?.length > (eventDetail?.NoOfParticipants / 2) ? (
-            <View style={styles.container}>
-              <View style={styles.warningBox}>
-                <FontAwesome name="exclamation-triangle" size={18} color="orange" />
-                <Text style={styles.warningText}>Tickets filling fast!</Text>
+          ) : percentageSold >= 50 ? (
+            <View style={styles.ticketIndicatorContainer}>
+              <View
+                style={[
+                  styles.ticketIndicatorBox,
+                  {
+                    backgroundColor: "#fff8e1",
+                    borderColor: "#ffecb3",
+                  },
+                ]}
+              >
+                <FontAwesome
+                  name="exclamation-triangle"
+                  size={18}
+                  color="#856404"
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={[
+                    styles.ticketIndicatorText,
+                    { color: "#856404" },
+                  ]}
+                >
+                  Tickets filling fast!
+                </Text>
+              </View>
+              {/* Progress bar with sold percentage */}
+              <View style={styles.progressBarContainer2}>
+                <View style={styles.progressBarBackground2}>
+                  <View
+                    style={[
+                      styles.progressBar2,
+                      { width: `${Math.min(percentageSold, 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressBarLabel}>
+                  {Math.round(percentageSold)}% Sold
+                </Text>
               </View>
             </View>
           ) : null}
@@ -362,7 +414,8 @@ export default function EventsDetail({ navigation, route }) {
                 {eventDetail?.artistName || "Artist Name Unavailable"}
               </Text>
               <Text style={styles.artistDetail}>
-                {eventDetail?.artistDesc || "No artist description available"}
+                {eventDetail?.artistDesc ||
+                  "No artist description available"}
               </Text>
             </View>
           </View>
@@ -445,7 +498,7 @@ export default function EventsDetail({ navigation, route }) {
           {selectedTab === "Event Catalogue" && (
             <View style={styles.catalogueContainer}>
               {eventDetail?.EventCatalogue &&
-                eventDetail?.EventCatalogue !== "null" ? (
+              eventDetail?.EventCatalogue !== "null" ? (
                 <View style={styles.pdfCard}>
                   <View style={styles.pdfHeader}>
                     <Ionicons
@@ -465,7 +518,11 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.pdfActionButton}
                       onPress={previewPDF}
                     >
-                      <Ionicons name="eye-outline" size={18} color="#E3000F" />
+                      <Ionicons
+                        name="eye-outline"
+                        size={18}
+                        color="#E3000F"
+                      />
                       <Text style={styles.pdfActionText}>Preview</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -488,11 +545,7 @@ export default function EventsDetail({ navigation, route }) {
                 </View>
               ) : (
                 <View style={styles.noCatalogueContainer}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={40}
-                    color="#CCC"
-                  />
+                  <Ionicons name="document-text-outline" size={40} color="#CCC" />
                   <Text style={styles.noCatalogueText}>
                     No Catalogue Available
                   </Text>
@@ -503,8 +556,7 @@ export default function EventsDetail({ navigation, route }) {
 
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
-              {eventDetail?.GalleryImages &&
-                eventDetail?.GalleryImages.length > 0 ? (
+              {eventDetail?.GalleryImages && eventDetail?.GalleryImages.length > 0 ? (
                 eventDetail.GalleryImages.map((image, index) => (
                   <View key={index} style={styles.galleryItem}>
                     <EventImage
@@ -515,11 +567,7 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.shareIcon}
                       onPress={() => shareGalleryImage(image)}
                     >
-                      <Ionicons
-                        name="share-social-outline"
-                        size={18}
-                        color="#FFF"
-                      />
+                      <Ionicons name="share-social-outline" size={18} color="#FFF" />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -538,37 +586,45 @@ export default function EventsDetail({ navigation, route }) {
         {/* Bottom Bar */}
         {eventDetail?.EventRegisterDetail?.length < eventDetail?.NoOfParticipants && (
           <View style={styles.bottomBar}>
-            {console.log("pppppppppp", eventDetail.hasExternalLink)}
-
-            <Text style={[styles.priceText, eventDetail.hasExternalLink ? { opacity: 0 } : {}]}>
-              {eventDetail?.eventRates && eventDetail.eventRates.length > 0 && eventDetail.IsPaid
-                ? `Start from ${(eventDetail?.countryDetail &&
-                  eventDetail.countryDetail[0]?.Currency) || "$"
-                } ${Math.max(
-                  ...eventDetail.eventRates.map(
-                    (rate) => rate.ratesForParticipant
-                  )
-                )}`
+            {console.log("External link available?", eventDetail.hasExternalLink)}
+            <Text
+              style={[
+                styles.priceText,
+                eventDetail.hasExternalLink ? { opacity: 0 } : {},
+              ]}
+            >
+              {eventDetail?.eventRates &&
+              eventDetail.eventRates.length > 0 &&
+              eventDetail.IsPaid
+                ? `Start from ${
+                    (eventDetail?.countryDetail &&
+                      eventDetail.countryDetail[0]?.Currency) ||
+                    "$"
+                  } ${Math.max(
+                    ...eventDetail.eventRates.map(
+                      (rate) => rate.ratesForParticipant
+                    )
+                  )}`
                 : "Free Event"}
             </Text>
 
-            {eventDetail?.StartDate && new Date(eventDetail.StartDate) > Date.now() && (
-              <TouchableOpacity
-                style={styles.buyButton}
-                onPress={() => {
-                  if (eventDetail.hasExternalLink && eventDetail.externalLink) {
-                    Linking.openURL(eventDetail.externalLink);
-                  } else {
-                    navigation.navigate("BuyTicket", { eventDetail: eventDetail });
-                  }
-                }}
-              >
-                <Text style={styles.buyButtonText}>Buy Ticket</Text>
-              </TouchableOpacity>
-            )}
+            {eventDetail?.StartDate &&
+              new Date(eventDetail.StartDate) > Date.now() && (
+                <TouchableOpacity
+                  style={styles.buyButton}
+                  onPress={() => {
+                    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+                      Linking.openURL(eventDetail.externalLink);
+                    } else {
+                      navigation.navigate("BuyTicket", { eventDetail: eventDetail });
+                    }
+                  }}
+                >
+                  <Text style={styles.buyButtonText}>Buy Ticket</Text>
+                </TouchableOpacity>
+              )}
           </View>
         )}
-
       </View>
     </View>
   );
@@ -579,28 +635,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
+  // Old container for the old warning messages
   container: {
     padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
+  // Old warning box styles (now commented out usage above)
   warningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f694003d',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f694003d",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderColor: "orange",
     borderWidth: 1,
-    color: "orange"
+    color: "orange",
   },
   warningText: {
-    color: 'orange',
-    fontWeight: 'bold',
+    color: "orange",
+    fontWeight: "bold",
     fontSize: 16,
     marginLeft: 8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   topSection: {
@@ -692,6 +750,47 @@ const styles = StyleSheet.create({
     paddingTop: 70,
     paddingBottom: 20,
   },
+  ticketIndicatorContainer: {
+    marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ticketIndicatorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  ticketIndicatorText: {
+    fontWeight: "bold",
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  progressBarContainer2: {
+    width: "90%",
+    alignItems: "center",
+  },
+  progressBarBackground2: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#ddd",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 4,
+  },
+  progressBar2: {
+    height: "100%",
+    backgroundColor: "#f1a50f",
+    borderRadius: 4,
+  },
+  progressBarLabel: {
+    fontSize: 12,
+    color: "#555",
+    fontFamily: "Poppins-Medium",
+  },
   artistInfoContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -780,7 +879,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
-    alignItems: "center", // Center content vertically
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#EEEEEE",
     shadowColor: "#000",
@@ -830,7 +929,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     marginHorizontal: 6,
-    width: 130, // Fixed width for buttons
+    width: 130,
   },
   pdfActionText: {
     marginLeft: 6,

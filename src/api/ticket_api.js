@@ -3,19 +3,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@env";
 import Toast from "react-native-toast-message";
 
+
 export const getTickets = async () => {
   try {
-    console.log("Fetching role ID from AsyncStorage...");
+    console.log("Attempting to retrieve role ID from AsyncStorage...");
     const id = await AsyncStorage.getItem("role");
     console.log("Retrieved role ID:", id);
-    console.log(
-      "Making GET request to:",
-      `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`
-    );
-    const response = await axios.get(
-      `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`
-    );
-    console.log("Response received:", response.data);
+
+    const url = `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`;
+    console.log("Making GET request to:", url);
+
+    const response = await axios.get(url);
+    console.log("Response data received:", response.data);
+
     return response.data;
   } catch (error) {
     console.error("Error fetching tickets:", error);
@@ -24,51 +24,50 @@ export const getTickets = async () => {
       text1: "Ticket Fetch Error",
       text2: "Something went wrong while fetching tickets. Please try again.",
     });
-    throw error;
+    throw error; 
   }
 };
-
-
 
 export const sendEventTicketByOrderId = async (orderId) => {
   try {
-    
-    const response = await axios.post(
-      `${API_BASE_URL}/auth/send/sendEventTicketByOrderId`,{orderId:orderId}
-    );
+    console.log("Sending ticket for orderId:", orderId);
+
+    const url = `${API_BASE_URL}/auth/send/sendEventTicketByOrderId`;
+    console.log("sendEventTicketByOrderId: Making POST request to:", url);
+
+    const response = await axios.post(url, { orderId });
+    console.log("Response data received:", response.data);
+
     return response.data;
   } catch (error) {
-    console.error("Error fetching tickets:", error);
+    console.error("Error sending event ticket:", error);
     Toast.show({
       type: "error",
       text1: "Ticket Fetch Error",
       text2: "Something went wrong while fetching tickets. Please try again.",
     });
-    throw error;
+    throw error; 
   }
 };
 
-
-
- 
-
 export const getTicketsByOrderId = async (orderId) => {
   try {
-    console.log("orderId,orderId",orderId)
-    const response = await axios.post(
-      `${API_BASE_URL}/auth/get/getTicketsByOrderId`,
-      {orderId}
-    );
-    console.log("xxxxxxxxxxxxxxxxxxxxxxxxx",response.data.data.length)
+    console.log("Received orderId:", orderId);
+
+    const url = `${API_BASE_URL}/auth/get/getTicketsByOrderId`;
+    console.log("getTicketsByOrderId: Making POST request to:", url);
+
+    const response = await axios.post(url, { orderId });
+    console.log("Number of tickets found:", response.data?.data?.length);
+
     return response.data;
   } catch (error) {
-    console.error("Error fetching tickets by order id:", error);
+    console.error("Error fetching tickets by order ID:", error);
     Toast.show({
       type: "error",
       text1: "Ticket Details Fetch Error",
-      text2:
-        "Something went wrong while fetching ticket details. Please try again.",
+      text2: "Something went wrong while fetching ticket details. Please try again.",
     });
-    throw error;
+    throw error; 
   }
 };
