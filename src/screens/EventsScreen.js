@@ -11,6 +11,7 @@ import {
   Platform,
   Share,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
@@ -30,7 +31,7 @@ const SkeletonLoader = ({ style }) => {
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
-        useNativeDriver: false,
+        useNativeDriver: true, 
       })
     ).start();
   }, [animation]);
@@ -73,9 +74,7 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={
-          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
-        }
+        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -119,16 +118,10 @@ const Header = React.memo(({ navigation }) => {
       <View style={styles.headerContent}>
         <Image source={require("../../assets/logo.png")} style={styles.logo} />
         <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.iconCircle}
-            onPress={handleNotificationPress}
-          >
+          <TouchableOpacity style={styles.iconCircle} onPress={handleNotificationPress}>
             <Ionicons name="notifications-outline" size={20} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconCircle}
-            onPress={handleCalenderPress}
-          >
+          <TouchableOpacity style={styles.iconCircle} onPress={handleCalenderPress}>
             <Ionicons name="calendar-outline" size={20} color="#000" />
           </TouchableOpacity>
         </View>
@@ -156,13 +149,7 @@ const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
 
 // --- Dropdown Component ---
 const Dropdown = React.memo(
-  ({
-    dropdownOpen,
-    selectedCategory,
-    category,
-    onToggle,
-    onSelectCategory,
-  }) => (
+  ({ dropdownOpen, selectedCategory, category, onToggle, onSelectCategory }) => (
     <View style={styles.dropdownWrapper}>
       <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
         <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
@@ -172,20 +159,13 @@ const Dropdown = React.memo(
         <View style={styles.dropdownList}>
           {category?.map((cat, index) => (
             <View key={index}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => onSelectCategory(cat)}
-              >
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => onSelectCategory(cat)}>
                 <Text style={styles.dropdownItemText}>{cat.name}</Text>
               </TouchableOpacity>
-              {index < category.length - 1 && (
-                <View style={styles.dropdownSeparator} />
-              )}
+              {index < category.length - 1 && <View style={styles.dropdownSeparator} />}
             </View>
           ))}
-          {category && category.length > 0 && (
-            <View style={styles.dropdownSeparator} />
-          )}
+          {category && category.length > 0 && <View style={styles.dropdownSeparator} />}
           <TouchableOpacity
             style={styles.dropdownItem}
             onPress={() => onSelectCategory({ _id: "All", name: "All" })}
@@ -211,9 +191,7 @@ const CategoryCard = React.memo(({ item, navigation }) => (
     <View style={styles.categoryCard}>
       <EventImage
         uri={
-          item.EventImage
-            ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-            : undefined
+          item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined
         }
         style={styles.categoryCardImage}
       />
@@ -246,11 +224,7 @@ const CategoryCard = React.memo(({ item, navigation }) => (
 const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
   <View style={styles.eventCard}>
     <EventImage
-      uri={
-        item.EventImage
-          ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-          : undefined
-      }
+      uri={item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined}
       style={styles.eventImage}
     />
     <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
@@ -301,6 +275,7 @@ export default function EventsScreen({ navigation }) {
   const [catId, setCatId] = useState("");
   const [firstTime, setFirstTime] = useState(true);
   const [allEvent, setAllEvent] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -319,7 +294,8 @@ export default function EventsScreen({ navigation }) {
   }, [searchText, selectedCategory]);
 
   const fetchEvent = async () => {
-    const res = await fetchEvents(searchText, (categoryFilter = catId));
+    setLoadingEvents(true);
+    const res = await fetchEvents(searchText, catId);
     console.log("Fetched events:", res);
     if (res?.data?.length > 0) {
       if (firstTime) {
@@ -330,6 +306,7 @@ export default function EventsScreen({ navigation }) {
     } else {
       setEvents([]);
     }
+    setLoadingEvents(false);
   };
 
   const fetchCategory = async () => {
@@ -371,18 +348,10 @@ export default function EventsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-        animated
-      />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
       <Header navigation={navigation} />
       <View style={styles.whiteSection}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Search Header */}
           <View style={styles.eventsHeader}>
             <Text style={styles.eventsTitle}>Events</Text>
@@ -395,11 +364,7 @@ export default function EventsScreen({ navigation }) {
               <Ionicons name="search-outline" size={24} color="#000" />
             </TouchableOpacity>
           </View>
-          <SearchBar
-            visible={searchVisible}
-            searchText={searchText}
-            setSearchText={setSearchText}
-          />
+          <SearchBar visible={searchVisible} searchText={searchText} setSearchText={setSearchText} />
           <Dropdown
             dropdownOpen={dropdownOpen}
             selectedCategory={selectedCategory}
@@ -408,28 +373,25 @@ export default function EventsScreen({ navigation }) {
             onSelectCategory={handleSelectCategory}
           />
           {/* Main Events List */}
-          {events.length > 0 && (
+          {loadingEvents ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#000" />
+            </View>
+          ) : events.length > 0 ? (
             <>
               {events.map((item) => (
-                <CategoryCard
-                  key={item._id}
-                  item={item}
-                  navigation={navigation}
-                />
+                <CategoryCard key={item._id} item={item} navigation={navigation} />
               ))}
             </>
+          ) : (
+            <Text style={styles.noEventsText}>No events found.</Text>
           )}
           {/* Other Events Section */}
           {allEvent.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Other events</Text>
               {allEvent.map((item) => (
-                <OtherEventCard
-                  key={item._id}
-                  item={item}
-                  navigation={navigation}
-                  onShare={shareEvent}
-                />
+                <OtherEventCard key={item._id} item={item} navigation={navigation} onShare={shareEvent} />
               ))}
             </>
           )}
@@ -507,10 +469,7 @@ const styles = StyleSheet.create({
     height: 46,
     elevation: 1,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },
@@ -563,10 +522,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     elevation: 4,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     borderWidth: 1,
@@ -635,10 +591,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     elevation: 8,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     height: 200,
@@ -661,10 +614,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
     elevation: 2,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
@@ -716,4 +666,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  loaderContainer: {
+    paddingVertical: 30,
+    alignItems: "center",
+  },
+  noEventsText: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: 16,
+    marginVertical: 20,
+  },
 });
+
+export { EventsScreen };
