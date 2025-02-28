@@ -76,7 +76,9 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -224,7 +226,12 @@ View Ticket: ${shareUrl}
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+        animated={true}
+      />
       {/* Top Banner Section */}
       <View style={styles.topSection}>
         <EventImage uri={eventImageUri} style={styles.eventImage} />
@@ -237,7 +244,11 @@ View Ticket: ${shareUrl}
         {/* Share Button */}
         <View style={styles.shareTopButton}>
           <TouchableOpacity onPress={handleHeaderShare}>
-            <MaterialCommunityIcons name="share-variant" size={24} color="#FFF" />
+            <MaterialCommunityIcons
+              name="share-variant"
+              size={24}
+              color="#FFF"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -251,11 +262,14 @@ View Ticket: ${shareUrl}
         >
           {/* Event Details */}
           <View style={styles.eventDetailsContainer}>
-            <Text style={styles.eventTitle}>{eventDetails?.EventName || ""}</Text>
+            <Text style={styles.eventTitle}>
+              {eventDetails?.EventName || ""}
+            </Text>
             <View style={styles.eventMetaRow}>
               <Ionicons name="calendar-outline" size={18} color="#555" />
               <Text style={styles.eventMetaText}>
-                {formatDate(eventDetails.StartDate)} - {formatDate(eventDetails.EndDate)}
+                {formatDate(eventDetails.StartDate)} -{" "}
+                {formatDate(eventDetails.EndDate)}
               </Text>
             </View>
           </View>
@@ -350,7 +364,9 @@ View Ticket: ${shareUrl}
                         >
                           <Text style={styles.purplePriceText}>
                             {ticket.countryCurrency || "$"}{" "}
-                            {Number(ticket.price || ticket.total || 0).toFixed(2)}
+                            {Number(ticket.price || ticket.total || 0).toFixed(
+                              2
+                            )}
                           </Text>
                         </LinearGradient>
                         <Text style={styles.purplePriceType}>
@@ -378,14 +394,19 @@ View Ticket: ${shareUrl}
                   {couponDiscount !== 0 && (
                     <View style={styles.totalsRow}>
                       <View style={styles.totalsLabelWithIcon}>
-                        <Ionicons name="pricetag-outline" size={16} color="#10B981" />
+                        <Ionicons
+                          name="pricetag-outline"
+                          size={16}
+                          color="#10B981"
+                        />
                         <Text style={styles.couponLabel}>Coupon applied</Text>
                       </View>
                       <Text style={styles.couponValue}>
-                        -${Number(couponDiscount).toFixed(2)}
+                        -${Math.abs(couponDiscount).toFixed(2)}
                       </Text>
                     </View>
                   )}
+
                   {tax > 0 && (
                     <View style={styles.totalsRow}>
                       <Text style={styles.totalsLabel}>Tax</Text>
@@ -405,7 +426,11 @@ View Ticket: ${shareUrl}
                     {paymentMethod && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons name="card-outline" size={18} color="#FFF" />
+                          <Ionicons
+                            name="card-outline"
+                            size={18}
+                            color="#FFF"
+                          />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
@@ -420,7 +445,11 @@ View Ticket: ${shareUrl}
                     {purchaseDate && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons name="time-outline" size={18} color="#FFF" />
+                          <Ionicons
+                            name="time-outline"
+                            size={18}
+                            color="#FFF"
+                          />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
@@ -453,7 +482,10 @@ View Ticket: ${shareUrl}
         onRequestClose={() => toggleQrModal()}
       >
         <BlurView intensity={80} style={styles.modalBlurContainer}>
-          <Pressable style={styles.modalBackdrop} onPress={() => toggleQrModal()} />
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => toggleQrModal()}
+          />
           <View style={styles.modalContent}>
             <LinearGradient
               colors={["#E3000F", "#B0000C"]}
@@ -471,12 +503,18 @@ View Ticket: ${shareUrl}
                 onPress={() => shareTicketDetails(activeTicket)}
                 style={styles.modalShareButton}
               >
-                <MaterialCommunityIcons name="share-variant" size={22} color="#FFF" />
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={22}
+                  color="#FFF"
+                />
               </TouchableOpacity>
             </LinearGradient>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalSubtitle}>{eventDetails?.EventName}</Text>
+              <Text style={styles.modalSubtitle}>
+                {eventDetails?.EventName}
+              </Text>
               <View style={styles.qrWrapper}>
                 <QRCode
                   value={`${API_BASE_URL_UPLOADS}/uploads/QR/${activeTicket?._id}`}
@@ -728,7 +766,7 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "600",
   },
-  
+
   priceTypeContainer: {
     alignItems: "center",
   },
