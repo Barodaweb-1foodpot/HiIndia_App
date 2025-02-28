@@ -123,7 +123,7 @@ const VerifyCode = ({ navigation }) => {
                               styles.pinInput,
                               values.resetPin[index] && styles.pinInputFilled,
                             ]}
-                            keyboardType="numeric"
+                            keyboardType="phone-pad"
                             maxLength={1}
                             value={values.resetPin[index]}
                             onChangeText={(value) => {
@@ -168,7 +168,7 @@ const VerifyCode = ({ navigation }) => {
                               styles.pinInput,
                               values.confirmPin[index] && styles.pinInputFilled,
                             ]}
-                            keyboardType="numeric"
+                            keyboardType="phone-pad"
                             maxLength={1}
                             value={values.confirmPin[index]}
                             onChangeText={(value) => {
