@@ -9,17 +9,91 @@ import {
   StatusBar,
   Platform,
   Dimensions,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from '@env';
+import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ExentRegister } from "../../api/event_api"
+import { ExentRegister } from "../../api/event_api";
 const { width } = Dimensions.get("window");
 import Toast from "react-native-toast-message";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
+
+// --- Skeleton Loader Components ---
+const SkeletonLoader = React.memo(({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, [animation]);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+});
+
+const EventImage = React.memo(({ uri, style, defaultSource }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && (
+        <SkeletonLoader
+          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+        />
+      )}
+      <Image
+        source={
+          uri && !error
+            ? { uri }
+            : defaultSource || require("../../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
+});
+// --- End Skeleton Loader Components ---
 
 const TicketItem = ({ registration, onRemove, index }) => {
   return (
@@ -48,7 +122,6 @@ const TicketItem = ({ registration, onRemove, index }) => {
                 <Text style={styles.ticketName}>
                   {registration.name || "Unnamed"}
                 </Text>
-
               </View>
             </View>
 
@@ -58,15 +131,10 @@ const TicketItem = ({ registration, onRemove, index }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.priceTagText}>{registration.TicketType.TicketType || "Free Event ticket"}</Text>
+              <Text style={styles.priceTagText}>
+                {registration.TicketType.TicketType || "Free Event ticket"}
+              </Text>
             </LinearGradient>
-
-            {/* <TouchableOpacity
-              style={styles.removeTicketButton}
-              onPress={() => onRemove(index)}
-            >
-              <Ionicons name="close-circle" size={24} color="#666" />
-            </TouchableOpacity> */}
           </View>
         </View>
       </LinearGradient>
@@ -78,13 +146,19 @@ export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const [titleReadMore, setTitleReadMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { registrations = [], grandTotal, eventDetail, appliedCoupon } = route.params || {};
+  const { registrations = [], grandTotal, eventDetail, appliedCoupon } =
+    route.params || {};
 
-  const [ticketList, setTicketList] = useState(registrations);
+  // Deserialize registrations so that dateOfBirth is a Date object again
+  const deserializedRegistrations = registrations.map((reg) => ({
+    ...reg,
+    dateOfBirth: reg.dateOfBirth ? new Date(reg.dateOfBirth) : null,
+  }));
+
+  const [ticketList, setTicketList] = useState(deserializedRegistrations);
   const [paymentTotal, setPaymentTotal] = useState(grandTotal);
-
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState("Razorpay");
 
@@ -113,67 +187,60 @@ export default function PaymentScreen() {
   };
 
   const handleMakePayment = () => {
-
     console.log("Making Payment with:", selectedPaymentMethod);
-    handleRegister()
+    handleRegister();
   };
 
   const handleRegister = async () => {
     try {
-      const userId = await AsyncStorage.getItem("role")
-      setIsLoading(true)
-      // console.log("aaaaaaaaaaaa", ticketList)
+      const userId = await AsyncStorage.getItem("role");
+      setIsLoading(true);
       const formattedParticipants = ticketList.map((participant) => {
         const sessionTotal = (participant.sessionName || []).reduce(
           (sum, session) => sum + Number(session.rate || 0),
           0
         );
-
         let ticketCategory = "Participant";
-
-
         return {
           byParticipant: userId || null,
           name: participant.name,
           dob: participant.dateOfBirth,
           eventName: eventDetail._id,
           age: participant.age,
-          sessionName: (participant.sessionName || []).map(session => session.value),
+          sessionName: (participant.sessionName || []).map(
+            (session) => session.value
+          ),
           ticketCategory,
           country: eventDetail.countryDetail[0]._id,
-          TicketType: participant.TicketType._id, // Extract the correct value
+          TicketType: participant.TicketType._id,
           isActive: true,
-          registrationCharge: participant.registrationCharge
+          registrationCharge: participant.registrationCharge,
         };
       });
       const payload = {
         couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
         byParticipant: userId,
-        eventName: eventDetail._id, // Replace with actual event ID
-        country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
+        eventName: eventDetail._id,
+        country: eventDetail.countryDetail[0]._id,
         participants: formattedParticipants,
-        afterDiscountTotal: grandTotal
+        afterDiscountTotal: grandTotal,
       };
 
-
-      const response = await ExentRegister(payload)
-      console.log("-----------------------------", response)
+      const response = await ExentRegister(payload);
+      console.log("-----------------------------", response);
       if (response.isOk) {
-        await handlesendMial(response.data[0].orderId)
-
-      }
-      else {
-        setIsLoading(false)
+        await handlesendMial(response.data[0].orderId);
+      } else {
+        setIsLoading(false);
         Toast.show({
           type: "error",
-          text1: res.message || "Someting Went Wrong",
+          text1: response.message || "Something Went Wrong",
           position: "top",
           visibilityTime: 2000,
         });
       }
-    }
-    catch (error) {
-      setIsLoading(false)
+    } catch (error) {
+      setIsLoading(false);
       console.error("Error during login:", error);
       Toast.show({
         type: "error",
@@ -182,16 +249,14 @@ export default function PaymentScreen() {
       });
       throw new Error(error);
     }
-
-  }
-
+  };
 
   const handlesendMial = async (orderId) => {
     try {
-      const response = await sendEventTicketByOrderId(orderId)
-      console.log("-----------------------------", response)
-      if (response.isOk || response.status===200) {
-        setIsLoading(false)
+      const response = await sendEventTicketByOrderId(orderId);
+      console.log("-----------------------------", response);
+      if (response.isOk || response.status === 200) {
+        setIsLoading(false);
         Toast.show({
           type: "success",
           text1: response.message,
@@ -201,21 +266,17 @@ export default function PaymentScreen() {
         setTimeout(() => {
           navigation.navigate("Tab");
         }, 2000);
-
-
-      }
-      else {
-        setIsLoading(false)
+      } else {
+        setIsLoading(false);
         Toast.show({
           type: "error",
-          text1: "Something went wrong send the mail",
+          text1: "Something went wrong sending the mail",
           position: "top",
           visibilityTime: 2000,
         });
       }
-    }
-    catch (error) {
-      setIsLoading(false)
+    } catch (error) {
+      setIsLoading(false);
       console.error("Error during login:", error);
       Toast.show({
         type: "error",
@@ -224,7 +285,7 @@ export default function PaymentScreen() {
       });
       throw new Error(error);
     }
-  }
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -238,17 +299,22 @@ export default function PaymentScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
-        <Image
-          source={{
-            uri: eventDetail?.EventImage
-              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}` : require('../../../assets/placeholder.jpg')
-          }}
+        {/* Use EventImage with skeleton loader for the top image */}
+        <EventImage
+          uri={
+            eventDetail?.EventImage
+              ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+              : undefined
+          }
           style={styles.topImage}
-          resizeMode="cover"
+          defaultSource={require("../../../assets/placeholder.jpg")}
         />
 
         <View style={styles.headerCard}>
-          <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+          <Text
+            style={styles.headerCardTitle}
+            numberOfLines={titleReadMore ? undefined : 2}
+          >
             Register for {eventDetail?.EventName}
           </Text>
           <View style={styles.headerCardRow}>
@@ -261,12 +327,13 @@ export default function PaymentScreen() {
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.headerCardSubtitle}>
               {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
-
             </Text>
           </View>
           <View style={styles.headerCardRow}>
             <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>{formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}</Text>
+            <Text style={styles.headerCardSubtitle}>
+              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+            </Text>
           </View>
         </View>
       </View>
@@ -277,72 +344,79 @@ export default function PaymentScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionTitle}>Complete Event Registration</Text>
+          <Text style={styles.sectionTitle}>
+            Complete Event Registration
+          </Text>
 
           {/* Payment Methods */}
-          {grandTotal > 0 && <>
-            <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
-            <View style={styles.paymentMethodContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  selectedPaymentMethod === "Razorpay" &&
-                  styles.paymentOptionSelected,
-                ]}
-                onPress={() => handlePaymentMethodChange("Razorpay")}
-              >
-                <View style={styles.paymentOptionRow}>
+          {grandTotal > 0 && (
+            <>
+              <Text style={styles.paymentMethodTitle}>
+                Select Payment Method
+              </Text>
+              <View style={styles.paymentMethodContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    selectedPaymentMethod === "Razorpay" &&
+                      styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => handlePaymentMethodChange("Razorpay")}
+                >
+                  <View style={styles.paymentOptionRow}>
+                    <Ionicons
+                      name="card-outline"
+                      size={24}
+                      color="#000"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.paymentOptionText}>Razorpay</Text>
+                  </View>
                   <Ionicons
-                    name="card-outline"
+                    name={
+                      selectedPaymentMethod === "Razorpay"
+                        ? "radio-button-on"
+                        : "radio-button-off"
+                    }
                     size={24}
-                    color="#000"
-                    style={{ marginRight: 8 }}
+                    color={
+                      selectedPaymentMethod === "Razorpay" ? "#E3000F" : "#999"
+                    }
                   />
-                  <Text style={styles.paymentOptionText}>Razorpay</Text>
-                </View>
-                <Ionicons
-                  name={
-                    selectedPaymentMethod === "Razorpay"
-                      ? "radio-button-on"
-                      : "radio-button-off"
-                  }
-                  size={24}
-                  color={
-                    selectedPaymentMethod === "Razorpay" ? "#E3000F" : "#999"
-                  }
-                />
-              </TouchableOpacity>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  selectedPaymentMethod === "PayPal" &&
-                  styles.paymentOptionSelected,
-                ]}
-                onPress={() => handlePaymentMethodChange("PayPal")}
-              >
-                <View style={styles.paymentOptionRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    selectedPaymentMethod === "PayPal" &&
+                      styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => handlePaymentMethodChange("PayPal")}
+                >
+                  <View style={styles.paymentOptionRow}>
+                    <Ionicons
+                      name="logo-paypal"
+                      size={24}
+                      color="#003087"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.paymentOptionText}>PayPal</Text>
+                  </View>
                   <Ionicons
-                    name="logo-paypal"
+                    name={
+                      selectedPaymentMethod === "PayPal"
+                        ? "radio-button-on"
+                        : "radio-button-off"
+                    }
                     size={24}
-                    color="#003087"
-                    style={{ marginRight: 8 }}
+                    color={
+                      selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"
+                    }
                   />
-                  <Text style={styles.paymentOptionText}>PayPal</Text>
-                </View>
-                <Ionicons
-                  name={
-                    selectedPaymentMethod === "PayPal"
-                      ? "radio-button-on"
-                      : "radio-button-off"
-                  }
-                  size={24}
-                  color={selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"}
-                />
-              </TouchableOpacity>
-            </View>
-          </>}
-
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           {/* Tickets Booked */}
           {ticketList.length > 0 && (
@@ -365,16 +439,16 @@ export default function PaymentScreen() {
         {/* BOTTOM BAR */}
         <View style={styles.bottomBar}>
           <View style={styles.totalSection}>
-            <Text style={styles.grandTotalText}>
-              Grand Total: ${grandTotal}
-            </Text>
+            <Text style={styles.grandTotalText}>Grand Total: ${grandTotal}</Text>
           </View>
           <TouchableOpacity
             disabled={isLoading}
             style={styles.makePaymentButton}
             onPress={handleMakePayment}
           >
-            <Text style={styles.makePaymentButtonText}>{isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}</Text>
+            <Text style={styles.makePaymentButtonText}>
+              {isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}
+            </Text>
             <Ionicons
               name="arrow-forward"
               size={20}
@@ -393,7 +467,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -451,7 +524,6 @@ const styles = StyleSheet.create({
     color: "#666",
     marginLeft: 6,
   },
-
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFF",
@@ -469,7 +541,6 @@ const styles = StyleSheet.create({
     color: "#222",
     marginBottom: 16,
   },
-
   paymentMethodTitle: {
     fontSize: 16,
     fontWeight: "600",
@@ -505,14 +576,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#000",
   },
-
   ticketsBookedTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#222",
     marginBottom: 12,
   },
-
   ticketItemContainer: {
     marginBottom: 16,
     borderRadius: 16,
@@ -535,7 +604,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-
   ticketRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -564,14 +632,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  iconGradient: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   ticketDetails: {
     flexDirection: "column",
   },
@@ -581,16 +641,10 @@ const styles = StyleSheet.create({
     color: "#222",
     marginBottom: 4,
   },
-  ticketNumber: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-  },
   removeTicketButton: {
     padding: 4,
     marginLeft: 8,
   },
-
   priceTag: {
     paddingHorizontal: 7,
     paddingVertical: 8,
@@ -604,7 +658,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#E3000F",
   },
-
   bottomBar: {
     position: "absolute",
     bottom: 0,

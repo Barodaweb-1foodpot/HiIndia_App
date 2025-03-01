@@ -74,7 +74,15 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
 
   return (
     <View style={style}>
-      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      {!loaded && (
+        <SkeletonLoader
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
+        />
+      )}
+
       <Image
         source={
           uri && !error
@@ -118,7 +126,9 @@ export default function EventsDetail({ navigation, route }) {
       }
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(
+          2
+        );
         setFileSize(sizeInMB);
       } else {
         console.warn("Content-Length header is missing.");
@@ -130,7 +140,10 @@ export default function EventsDetail({ navigation, route }) {
 
   // Download PDF file
   const downloadPDF = async () => {
-    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
+    if (
+      !eventDetail?.EventCatalogue ||
+      eventDetail?.EventCatalogue === "null"
+    ) {
       return;
     }
 
@@ -178,7 +191,10 @@ export default function EventsDetail({ navigation, route }) {
 
   // Preview PDF in browser
   const previewPDF = async () => {
-    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
+    if (
+      !eventDetail?.EventCatalogue ||
+      eventDetail?.EventCatalogue === "null"
+    ) {
       return;
     }
 
@@ -197,9 +213,9 @@ export default function EventsDetail({ navigation, route }) {
     try {
       const eventDate =
         eventDetail?.StartDate && eventDetail?.EndDate
-          ? `${moment(eventDetail.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              eventDetail.EndDate
-            ).format("D/M/YY HH:mm")}`
+          ? `${moment(eventDetail.StartDate).format(
+              "D/M/YY HH:mm"
+            )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
           : "Date not available";
       const shareMessage =
         `🎶 Check out this event!\n\n` +
@@ -274,7 +290,9 @@ export default function EventsDetail({ navigation, route }) {
             </Text>
 
             {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
+              <TouchableOpacity
+                onPress={() => setTitleReadMore(!titleReadMore)}
+              >
                 <Text style={styles.readMoreText}>
                   {titleReadMore ? "Read Less" : "Read More"}
                 </Text>
@@ -346,10 +364,7 @@ export default function EventsDetail({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text
-                  style={[
-                    styles.ticketIndicatorText,
-                    { color: "#721c24" },
-                  ]}
+                  style={[styles.ticketIndicatorText, { color: "#721c24" }]}
                 >
                   Registrations are full!
                 </Text>
@@ -373,10 +388,7 @@ export default function EventsDetail({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text
-                  style={[
-                    styles.ticketIndicatorText,
-                    { color: "#856404" },
-                  ]}
+                  style={[styles.ticketIndicatorText, { color: "#856404" }]}
                 >
                   Tickets filling fast!
                 </Text>
@@ -414,8 +426,7 @@ export default function EventsDetail({ navigation, route }) {
                 {eventDetail?.artistName || "Artist Name Unavailable"}
               </Text>
               <Text style={styles.artistDetail}>
-                {eventDetail?.artistDesc ||
-                  "No artist description available"}
+                {eventDetail?.artistDesc || "No artist description available"}
               </Text>
             </View>
           </View>
@@ -518,11 +529,7 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.pdfActionButton}
                       onPress={previewPDF}
                     >
-                      <Ionicons
-                        name="eye-outline"
-                        size={18}
-                        color="#E3000F"
-                      />
+                      <Ionicons name="eye-outline" size={18} color="#E3000F" />
                       <Text style={styles.pdfActionText}>Preview</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -545,7 +552,11 @@ export default function EventsDetail({ navigation, route }) {
                 </View>
               ) : (
                 <View style={styles.noCatalogueContainer}>
-                  <Ionicons name="document-text-outline" size={40} color="#CCC" />
+                  <Ionicons
+                    name="document-text-outline"
+                    size={40}
+                    color="#CCC"
+                  />
                   <Text style={styles.noCatalogueText}>
                     No Catalogue Available
                   </Text>
@@ -556,7 +567,8 @@ export default function EventsDetail({ navigation, route }) {
 
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
-              {eventDetail?.GalleryImages && eventDetail?.GalleryImages.length > 0 ? (
+              {eventDetail?.GalleryImages &&
+              eventDetail?.GalleryImages.length > 0 ? (
                 eventDetail.GalleryImages.map((image, index) => (
                   <View key={index} style={styles.galleryItem}>
                     <EventImage
@@ -567,7 +579,11 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.shareIcon}
                       onPress={() => shareGalleryImage(image)}
                     >
-                      <Ionicons name="share-social-outline" size={18} color="#FFF" />
+                      <Ionicons
+                        name="share-social-outline"
+                        size={18}
+                        color="#FFF"
+                      />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -584,9 +600,13 @@ export default function EventsDetail({ navigation, route }) {
         </ScrollView>
 
         {/* Bottom Bar */}
-        {eventDetail?.EventRegisterDetail?.length < eventDetail?.NoOfParticipants && (
+        {eventDetail?.EventRegisterDetail?.length <
+          eventDetail?.NoOfParticipants && (
           <View style={styles.bottomBar}>
-            {console.log("External link available?", eventDetail.hasExternalLink)}
+            {console.log(
+              "External link available?",
+              eventDetail.hasExternalLink
+            )}
             <Text
               style={[
                 styles.priceText,
@@ -613,10 +633,15 @@ export default function EventsDetail({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.buyButton}
                   onPress={() => {
-                    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+                    if (
+                      eventDetail.hasExternalLink &&
+                      eventDetail.externalLink
+                    ) {
                       Linking.openURL(eventDetail.externalLink);
                     } else {
-                      navigation.navigate("BuyTicket", { eventDetail: eventDetail });
+                      navigation.navigate("BuyTicket", {
+                        eventDetail: eventDetail,
+                      });
                     }
                   }}
                 >

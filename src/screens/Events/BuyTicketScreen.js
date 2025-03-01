@@ -11,7 +11,9 @@ import {
   TextInput,
   Platform,
   Modal,
+  Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -29,6 +31,75 @@ const calculateAgeFromDate = (dobDate) => {
     age--;
   }
   return String(age);
+};
+
+// Skeleton Loader Component
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, []);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// EventImage Component that uses SkeletonLoader
+const EventImage = ({ uri, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      <Image
+        source={
+          uri && !error
+            ? { uri }
+            : require("../../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
 };
 
 export default function BuyTicketScreen({ route }) {
@@ -223,12 +294,18 @@ export default function BuyTicketScreen({ route }) {
       return;
     }
 
+    const serializedRegistrations = registrations.map((reg) => ({
+      ...reg,
+      dateOfBirth: reg.dateOfBirth ? reg.dateOfBirth.toISOString() : null,
+    }));
+    
     navigation.navigate("PaymentScreen", {
-      registrations,
+      registrations: serializedRegistrations,
       grandTotal,
       eventDetail,
       appliedCoupon,
     });
+    
   };
 
   return (
@@ -245,15 +322,14 @@ export default function BuyTicketScreen({ route }) {
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
 
-        {/* Main Image */}
-        <Image
-          source={{
-            uri: eventDetail?.EventImage
+        {/* Main Image with Skeleton Loader */}
+        <EventImage
+          uri={
+            eventDetail?.EventImage
               ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
-              : require("../../../assets/placeholder.jpg"),
-          }}
+              : null
+          }
           style={styles.topImage}
-          resizeMode="cover"
         />
 
         {/* Bridging Card */}
@@ -516,9 +592,9 @@ export default function BuyTicketScreen({ route }) {
                         </Text>
                       )}
                     </View>
-                  )} 
+                  )}
                   {/* Copy Details Option */}
-                  {index === 0 &&  registrations.length> 1 && (
+                  {index === 0 && registrations.length > 1 && (
                     <TouchableOpacity
                       style={styles.copyDetailsButton}
                       onPress={() => {
@@ -536,7 +612,6 @@ export default function BuyTicketScreen({ route }) {
                         )}
                       </View>
                       <Text style={styles.copyDetailsText}>
-                       
                         Copy these details for other tickets
                       </Text>
                     </TouchableOpacity>
