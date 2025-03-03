@@ -22,6 +22,10 @@ const { width } = Dimensions.get("window");
 import Toast from "react-native-toast-message";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
 
+// Import FontAwesomeIcon and the Stripe icon
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faStripe } from "@fortawesome/free-brands-svg-icons";
+
 // --- Skeleton Loader Components ---
 const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
@@ -162,8 +166,8 @@ export default function PaymentScreen() {
 
   const [ticketList, setTicketList] = useState(deserializedRegistrations);
   const [paymentTotal, setPaymentTotal] = useState(grandTotal);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState("Razorpay");
+  // Set default payment method to Stripe
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
 
   useEffect(() => {
     recalcTotal();
@@ -244,10 +248,10 @@ export default function PaymentScreen() {
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error during login:", error);
+      console.error("Error during registration:", error);
       Toast.show({
         type: "error",
-        text1: "Login Error",
+        text1: "Registration Error",
         text2: "Something went wrong. Please try again.",
       });
       throw new Error(error);
@@ -280,10 +284,10 @@ export default function PaymentScreen() {
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error during login:", error);
+      console.error("Error during sending mail:", error);
       Toast.show({
         type: "error",
-        text1: "Login Error",
+        text1: "Mail Error",
         text2: "Something went wrong. Please try again.",
       });
       throw new Error(error);
@@ -326,12 +330,13 @@ export default function PaymentScreen() {
               {eventDetail?.EventLocation}
             </Text>
           </View>
-          {/* UPDATED: Using formatEventDateTime to display unified date/time */}
           <View style={styles.headerCardRow}>
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Date/Time not available"}
+              {formatEventDateTime(
+                eventDetail?.StartDate,
+                eventDetail?.EndDate
+              ) || "Date/Time not available"}
             </Text>
           </View>
         </View>
@@ -357,34 +362,33 @@ export default function PaymentScreen() {
                 <TouchableOpacity
                   style={[
                     styles.paymentOption,
-                    selectedPaymentMethod === "Razorpay" &&
+                    selectedPaymentMethod === "Stripe" &&
                       styles.paymentOptionSelected,
                   ]}
-                  onPress={() => handlePaymentMethodChange("Razorpay")}
+                  onPress={() => handlePaymentMethodChange("Stripe")}
                 >
                   <View style={styles.paymentOptionRow}>
-                    <Ionicons
-                      name="card-outline"
+                    <FontAwesomeIcon
+                      icon={faStripe}
                       size={24}
-                      color="#000"
                       style={{ marginRight: 8 }}
                     />
-                    <Text style={styles.paymentOptionText}>Razorpay</Text>
+                    <Text style={styles.paymentOptionText}>Stripe</Text>
                   </View>
                   <Ionicons
                     name={
-                      selectedPaymentMethod === "Razorpay"
+                      selectedPaymentMethod === "Stripe"
                         ? "radio-button-on"
                         : "radio-button-off"
                     }
                     size={24}
                     color={
-                      selectedPaymentMethod === "Razorpay" ? "#E3000F" : "#999"
+                      selectedPaymentMethod === "Stripe" ? "#E3000F" : "#999"
                     }
                   />
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[
                     styles.paymentOption,
                     selectedPaymentMethod === "PayPal" &&
@@ -412,7 +416,7 @@ export default function PaymentScreen() {
                       selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"
                     }
                   />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
             </>
           )}
@@ -446,7 +450,11 @@ export default function PaymentScreen() {
             onPress={handleMakePayment}
           >
             <Text style={styles.makePaymentButtonText}>
-              {isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}
+              {isLoading
+                ? "Processing..."
+                : grandTotal > 0
+                ? "Make Payment"
+                : "Proceed"}
             </Text>
             <Ionicons
               name="arrow-forward"
