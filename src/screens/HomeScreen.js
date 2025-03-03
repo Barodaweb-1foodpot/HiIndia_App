@@ -11,6 +11,7 @@ import {
   Platform,
   Share,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
@@ -19,6 +20,7 @@ import { API_BASE_URL_UPLOADS } from "@env";
 import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import { formatEventDateTime } from "../helper/helper_Function";
 
 // Wrapper for blur effect (iOS uses BlurView; Android gets a fallback background)
 const BlurWrapper = ({ style, children }) => {
@@ -109,6 +111,11 @@ export default function HomeScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("All");
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Caching states for each tab when there is no active search query
+  const [allEvents, setAllEvents] = useState([]);
+  const [pastEvents, setPastEvents] = useState([]);
 
   // Configure status bar when the screen is focused
   useFocusEffect(
@@ -119,27 +126,46 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  // Fetch events and active events when search text changes
+  // Fetch events when activeTab or searchText changes
   useEffect(() => {
+    // If no search is active, use cached events if available.
+    if (searchText === "") {
+      if (activeTab === "All" && allEvents.length > 0) {
+        setEvents(allEvents);
+        return;
+      }
+      if (activeTab === "Past" && pastEvents.length > 0) {
+        setEvents(pastEvents);
+        return;
+      }
+    }
     fetchEvent();
-    fetchActiveEvent();
-  }, [searchText]);
+  }, [activeTab, searchText]);
 
-  // Re-fetch events when the active tab changes
+  // Fetch active events for the Event Hub once on mount.
   useEffect(() => {
-    setEvents([]);
-    fetchEvent();
-  }, [activeTab]);
+    fetchActiveEvent();
+  }, []);
 
   // Fetch events based on search text and active tab
   const fetchEvent = async () => {
+    setLoading(true);
     const res = await fetchEvents(searchText, "All", activeTab);
     console.log("Fetched events:", res);
     if (res && res.data && res.data.length > 0) {
+      // Cache the results if no search query is active
+      if (searchText === "") {
+        if (activeTab === "All") {
+          setAllEvents(res.data);
+        } else if (activeTab === "Past") {
+          setPastEvents(res.data);
+        }
+      }
       setEvents(res.data);
     } else {
       setEvents([]);
     }
+    setLoading(false);
   };
 
   // Fetch active events for the Event Hub section
@@ -275,76 +301,83 @@ export default function HomeScreen({ navigation }) {
 
           {/* Event Cards */}
           <View style={styles.section}>
-            {events.map((event, index) => {
-              const eventImageUri = event.EventImage
-                ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
-                : null;
-              const eventDate =
-                event.StartDate && event.EndDate
-                  ? `${moment(event.StartDate).format(
-                      "D/M/YY HH:mm"
-                    )} to ${moment(event.EndDate).format("D/M/YY HH:mm")}`
-                  : "Date not available";
-
-              return (
-                <View key={index} style={styles.eventCard}>
-                  <EventImage uri={eventImageUri} style={styles.eventImage} />
-                  <TouchableOpacity
-                    style={styles.shareButton}
-                    onPress={() => shareEvent(event)}
-                  >
-                    <Ionicons
-                      name="share-social-outline"
-                      size={20}
-                      color="#000"
-                    />
-                  </TouchableOpacity>
-                  <BlurWrapper style={styles.eventContent}>
-                    <View style={styles.eventDetailsColumn}>
-                      <Text style={styles.eventTitle} numberOfLines={1}>
-                        {event.EventName}
-                      </Text>
-                      <View style={styles.dflex}>
-                        <View style={styles.eventDetail}>
-                          <Text
-                            style={styles.eventDetailText}
-                            numberOfLines={2}
-                          >
-                            <Ionicons
-                              name="location-outline"
-                              size={14}
-                              color="#fff"
-                            />{" "}
-                            {event.EventLocation}
-                          </Text>
-                          <Text style={styles.eventDetailText}>
-                            <Ionicons
-                              name="calendar-outline"
-                              size={14}
-                              color="#fff"
-                            />{" "}
-                            {eventDate}
-                          </Text>
-                        </View>
-                        <View style={styles.registerContainer}>
-                          <TouchableOpacity
-                            style={styles.registerButton}
-                            onPress={() =>
-                              navigation.navigate("App", {
-                                screen: "EventsDetail",
-                                params: { eventDetail: event },
-                              })
-                            }
-                          >
-                            <Text style={styles.registerText}>Register</Text>
-                          </TouchableOpacity>
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color="#000"
+                style={styles.loader}
+              />
+            ) : activeTab === "Past" && events.length === 0 ? (
+              <Text style={styles.noEventsText}>No past events</Text>
+            ) : (
+              events.map((event, index) => {
+                const eventImageUri = event.EventImage
+                  ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+                  : null;
+                const eventDate = formatEventDateTime(
+                  event.StartDate,
+                  event.EndDate
+                );
+                return (
+                  <View key={index} style={styles.eventCard}>
+                    <EventImage uri={eventImageUri} style={styles.eventImage} />
+                    <TouchableOpacity
+                      style={styles.shareButton}
+                      onPress={() => shareEvent(event)}
+                    >
+                      <Ionicons
+                        name="share-social-outline"
+                        size={20}
+                        color="#000"
+                      />
+                    </TouchableOpacity>
+                    <BlurWrapper style={styles.eventContent}>
+                      <View style={styles.eventDetailsColumn}>
+                        <Text style={styles.eventTitle} numberOfLines={1}>
+                          {event.EventName}
+                        </Text>
+                        <View style={styles.dflex}>
+                          <View style={styles.eventDetail}>
+                            <Text
+                              style={styles.eventDetailText}
+                              numberOfLines={2}
+                            >
+                              <Ionicons
+                                name="location-outline"
+                                size={14}
+                                color="#fff"
+                              />{" "}
+                              {event.EventLocation}
+                            </Text>
+                            <Text style={styles.eventDetailText}>
+                              <Ionicons
+                                name="calendar-outline"
+                                size={14}
+                                color="#fff"
+                              />{" "}
+                              {eventDate}
+                            </Text>
+                          </View>
+                          <View style={styles.registerContainer}>
+                            <TouchableOpacity
+                              style={styles.registerButton}
+                              onPress={() =>
+                                navigation.navigate("App", {
+                                  screen: "EventsDetail",
+                                  params: { eventDetail: event },
+                                })
+                              }
+                            >
+                              <Text style={styles.registerText}>Register</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  </BlurWrapper>
-                </View>
-              );
-            })}
+                    </BlurWrapper>
+                  </View>
+                );
+              })
+            )}
           </View>
 
           {/* Event Hub Section (visible only in "All" tab) */}
@@ -360,12 +393,10 @@ export default function HomeScreen({ navigation }) {
                   const eventImageUri =
                     item.EventImage &&
                     `${API_BASE_URL_UPLOADS}/${item.EventImage}`;
-                  const eventDate =
-                    item.StartDate && item.EndDate
-                      ? `${moment(item.StartDate).format(
-                          "D/M/YY HH:mm"
-                        )} to ${moment(item.EndDate).format("D/M/YY HH:mm")}`
-                      : "Date not available";
+                  const eventDate = formatEventDateTime(
+                    item.StartDate,
+                    item.EndDate
+                  );
                   return (
                     <TouchableOpacity
                       key={index}
@@ -527,7 +558,6 @@ const styles = StyleSheet.create({
     color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
   },
-
   section: {
     marginBottom: 16,
   },
@@ -717,5 +747,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "500",
     color: "#666",
+  },
+  noEventsText: {
+    textAlign: "center",
+    color: "#000",
+    marginTop: 20,
+    fontSize: 16,
+  },
+  loader: {
+    marginVertical: 20,
   },
 });

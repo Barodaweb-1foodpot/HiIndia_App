@@ -24,7 +24,7 @@ export default function CalendarScreen({ navigation }) {
     const fetchData = async () => {
       try {
         // Fetch events with pageNo=1, perPage=1000, no search query, category "All", filterDate "All"
-        const res = await fetchEvents( "", "All", "All");
+        const res = await fetchEvents("", "All", "All");
         const eventsArray = res.data || [];
         const groupedEvents = {};
 
@@ -183,7 +183,12 @@ export default function CalendarScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       <BlurView intensity={80} tint="light" style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

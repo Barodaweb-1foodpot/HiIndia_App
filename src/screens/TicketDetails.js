@@ -21,6 +21,7 @@ import QRCode from "react-native-qrcode-svg";
 import { getTicketsByOrderId } from "../api/ticket_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { BlurView } from "expo-blur";
+import { formatEventDateTime } from "../helper/helper_Function";
 
 const { width } = Dimensions.get("window");
 
@@ -76,9 +77,7 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={
-          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
-        }
+        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -135,13 +134,6 @@ export default function TicketDetailsScreen({ route, navigation }) {
     }
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const options = { year: "numeric", month: "short", day: "numeric" };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
   // Toggle QR modal
   const toggleQrModal = (ticket = null) => {
     if (qrModalVisible) {
@@ -168,7 +160,8 @@ export default function TicketDetailsScreen({ route, navigation }) {
 
     const shareMessage = `
 Event: ${eventDetails.EventName}
-Date: ${formatDate(eventDetails.StartDate)} - ${formatDate(
+Date: ${formatEventDateTime(
+      eventDetails.StartDate,
       eventDetails.EndDate
     )}
 
@@ -195,7 +188,8 @@ Attendee: ${ticket.name || "Guest"}
 Ticket Type: ${ticket.TicketType?.TicketType || ticket.type || "Standard"}
 
 Event: ${eventDetails.EventName}
-Date: ${formatDate(eventDetails.StartDate)} - ${formatDate(
+Date: ${formatEventDateTime(
+      eventDetails.StartDate,
       eventDetails.EndDate
     )}
 
@@ -268,8 +262,10 @@ View Ticket: ${shareUrl}
             <View style={styles.eventMetaRow}>
               <Ionicons name="calendar-outline" size={18} color="#555" />
               <Text style={styles.eventMetaText}>
-                {formatDate(eventDetails.StartDate)} -{" "}
-                {formatDate(eventDetails.EndDate)}
+                {formatEventDateTime(
+                  eventDetails.StartDate,
+                  eventDetails.EndDate
+                )}
               </Text>
             </View>
           </View>
@@ -364,9 +360,7 @@ View Ticket: ${shareUrl}
                         >
                           <Text style={styles.purplePriceText}>
                             {ticket.countryCurrency || "$"}{" "}
-                            {Number(ticket.price || ticket.total || 0).toFixed(
-                              2
-                            )}
+                            {Number(ticket.price || ticket.total || 0).toFixed(2)}
                           </Text>
                         </LinearGradient>
                         <Text style={styles.purplePriceType}>
@@ -426,11 +420,7 @@ View Ticket: ${shareUrl}
                     {paymentMethod && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons
-                            name="card-outline"
-                            size={18}
-                            color="#FFF"
-                          />
+                          <Ionicons name="card-outline" size={18} color="#FFF" />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
@@ -445,18 +435,14 @@ View Ticket: ${shareUrl}
                     {purchaseDate && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons
-                            name="time-outline"
-                            size={18}
-                            color="#FFF"
-                          />
+                          <Ionicons name="time-outline" size={18} color="#FFF" />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
                             Purchase Date
                           </Text>
                           <Text style={styles.paymentMetaValue}>
-                            {formatDate(purchaseDate)}
+                            {formatEventDateTime(purchaseDate, purchaseDate)}
                           </Text>
                         </View>
                       </View>
@@ -482,10 +468,7 @@ View Ticket: ${shareUrl}
         onRequestClose={() => toggleQrModal()}
       >
         <BlurView intensity={80} style={styles.modalBlurContainer}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => toggleQrModal()}
-          />
+          <Pressable style={styles.modalBackdrop} onPress={() => toggleQrModal()} />
           <View style={styles.modalContent}>
             <LinearGradient
               colors={["#E3000F", "#B0000C"]}
@@ -534,7 +517,10 @@ View Ticket: ${shareUrl}
                 <View style={styles.modalInfoItem}>
                   <Ionicons name="calendar-outline" size={18} color="#666" />
                   <Text style={styles.modalInfoText}>
-                    {formatDate(eventDetails?.StartDate)}
+                    {formatEventDateTime(
+                      eventDetails.StartDate,
+                      eventDetails.EndDate
+                    )}
                   </Text>
                 </View>
               </View>
@@ -766,7 +752,6 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "600",
   },
-
   priceTypeContainer: {
     alignItems: "center",
   },

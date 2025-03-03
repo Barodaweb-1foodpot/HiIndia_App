@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
+import { formatEventDateTime } from "../../helper/helper_Function";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ExentRegister } from "../../api/event_api";
 const { width } = Dimensions.get("window");
@@ -73,7 +73,10 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
     <View style={style}>
       {!loaded && (
         <SkeletonLoader
-          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
         />
       )}
       <Image
@@ -323,16 +326,12 @@ export default function PaymentScreen() {
               {eventDetail?.EventLocation}
             </Text>
           </View>
+          {/* UPDATED: Using formatEventDateTime to display unified date/time */}
           <View style={styles.headerCardRow}>
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.headerCardSubtitle}>
-              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate)}
-            </Text>
-          </View>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate)}
+              {formatEventDateTime(eventDetail?.StartDate, eventDetail?.EndDate) ||
+                "Date/Time not available"}
             </Text>
           </View>
         </View>

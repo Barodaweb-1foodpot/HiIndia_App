@@ -47,7 +47,7 @@ const LoginScreen = ({ navigation }) => {
     setLoginEmail(values.email);
     navigation.navigate("LoginPin");
   };
-  // Google Sign-In using @react-native-google-signin/google-signin
+  
   // const handleGoogleSignIn = async () => {
   //   try {
   //     await GoogleSignin.hasPlayServices();

@@ -17,7 +17,8 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
 import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatDateRange } from "../helper/helper_Function";
+// UPDATED: Import the unified date/time helper function
+import { formatEventDateTime } from "../helper/helper_Function";
 import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -190,17 +191,16 @@ const CategoryCard = React.memo(({ item, navigation }) => (
   >
     <View style={styles.categoryCard}>
       <EventImage
-        uri={
-          item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined
-        }
+        uri={item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined}
         style={styles.categoryCardImage}
       />
       <View style={styles.categoryCardContent}>
         <Text style={styles.categoryCardTitle} numberOfLines={1}>
           {item.EventName}
         </Text>
+        {/* UPDATED: Use unified date & time helper function */}
         <Text style={styles.categoryCardDate}>
-          {formatDateRange(item.StartDate, item.EndDate)}
+          {formatEventDateTime(item.StartDate, item.EndDate)}
         </Text>
         <View style={styles.categoryLocationContainer}>
           <Ionicons name="location-outline" size={12} color="#666" />
@@ -243,8 +243,9 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
         </View>
         <View style={styles.eventDetail}>
           <Ionicons name="calendar-outline" size={14} color="#fff" />
+          {/* UPDATED: Use unified date & time helper function */}
           <Text style={styles.eventDetailText}>
-            {formatDateRange(item.StartDate, item.EndDate)}
+            {formatEventDateTime(item.StartDate, item.EndDate)}
           </Text>
         </View>
       </View>
@@ -319,12 +320,7 @@ export default function EventsScreen({ navigation }) {
 
   const shareEvent = useCallback(async (event) => {
     try {
-      const eventDate =
-        event.StartDate && event.EndDate
-          ? `${moment(event.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              event.EndDate
-            ).format("D/M/YY HH:mm")}`
-          : "Date not available";
+      const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
       const eventImageUri = event.EventImage
         ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
         : null;
@@ -402,6 +398,16 @@ export default function EventsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  loaderContainer: {
+    paddingVertical: 30,
+    alignItems: "center",
+  },
+  noEventsText: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: 16,
+    marginVertical: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: "#000",
@@ -589,7 +595,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 16,
     backgroundColor: "#fff",
-    elevation: 8,
+    elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,

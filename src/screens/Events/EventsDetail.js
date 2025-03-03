@@ -15,8 +15,8 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
-import moment from "moment";
+import { formatEventDateTime } from "../../helper/helper_Function"; // <-- Using formatEventDateTime
+import moment from "moment"; // (kept if you still need it elsewhere)
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { LinearGradient } from "expo-linear-gradient";
@@ -82,7 +82,6 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
           ]}
         />
       )}
-
       <Image
         source={
           uri && !error
@@ -211,12 +210,11 @@ export default function EventsDetail({ navigation, route }) {
   // Share the entire event details
   const shareEvent = async () => {
     try {
-      const eventDate =
-        eventDetail?.StartDate && eventDetail?.EndDate
-          ? `${moment(eventDetail.StartDate).format(
-              "D/M/YY HH:mm"
-            )} to ${moment(eventDetail.EndDate).format("D/M/YY HH:mm")}`
-          : "Date not available";
+      // Use formatEventDateTime for date/time
+      const eventDate = formatEventDateTime(
+        eventDetail?.StartDate,
+        eventDetail?.EndDate
+      );
       const shareMessage =
         `🎶 Check out this event!\n\n` +
         `Event: ${eventDetail?.EventName}\n` +
@@ -241,9 +239,6 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // ---------------------------------------------
-  // Calculate TICKETS SOLD and place an indicator
-  // ---------------------------------------------
   const ticketsSold = eventDetail?.EventRegisterDetail?.length || 0;
   const totalTickets = eventDetail?.NoOfParticipants || 0;
   const percentageSold =
@@ -311,7 +306,8 @@ export default function EventsDetail({ navigation, route }) {
               {eventDetail?.EventLocation || "Location Unavailable"}
             </Text>
           </View>
-          {/* Date row */}
+
+          {/* Single row for date/time via formatEventDateTime */}
           <View style={styles.headerCardRow}>
             <Ionicons
               name="calendar-outline"
@@ -320,21 +316,10 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Date not available"}
-            </Text>
-          </View>
-          {/* Time row */}
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="time-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Time not available"}
+              {formatEventDateTime(
+                eventDetail?.StartDate,
+                eventDetail?.EndDate
+              ) || "Date/Time not available"}
             </Text>
           </View>
         </View>
@@ -411,24 +396,28 @@ export default function EventsDetail({ navigation, route }) {
           ) : null}
 
           {/* Artist Info */}
+          {/* 
+              IMAGE + NAME on the same row, 
+              with details below 
+          */}
           <View style={styles.artistInfoContainer}>
-            <EventImage
-              uri={
-                eventDetail?.EventImage
-                  ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
-                  : undefined
-              }
-              style={styles.artistImage}
-              defaultSource={require("../../../assets/placeholder.jpg")}
-            />
-            <View style={styles.artistTextContainer}>
+            <View style={styles.artistNameRow}>
+              <EventImage
+                uri={
+                  eventDetail?.EventImage
+                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+                    : undefined
+                }
+                style={styles.artistImage}
+                defaultSource={require("../../../assets/placeholder.jpg")}
+              />
               <Text style={styles.artistName}>
                 {eventDetail?.artistName || "Artist Name Unavailable"}
               </Text>
-              <Text style={styles.artistDetail}>
-                {eventDetail?.artistDesc || "No artist description available"}
-              </Text>
             </View>
+            <Text style={styles.artistDetail}>
+              {eventDetail?.artistDesc || "No artist description available"}
+            </Text>
           </View>
 
           {/* Description */}
@@ -817,30 +806,31 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
   },
   artistInfoContainer: {
+    marginBottom: 20,
+  },
+  artistNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 4,
   },
   artistImage: {
     width: 48,
     height: 48,
     borderRadius: 24,
     resizeMode: "cover",
-  },
-  artistTextContainer: {
-    marginLeft: 12,
+    marginRight: 12,
   },
   artistName: {
     fontSize: 16,
     fontFamily: "Poppins-Bold",
     color: "#000000",
-    marginBottom: 4,
   },
   artistDetail: {
     fontSize: 12,
-    paddingRight: 30,
     fontFamily: "Poppins-Regular",
     color: "#666666",
+    textAlign: "justify",
+    marginTop: 6,
   },
   sectionContainer: {
     marginBottom: 20,
@@ -856,6 +846,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#666666",
     lineHeight: 20,
+    textAlign: "justify",
   },
   readMoreText: {
     fontSize: 14,

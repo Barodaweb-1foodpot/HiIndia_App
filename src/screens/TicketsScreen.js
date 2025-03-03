@@ -13,7 +13,7 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { getTickets } from "../api/ticket_api";
-import { formatDateRange, formatTimeRange } from "../helper/helper_Function";
+import { formatEventDateTime } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -123,17 +123,7 @@ export default function TicketScreen({ navigation }) {
           id: order._id,
           countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
-          date:
-            order.event?.StartDate && order.event?.EndDate &&
-            new Date(order.event.StartDate).toDateString() === new Date(order.event.EndDate).toDateString()
-              ? new Date(order.event.StartDate).toLocaleDateString("en-US", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                }) +
-                " | " +
-                formatTimeRange(order.event.StartDate, order.event.EndDate)
-              : formatDateRange(order.event?.StartDate, order.event?.EndDate) || "Date Not Available",
+          date: formatEventDateTime(order.event?.StartDate, order.event?.EndDate),
           endDate: order.event?.EndDate, // used for filtering Past vs Upcoming
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
@@ -729,5 +719,4 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
   },
 });
-
 export { TicketScreen };
