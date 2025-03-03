@@ -204,7 +204,7 @@ export default function ProfileScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
           </View>
-          <Text style={styles.menuText}>Help</Text>
+          <Text style={styles.menuText}>Help and support</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </TouchableOpacity>
