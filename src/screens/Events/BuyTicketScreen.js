@@ -11,12 +11,14 @@ import {
   TextInput,
   Platform,
   Modal,
+  Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
+import { formatEventDateTime } from "../../helper/helper_Function"; 
 
 const { width } = Dimensions.get("window");
 
@@ -29,6 +31,75 @@ const calculateAgeFromDate = (dobDate) => {
     age--;
   }
   return String(age);
+};
+
+// Skeleton Loader Component
+const SkeletonLoader = ({ style }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, []);
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
+  return (
+    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+      <Animated.View
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: [{ translateX }],
+        }}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255, 255, 255, 0)",
+            "rgba(255, 255, 255, 0.5)",
+            "rgba(255, 255, 255, 0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// EventImage Component that uses SkeletonLoader
+const EventImage = ({ uri, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      <Image
+        source={
+          uri && !error
+            ? { uri }
+            : require("../../../assets/placeholder.jpg")
+        }
+        style={[style, loaded ? {} : { opacity: 0 }]}
+        resizeMode="cover"
+        onLoadEnd={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
 };
 
 export default function BuyTicketScreen({ route }) {
@@ -112,12 +183,10 @@ export default function BuyTicketScreen({ route }) {
     const newRegs = [...registrations];
     newRegs.splice(index, 1);
     setRegistrations(newRegs);
-    // console.log(newRegs.length,appliedCoupon.minParticipant)
     if (appliedCoupon && newRegs.length < appliedCoupon.minParticipant) {
       setAppliedCoupon(null);
       calculateGrandTotal(true);
     }
-    // checkCouponAvaibility(newRegs, )
   };
 
   const showDatePicker = (regIndex) => {
@@ -152,9 +221,11 @@ export default function BuyTicketScreen({ route }) {
     setShowTicketModal(false);
     setActiveRegIndexTicket(null);
   };
+
   useEffect(() => {
     toggleCopyDetails();
   }, [sameTicketInfo]);
+
   const toggleCopyDetails = (index) => {
     if (sameTicketInfo === true) {
       setRegistrations((prevParticipants) => {
@@ -172,7 +243,7 @@ export default function BuyTicketScreen({ route }) {
             registrationCharge:
               Number(prevParticipants[0].registrationCharge) || 0,
             TicketType: firstParticipantTicketType,
-            name: firstParticipantName, // Copy the first participant's sessionName
+            name: firstParticipantName,
           };
         });
       });
@@ -186,7 +257,6 @@ export default function BuyTicketScreen({ route }) {
       coupon.maxDiscountAmount
     );
     const newTotal = grandTotal - discount;
-    console.log("disc", discount);
     setAppliedCoupon(coupon);
     setGrandTotal(newTotal);
     setShowCouponsModal(false);
@@ -223,8 +293,13 @@ export default function BuyTicketScreen({ route }) {
       return;
     }
 
+    const serializedRegistrations = registrations.map((reg) => ({
+      ...reg,
+      dateOfBirth: reg.dateOfBirth ? reg.dateOfBirth.toISOString() : null,
+    }));
+
     navigation.navigate("PaymentScreen", {
-      registrations,
+      registrations: serializedRegistrations,
       grandTotal,
       eventDetail,
       appliedCoupon,
@@ -245,15 +320,14 @@ export default function BuyTicketScreen({ route }) {
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
 
-        {/* Main Image */}
-        <Image
-          source={{
-            uri: eventDetail?.EventImage
+        {/* Main Image with Skeleton Loader */}
+        <EventImage
+          uri={
+            eventDetail?.EventImage
               ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
-              : require("../../../assets/placeholder.jpg"),
-          }}
+              : null
+          }
           style={styles.topImage}
-          resizeMode="cover"
         />
 
         {/* Bridging Card */}
@@ -283,6 +357,8 @@ export default function BuyTicketScreen({ route }) {
               {eventDetail?.EventLocation || "Location Unavailable"}
             </Text>
           </View>
+
+          {/* Single call to formatEventDateTime for date/time */}
           <View style={styles.headerCardRow}>
             <Ionicons
               name="calendar-outline"
@@ -291,20 +367,10 @@ export default function BuyTicketScreen({ route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Date not available"}
-            </Text>
-          </View>
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="time-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Time not available"}
+              {formatEventDateTime(
+                eventDetail?.StartDate,
+                eventDetail?.EndDate
+              ) || "Date/Time not available"}
             </Text>
           </View>
         </View>
@@ -363,11 +429,10 @@ export default function BuyTicketScreen({ route }) {
           {/* Registration Cards */}
           {hasClickedNext &&
             registrations?.map((reg, index) => {
-              // Check if current fields are invalid
               const nameInvalid = showValidation && !reg.name.trim();
               const dobInvalid = showValidation && !reg.dobString.trim();
               const ticketTypeInvalid = showValidation && !reg.TicketType;
-              console.log("xxxxxxxxxxxxxxx", reg);
+
               return (
                 <View key={index} style={styles.registrationCard}>
                   <View style={styles.registrationHeader}>
@@ -379,7 +444,6 @@ export default function BuyTicketScreen({ route }) {
                         style={styles.cancelButton}
                         onPress={() => {
                           handleCancelRegistration(index);
-                          // checkCouponAvaibility()
                         }}
                       >
                         <Ionicons
@@ -451,7 +515,7 @@ export default function BuyTicketScreen({ route }) {
                     )}
                   </View>
 
-                  {/* Age (read-only, not required) */}
+                  {/* Age (read-only) */}
                   <View style={styles.inputGroup}>
                     <View style={styles.boxInputContainer}>
                       <Ionicons
@@ -468,6 +532,7 @@ export default function BuyTicketScreen({ route }) {
                       />
                     </View>
                   </View>
+
                   {/* Ticket Selection */}
                   {eventDetail.IsPaid && (
                     <View style={styles.ticketSection}>
@@ -497,7 +562,6 @@ export default function BuyTicketScreen({ route }) {
                               : "Select Ticket"}
                           </Text>
 
-                          {/* Only show price if a ticket is selected */}
                           {reg?.TicketType?.TicketType ? (
                             <Text style={styles.ticketPrice}>
                               {eventDetail.countryDetail[0]?.Currency}{" "}
@@ -516,9 +580,10 @@ export default function BuyTicketScreen({ route }) {
                         </Text>
                       )}
                     </View>
-                  )} 
+                  )}
+
                   {/* Copy Details Option */}
-                  {index === 0 &&  registrations.length> 1 && (
+                  {index === 0 && registrations.length > 1 && (
                     <TouchableOpacity
                       style={styles.copyDetailsButton}
                       onPress={() => {
@@ -536,7 +601,6 @@ export default function BuyTicketScreen({ route }) {
                         )}
                       </View>
                       <Text style={styles.copyDetailsText}>
-                       
                         Copy these details for other tickets
                       </Text>
                     </TouchableOpacity>
@@ -557,6 +621,7 @@ export default function BuyTicketScreen({ route }) {
               </Text>
             </TouchableOpacity>
           )}
+
           {eventDetail.couponCode?.length > 0 && hasClickedNext && (
             <View style={styles.couponsSection}>
               {appliedCoupon ? (
@@ -596,11 +661,9 @@ export default function BuyTicketScreen({ route }) {
             </View>
           )}
 
-          {/* Coupons Section */}
-
-          {/* Bottom Spacing */}
           <View style={{ height: 100 }} />
         </ScrollView>
+
         {/* Bottom Bar */}
         {hasClickedNext && (
           <View style={styles.bottomBar}>
@@ -625,6 +688,7 @@ export default function BuyTicketScreen({ route }) {
             </TouchableOpacity>
           </View>
         )}
+
         {/* Ticket Type Modal */}
         <Modal visible={showTicketModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
@@ -665,6 +729,7 @@ export default function BuyTicketScreen({ route }) {
             </View>
           </View>
         </Modal>
+
         {/* Coupons Modal */}
         <Modal visible={showCouponsModal} transparent animationType="slide">
           <View style={styles.couponModalOverlay}>
@@ -734,6 +799,7 @@ export default function BuyTicketScreen({ route }) {
             </View>
           </View>
         </Modal>
+
         {/* Date Picker Modal */}
         <DateTimePickerModal
           isVisible={isDatePickerVisible}
@@ -767,7 +833,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 15,
+    top: Platform.OS === "ios" ? 50 : 25,
     left: 16,
     zIndex: 10,
     width: 34,
@@ -833,6 +899,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: "#555",
     marginBottom: 24,
+    textAlign: "justify",
   },
   readMore: {
     color: "#E3000F",
@@ -955,14 +1022,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E9ECEF",
   },
-  ticketInfo: {
-    flex: 1,
+  ticketOption: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  selectedTicketType: {
+  ticketLabel: {
     fontSize: 15,
     fontWeight: "600",
     color: "#222",
-    marginBottom: 4,
   },
   ticketPrice: {
     fontSize: 14,

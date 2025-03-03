@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
   StatusBar,
@@ -15,20 +14,15 @@ import {
 } from "react-native";
 import { Formik } from "formik";
 import * as Yup from "yup";
+
+import Toast from "react-native-toast-message";
 import { useAuthContext } from "../../context/AuthContext";
-import {
-  handleGoogleLogin,
-  handleGoogleSuccess,
-  verifyGoogleToken,
-} from "../../api/auth_api";
 // import {
 //   GoogleSignin,
-//   isSuccessResponse,
 //   statusCodes,
 // } from "@react-native-google-signin/google-signin";
 
-// const {OAuth2Client} = require('google-auth-library');
-// const client = new OAuth2Client();
+// import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
 
 // GoogleSignin.configure({
 //   webClientId:
@@ -53,28 +47,53 @@ const LoginScreen = ({ navigation }) => {
     setLoginEmail(values.email);
     navigation.navigate("LoginPin");
   };
+  
+  // const handleGoogleSignIn = async () => {
+  //   try {
+  //     await GoogleSignin.hasPlayServices();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      console.log("Google Sign-In response:", response);
-      if (isSuccessResponse(response)) {
-        const res = await verifyGoogleToken(response.data.idToken);
-        console.log("Google token verification result:", res);
-        if (res === true) {
-          navigation.navigate("Tab");
-        }
-      } else {
-        Toast.show({
-          type: "info",
-          text1: "Something went wrong. Try again later.",
-        });
-      }
-    } catch (error) {
-      console.log("Error during Google Sign-In:", error);
-    }
-  };
+  //     const userInfo = await GoogleSignin.signIn();
+  //     console.log("Google Sign-In userInfo:", userInfo);
+
+  //     if (userInfo?.type === "success") {
+  //       const idToken = userInfo?.data?.idToken;
+  //       if (!idToken) {
+  //         Toast.show({
+  //           type: "info",
+  //           text1: "Something went wrong. Try again later.",
+  //         });
+  //         return;
+  //       }
+
+  //       //  idToken to backend to verify
+  //       const verificationResult = await verifyGoogleToken(idToken);
+  //       console.log("Google token verification result:", verificationResult);
+
+  //       if (verificationResult === true) {
+  //         navigation.navigate("Tab");
+  //       }
+  //     } else {
+  //       Toast.show({
+  //         type: "info",
+  //         text1: "Something went wrong. Try again later.",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+  //       Toast.show({
+  //         type: "error",
+  //         text1: "Google Play Services not available or outdated",
+  //       });
+  //     } else {
+  //       console.log("Error during Google Sign-In:", error);
+  //       Toast.show({
+  //         type: "error",
+  //         text1: "Google Sign-In Error",
+  //         text2: error.message,
+  //       });
+  //     }
+  //   }
+  // };
 
   return (
     <View style={styles.rootContainer}>
@@ -102,6 +121,7 @@ const LoginScreen = ({ navigation }) => {
                 </Text>
               </View>
             </View>
+
             <View style={styles.whiteContainer}>
               <View style={styles.contentContainer}>
                 <Formik
@@ -136,6 +156,7 @@ const LoginScreen = ({ navigation }) => {
                           <Text style={styles.errorText}>{errors.email}</Text>
                         )}
                       </View>
+
                       <TouchableOpacity
                         style={styles.loginButton}
                         onPress={handleSubmit}
@@ -143,6 +164,7 @@ const LoginScreen = ({ navigation }) => {
                       >
                         <Text style={styles.loginButtonText}>Log in</Text>
                       </TouchableOpacity>
+
                       <View style={styles.createAccountContainer}>
                         <Text style={styles.greyText}>
                           Don't have an account?{" "}
@@ -155,11 +177,13 @@ const LoginScreen = ({ navigation }) => {
                           </Text>
                         </TouchableOpacity>
                       </View>
+
                       <View style={styles.dividerContainer}>
                         <View style={styles.divider} />
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
                       </View>
+
                       <TouchableOpacity
                         style={styles.socialButton}
                         // onPress={handleGoogleSignIn}
@@ -172,6 +196,7 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Google
                         </Text>
                       </TouchableOpacity>
+
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
                           By continuing, you agree to our{" "}
@@ -218,7 +243,11 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     height: 180,
   },
-  logo: { width: "100%", height: 60, marginTop: 10 },
+  logo: {
+    width: "100%",
+    height: 60,
+    marginTop: 10,
+  },
   headerCard: {
     position: "absolute",
     bottom: -40,
@@ -264,7 +293,9 @@ const styles = StyleSheet.create({
     color: "#000000",
     marginBottom: 8,
   },
-  requiredAsterisk: { color: "#FF0000" },
+  requiredAsterisk: {
+    color: "#FF0000",
+  },
   input: {
     height: 48,
     borderWidth: 1,
@@ -303,7 +334,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 24,
   },
-  greyText: { fontSize: 14, fontFamily: "Poppins-Regular", color: "#666666" },
+  greyText: {
+    fontSize: 14,
+    fontFamily: "Poppins-Regular",
+    color: "#666666",
+  },
   createAccountText: {
     fontSize: 14,
     fontFamily: "Poppins-Medium",
@@ -314,7 +349,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  divider: { flex: 1, height: 1, backgroundColor: "#E0E0E0" },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E0E0E0",
+  },
   dividerText: {
     paddingHorizontal: 16,
     fontSize: 14,
@@ -332,7 +371,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "#FFFFFF",
   },
-  socialIcon: { width: 20, height: 20, marginRight: 12 },
+  socialIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
   socialButtonText: {
     flex: 1,
     textAlign: "center",
@@ -341,7 +384,9 @@ const styles = StyleSheet.create({
     color: "#000000",
     marginRight: 32,
   },
-  termsContainer: { marginBottom: 24 },
+  termsContainer: {
+    marginBottom: 24,
+  },
   termsText: {
     textAlign: "center",
     fontSize: 10,
@@ -349,7 +394,10 @@ const styles = StyleSheet.create({
     color: "#666666",
     lineHeight: 18,
   },
-  linkText: { color: "#FF0000", textDecorationLine: "underline" },
+  linkText: {
+    color: "#FF0000",
+    textDecorationLine: "underline",
+  },
 });
 
 export default LoginScreen;

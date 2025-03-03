@@ -143,7 +143,7 @@ const VerifyOtp = ({ navigation }) => {
                               styles.otpInput,
                               values.otp[index] && styles.otpInputFilled,
                             ]}
-                            keyboardType="numeric"
+                            keyboardType="phone-pad"
                             maxLength={1}
                             value={values.otp[index]}
                             onChangeText={(val) => {

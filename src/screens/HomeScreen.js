@@ -11,6 +11,7 @@ import {
   Platform,
   Share,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
@@ -19,8 +20,8 @@ import { API_BASE_URL_UPLOADS } from "@env";
 import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import { formatEventDateTime } from "../helper/helper_Function";
 
-// Wrapper for blur effect (iOS uses BlurView; Android gets a fallback background)
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -36,7 +37,6 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
-// Skeleton Loader Component for Images
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -79,7 +79,6 @@ const SkeletonLoader = ({ style }) => {
   );
 };
 
-// Component for handling event images with a skeleton loader until loaded
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -109,8 +108,10 @@ export default function HomeScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("All");
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [allEvents, setAllEvents] = useState([]);
+  const [pastEvents, setPastEvents] = useState([]);
 
-  // Configure status bar when the screen is focused
   useFocusEffect(
     React.useCallback(() => {
       StatusBar.setHidden(false);
@@ -119,30 +120,45 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  // Fetch events and active events when search text changes
   useEffect(() => {
+   
+    if (searchText === "") {
+      if (activeTab === "All" && allEvents.length > 0) {
+        setEvents(allEvents);
+        return;
+      }
+      if (activeTab === "Past" && pastEvents.length > 0) {
+        setEvents(pastEvents);
+        return;
+      }
+    }
     fetchEvent();
+  }, [activeTab, searchText]);
+
+  useEffect(() => {
     fetchActiveEvent();
-  }, [searchText]);
+  }, []);
 
-  // Re-fetch events when the active tab changes
-  useEffect(() => {
-    setEvents([]);
-    fetchEvent();
-  }, [activeTab]);
-
-  // Fetch events based on search text and active tab
   const fetchEvent = async () => {
+    setLoading(true);
     const res = await fetchEvents(searchText, "All", activeTab);
     console.log("Fetched events:", res);
     if (res && res.data && res.data.length > 0) {
+     
+      if (searchText === "") {
+        if (activeTab === "All") {
+          setAllEvents(res.data);
+        } else if (activeTab === "Past") {
+          setPastEvents(res.data);
+        }
+      }
       setEvents(res.data);
     } else {
       setEvents([]);
     }
+    setLoading(false);
   };
 
-  // Fetch active events for the Event Hub section
   const fetchActiveEvent = async () => {
     const res = await listActiveEvents();
     if (res && res.data && res.data.length > 0) {
@@ -150,15 +166,9 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Share event details using the device's share functionality
   const shareEvent = async (event) => {
     try {
-      const eventDate =
-        event.StartDate && event.EndDate
-          ? `${moment(event.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              event.EndDate
-            ).format("D/M/YY HH:mm")}`
-          : "Date not available";
+      const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
       const eventImageUri = event.EventImage
         ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
         : null;
@@ -275,76 +285,72 @@ export default function HomeScreen({ navigation }) {
 
           {/* Event Cards */}
           <View style={styles.section}>
-            {events.map((event, index) => {
-              const eventImageUri = event.EventImage
-                ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
-                : null;
-              const eventDate =
-                event.StartDate && event.EndDate
-                  ? `${moment(event.StartDate).format(
-                      "D/M/YY HH:mm"
-                    )} to ${moment(event.EndDate).format("D/M/YY HH:mm")}`
-                  : "Date not available";
-
-              return (
-                <View key={index} style={styles.eventCard}>
-                  <EventImage uri={eventImageUri} style={styles.eventImage} />
-                  <TouchableOpacity
-                    style={styles.shareButton}
-                    onPress={() => shareEvent(event)}
-                  >
-                    <Ionicons
-                      name="share-social-outline"
-                      size={20}
-                      color="#000"
-                    />
-                  </TouchableOpacity>
-                  <BlurWrapper style={styles.eventContent}>
-                    <View style={styles.eventDetailsColumn}>
-                      <Text style={styles.eventTitle} numberOfLines={1}>
-                        {event.EventName}
-                      </Text>
-                      <View style={styles.dflex}>
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color="#000"
+                style={styles.loader}
+              />
+            ) : activeTab === "Past" && events.length === 0 ? (
+              <Text style={styles.noEventsText}>No past events</Text>
+            ) : (
+              events.map((event, index) => {
+                const eventImageUri = event.EventImage
+                  ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+                  : null;
+                const eventDate = formatEventDateTime(
+                  event.StartDate,
+                  event.EndDate
+                );
+                return (
+                  <View key={index} style={styles.eventCard}>
+                    <EventImage uri={eventImageUri} style={styles.eventImage} />
+                    <TouchableOpacity
+                      style={styles.shareButton}
+                      onPress={() => shareEvent(event)}
+                    >
+                      <Ionicons
+                        name="share-social-outline"
+                        size={20}
+                        color="#000"
+                      />
+                    </TouchableOpacity>
+                    <BlurWrapper style={styles.eventContent}>
+                      <View style={styles.eventDetailsColumn}>
+                        <Text style={styles.eventTitle} numberOfLines={1}>
+                          {event.EventName}
+                        </Text>
                         <View style={styles.eventDetail}>
-                          <Text
-                            style={styles.eventDetailText}
-                            numberOfLines={2}
-                          >
-                            <Ionicons
-                              name="location-outline"
-                              size={14}
-                              color="#fff"
-                            />{" "}
+                          <Ionicons name="location-outline" size={14} color="#fff" />
+                          <Text style={styles.eventDetailText} numberOfLines={2}>
                             {event.EventLocation}
                           </Text>
+                        </View>
+                        <View style={styles.eventDetail}>
+                          <Ionicons name="calendar-outline" size={14} color="#fff" />
                           <Text style={styles.eventDetailText}>
-                            <Ionicons
-                              name="calendar-outline"
-                              size={14}
-                              color="#fff"
-                            />{" "}
                             {eventDate}
                           </Text>
                         </View>
-                        <View style={styles.registerContainer}>
-                          <TouchableOpacity
-                            style={styles.registerButton}
-                            onPress={() =>
-                              navigation.navigate("App", {
-                                screen: "EventsDetail",
-                                params: { eventDetail: event },
-                              })
-                            }
-                          >
-                            <Text style={styles.registerText}>Register</Text>
-                          </TouchableOpacity>
-                        </View>
                       </View>
-                    </View>
-                  </BlurWrapper>
-                </View>
-              );
-            })}
+                      <View style={styles.registerContainer}>
+                        <TouchableOpacity
+                          style={styles.registerButton}
+                          onPress={() =>
+                            navigation.navigate("App", {
+                              screen: "EventsDetail",
+                              params: { eventDetail: event },
+                            })
+                          }
+                        >
+                          <Text style={styles.registerText}>Register</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </BlurWrapper>
+                  </View>
+                );
+              })
+            )}
           </View>
 
           {/* Event Hub Section (visible only in "All" tab) */}
@@ -360,12 +366,10 @@ export default function HomeScreen({ navigation }) {
                   const eventImageUri =
                     item.EventImage &&
                     `${API_BASE_URL_UPLOADS}/${item.EventImage}`;
-                  const eventDate =
-                    item.StartDate && item.EndDate
-                      ? `${moment(item.StartDate).format(
-                          "D/M/YY HH:mm"
-                        )} to ${moment(item.EndDate).format("D/M/YY HH:mm")}`
-                      : "Date not available";
+                  const eventDate = formatEventDateTime(
+                    item.StartDate,
+                    item.EndDate
+                  );
                   return (
                     <TouchableOpacity
                       key={index}
@@ -527,7 +531,6 @@ const styles = StyleSheet.create({
     color: "rgba(0, 0, 0, 1)",
     fontWeight: "600",
   },
-
   section: {
     marginBottom: 16,
   },
@@ -552,6 +555,7 @@ const styles = StyleSheet.create({
   eventImage: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   shareButton: {
     position: "absolute",
@@ -582,18 +586,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     flexDirection: "row",
   },
-  eventDetailsColumn: {},
-  dflex: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-  },
-  dflex2: {
-    gap: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
+  eventDetailsColumn: {
+    flex: 1,
+    justifyContent: "center",
   },
   eventTitle: {
     fontSize: 16,
@@ -602,7 +597,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eventDetail: {
-    width: "60%",
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
   },
   eventDetailText: {
@@ -614,9 +610,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingLeft: 8,
-    width: "40%",
-    flex: 1,
-    alignSelf: "flex-end",
   },
   registerButton: {
     backgroundColor: "#E3000F",
@@ -717,5 +710,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "500",
     color: "#666",
+  },
+  noEventsText: {
+    textAlign: "center",
+    color: "#000",
+    marginTop: 20,
+    fontSize: 16,
+  },
+  loader: {
+    marginVertical: 20,
   },
 });

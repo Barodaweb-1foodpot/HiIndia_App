@@ -13,7 +13,7 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { getTickets } from "../api/ticket_api";
-import { formatDateRange } from "../helper/helper_Function";
+import { formatEventDateTime } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -26,7 +26,7 @@ const SkeletonLoader = ({ style }) => {
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
-        useNativeDriver: true, 
+        useNativeDriver: true,
       })
     ).start();
   }, [animation]);
@@ -100,6 +100,13 @@ export default function TicketScreen({ navigation }) {
   );
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener("blur", () => {
+      setExpandedOrders({});
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
     fetchTickets();
   }, []);
 
@@ -116,9 +123,7 @@ export default function TicketScreen({ navigation }) {
           id: order._id,
           countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
-          date:
-            formatDateRange(order.event?.StartDate, order.event?.EndDate) ||
-            "Date Not Available",
+          date: formatEventDateTime(order.event?.StartDate, order.event?.EndDate),
           endDate: order.event?.EndDate, // used for filtering Past vs Upcoming
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
@@ -217,13 +222,18 @@ export default function TicketScreen({ navigation }) {
                 </LinearGradient>
               </View>
               <View style={{ width: "90%" }}>
-                <Text style={styles.eventTitle} numberOfLines={readMoreMap[ticket.id] ? undefined : 2}>
-                  {ticket.title}
-                </Text>
+                <TouchableOpacity onPress={() => handleViewTicket(ticket)}>
+                  <Text style={styles.eventTitle} numberOfLines={readMoreMap[ticket.id] ? undefined : 2}>
+                    {ticket.title}
+                  </Text>
+                </TouchableOpacity>
                 {ticket.title?.length > 10 && (
                   <TouchableOpacity
                     onPress={() =>
-                      setReadMoreMap((prev) => ({ ...prev, [ticket.id]: !prev[ticket.id] }))
+                      setReadMoreMap((prev) => ({
+                        ...prev,
+                        [ticket.id]: !prev[ticket.id],
+                      }))
                     }
                   >
                     <Text style={styles.readMoreText}>
@@ -291,8 +301,8 @@ export default function TicketScreen({ navigation }) {
                     <View style={styles.whiteTotalsRow}>
                       <Text style={styles.whiteTotalsLabel}>Coupon applied</Text>
                       <Text style={styles.couponValue}>
-                        {ticket.countryCurrency}
-                        {Number(ticket.coupon).toFixed(2)}
+                        -{ticket.countryCurrency}
+                        {Math.abs(Number(ticket.coupon)).toFixed(2)}
                       </Text>
                     </View>
                     <View style={styles.whiteShortSeparator} />
@@ -341,10 +351,16 @@ export default function TicketScreen({ navigation }) {
         <View style={styles.headerContent}>
           <Image source={require("../../assets/logo.png")} style={styles.logo} />
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate("App", { screen: "Notification" })}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() => navigation.navigate("App", { screen: "Notification" })}
+            >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate("App", { screen: "Calender" })}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              onPress={() => navigation.navigate("App", { screen: "Calender" })}
+            >
               <Ionicons name="calendar-outline" size={20} color="#000" />
             </TouchableOpacity>
           </View>
@@ -356,10 +372,16 @@ export default function TicketScreen({ navigation }) {
         <Text style={styles.title}>Ticket</Text>
         {/* Tabs */}
         <View style={styles.tabsContainer}>
-          <TouchableOpacity style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]} onPress={() => setActiveTab("Upcoming")}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
+            onPress={() => setActiveTab("Upcoming")}
+          >
             <Text style={[styles.tabText, activeTab === "Upcoming" && styles.activeTabText]}>Upcoming</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === "Past" && styles.activeTab]} onPress={() => setActiveTab("Past")}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Past" && styles.activeTab]}
+            onPress={() => setActiveTab("Past")}
+          >
             <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>Past</Text>
           </TouchableOpacity>
         </View>
@@ -548,11 +570,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     marginBottom: 8,
+    fontWeight: "600",
+    marginLeft: 35,
   },
   ticketCount: {
     fontSize: 14,
     color: "#6B7280",
-    fontWeight: "500",
+    fontWeight: "600",
+    marginLeft: 35,
   },
   floatingButtonRight: {
     position: "absolute",
@@ -668,7 +693,7 @@ const styles = StyleSheet.create({
   },
   couponValue: {
     fontSize: 15,
-    color: "rgba(0, 0, 0, 1)",
+    color: "rgb(248, 32, 32)",
     fontWeight: "600",
     fontFamily: "Poppins-Medium",
   },
@@ -694,5 +719,4 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
   },
 });
-
 export { TicketScreen };

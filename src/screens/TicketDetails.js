@@ -21,6 +21,7 @@ import QRCode from "react-native-qrcode-svg";
 import { getTicketsByOrderId } from "../api/ticket_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { BlurView } from "expo-blur";
+import { formatEventDateTime } from "../helper/helper_Function";
 
 const { width } = Dimensions.get("window");
 
@@ -85,17 +86,6 @@ const EventImage = ({ uri, style }) => {
           setLoaded(true);
         }}
       />
-      <LinearGradient
-        colors={[
-          "rgba(0,0,0,0.7)",
-          "rgba(0,0,0,0.3)",
-          "transparent",
-          "rgba(0,0,0,0.4)",
-          "rgba(0,0,0,0.8)",
-        ]}
-        locations={[0, 0.2, 0.5, 0.8, 1]}
-        style={StyleSheet.absoluteFill}
-      />
     </View>
   );
 };
@@ -144,13 +134,6 @@ export default function TicketDetailsScreen({ route, navigation }) {
     }
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const options = { year: "numeric", month: "short", day: "numeric" };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
   // Toggle QR modal
   const toggleQrModal = (ticket = null) => {
     if (qrModalVisible) {
@@ -177,7 +160,8 @@ export default function TicketDetailsScreen({ route, navigation }) {
 
     const shareMessage = `
 Event: ${eventDetails.EventName}
-Date: ${formatDate(eventDetails.StartDate)} - ${formatDate(
+Date: ${formatEventDateTime(
+      eventDetails.StartDate,
       eventDetails.EndDate
     )}
 
@@ -204,7 +188,8 @@ Attendee: ${ticket.name || "Guest"}
 Ticket Type: ${ticket.TicketType?.TicketType || ticket.type || "Standard"}
 
 Event: ${eventDetails.EventName}
-Date: ${formatDate(eventDetails.StartDate)} - ${formatDate(
+Date: ${formatEventDateTime(
+      eventDetails.StartDate,
       eventDetails.EndDate
     )}
 
@@ -235,7 +220,12 @@ View Ticket: ${shareUrl}
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+        animated={true}
+      />
       {/* Top Banner Section */}
       <View style={styles.topSection}>
         <EventImage uri={eventImageUri} style={styles.eventImage} />
@@ -248,7 +238,11 @@ View Ticket: ${shareUrl}
         {/* Share Button */}
         <View style={styles.shareTopButton}>
           <TouchableOpacity onPress={handleHeaderShare}>
-            <MaterialCommunityIcons name="share-variant" size={24} color="#FFF" />
+            <MaterialCommunityIcons
+              name="share-variant"
+              size={24}
+              color="#FFF"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -262,11 +256,16 @@ View Ticket: ${shareUrl}
         >
           {/* Event Details */}
           <View style={styles.eventDetailsContainer}>
-            <Text style={styles.eventTitle}>{eventDetails?.EventName || ""}</Text>
+            <Text style={styles.eventTitle}>
+              {eventDetails?.EventName || ""}
+            </Text>
             <View style={styles.eventMetaRow}>
               <Ionicons name="calendar-outline" size={18} color="#555" />
               <Text style={styles.eventMetaText}>
-                {formatDate(eventDetails.StartDate)} - {formatDate(eventDetails.EndDate)}
+                {formatEventDateTime(
+                  eventDetails.StartDate,
+                  eventDetails.EndDate
+                )}
               </Text>
             </View>
           </View>
@@ -389,14 +388,19 @@ View Ticket: ${shareUrl}
                   {couponDiscount !== 0 && (
                     <View style={styles.totalsRow}>
                       <View style={styles.totalsLabelWithIcon}>
-                        <Ionicons name="pricetag-outline" size={16} color="#10B981" />
+                        <Ionicons
+                          name="pricetag-outline"
+                          size={16}
+                          color="#10B981"
+                        />
                         <Text style={styles.couponLabel}>Coupon applied</Text>
                       </View>
                       <Text style={styles.couponValue}>
-                        -${Number(couponDiscount).toFixed(2)}
+                        -${Math.abs(couponDiscount).toFixed(2)}
                       </Text>
                     </View>
                   )}
+
                   {tax > 0 && (
                     <View style={styles.totalsRow}>
                       <Text style={styles.totalsLabel}>Tax</Text>
@@ -438,7 +442,7 @@ View Ticket: ${shareUrl}
                             Purchase Date
                           </Text>
                           <Text style={styles.paymentMetaValue}>
-                            {formatDate(purchaseDate)}
+                            {formatEventDateTime(purchaseDate, purchaseDate)}
                           </Text>
                         </View>
                       </View>
@@ -482,12 +486,18 @@ View Ticket: ${shareUrl}
                 onPress={() => shareTicketDetails(activeTicket)}
                 style={styles.modalShareButton}
               >
-                <MaterialCommunityIcons name="share-variant" size={22} color="#FFF" />
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={22}
+                  color="#FFF"
+                />
               </TouchableOpacity>
             </LinearGradient>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalSubtitle}>{eventDetails?.EventName}</Text>
+              <Text style={styles.modalSubtitle}>
+                {eventDetails?.EventName}
+              </Text>
               <View style={styles.qrWrapper}>
                 <QRCode
                   value={`${API_BASE_URL_UPLOADS}/uploads/QR/${activeTicket?._id}`}
@@ -507,7 +517,10 @@ View Ticket: ${shareUrl}
                 <View style={styles.modalInfoItem}>
                   <Ionicons name="calendar-outline" size={18} color="#666" />
                   <Text style={styles.modalInfoText}>
-                    {formatDate(eventDetails?.StartDate)}
+                    {formatEventDateTime(
+                      eventDetails.StartDate,
+                      eventDetails.EndDate
+                    )}
                   </Text>
                 </View>
               </View>
@@ -739,7 +752,6 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "600",
   },
-  
   priceTypeContainer: {
     alignItems: "center",
   },

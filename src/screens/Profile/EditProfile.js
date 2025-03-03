@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 25 : 15,
+    marginTop: Platform.OS === "ios" ? 25 : 25,
     marginBottom: 32,
     paddingHorizontal: 20,
   },
