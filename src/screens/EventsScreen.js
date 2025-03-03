@@ -17,7 +17,6 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
 import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-// UPDATED: Import the unified date/time helper function
 import { formatEventDateTime } from "../helper/helper_Function";
 import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
@@ -243,7 +242,7 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
         </View>
         <View style={styles.eventDetail}>
           <Ionicons name="calendar-outline" size={14} color="#fff" />
-          {/* UPDATED: Use unified date & time helper function */}
+          
           <Text style={styles.eventDetailText}>
             {formatEventDateTime(item.StartDate, item.EndDate)}
           </Text>
@@ -600,7 +599,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    height: 200,
+    height: 250,
   },
   eventImage: {
     width: "100%",

@@ -22,7 +22,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { formatEventDateTime } from "../helper/helper_Function";
 
-// Wrapper for blur effect (iOS uses BlurView; Android gets a fallback background)
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -38,7 +37,6 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
-// Skeleton Loader Component for Images
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -81,7 +79,6 @@ const SkeletonLoader = ({ style }) => {
   );
 };
 
-// Component for handling event images with a skeleton loader until loaded
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -112,12 +109,9 @@ export default function HomeScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvents] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // Caching states for each tab when there is no active search query
   const [allEvents, setAllEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
 
-  // Configure status bar when the screen is focused
   useFocusEffect(
     React.useCallback(() => {
       StatusBar.setHidden(false);
@@ -126,9 +120,8 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  // Fetch events when activeTab or searchText changes
   useEffect(() => {
-    // If no search is active, use cached events if available.
+   
     if (searchText === "") {
       if (activeTab === "All" && allEvents.length > 0) {
         setEvents(allEvents);
@@ -142,18 +135,16 @@ export default function HomeScreen({ navigation }) {
     fetchEvent();
   }, [activeTab, searchText]);
 
-  // Fetch active events for the Event Hub once on mount.
   useEffect(() => {
     fetchActiveEvent();
   }, []);
 
-  // Fetch events based on search text and active tab
   const fetchEvent = async () => {
     setLoading(true);
     const res = await fetchEvents(searchText, "All", activeTab);
     console.log("Fetched events:", res);
     if (res && res.data && res.data.length > 0) {
-      // Cache the results if no search query is active
+     
       if (searchText === "") {
         if (activeTab === "All") {
           setAllEvents(res.data);
@@ -168,7 +159,6 @@ export default function HomeScreen({ navigation }) {
     setLoading(false);
   };
 
-  // Fetch active events for the Event Hub section
   const fetchActiveEvent = async () => {
     const res = await listActiveEvents();
     if (res && res.data && res.data.length > 0) {
@@ -176,15 +166,9 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Share event details using the device's share functionality
   const shareEvent = async (event) => {
     try {
-      const eventDate =
-        event.StartDate && event.EndDate
-          ? `${moment(event.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              event.EndDate
-            ).format("D/M/YY HH:mm")}`
-          : "Date not available";
+      const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
       const eventImageUri = event.EventImage
         ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
         : null;
@@ -336,42 +320,31 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.eventTitle} numberOfLines={1}>
                           {event.EventName}
                         </Text>
-                        <View style={styles.dflex}>
-                          <View style={styles.eventDetail}>
-                            <Text
-                              style={styles.eventDetailText}
-                              numberOfLines={2}
-                            >
-                              <Ionicons
-                                name="location-outline"
-                                size={14}
-                                color="#fff"
-                              />{" "}
-                              {event.EventLocation}
-                            </Text>
-                            <Text style={styles.eventDetailText}>
-                              <Ionicons
-                                name="calendar-outline"
-                                size={14}
-                                color="#fff"
-                              />{" "}
-                              {eventDate}
-                            </Text>
-                          </View>
-                          <View style={styles.registerContainer}>
-                            <TouchableOpacity
-                              style={styles.registerButton}
-                              onPress={() =>
-                                navigation.navigate("App", {
-                                  screen: "EventsDetail",
-                                  params: { eventDetail: event },
-                                })
-                              }
-                            >
-                              <Text style={styles.registerText}>Register</Text>
-                            </TouchableOpacity>
-                          </View>
+                        <View style={styles.eventDetail}>
+                          <Ionicons name="location-outline" size={14} color="#fff" />
+                          <Text style={styles.eventDetailText} numberOfLines={2}>
+                            {event.EventLocation}
+                          </Text>
                         </View>
+                        <View style={styles.eventDetail}>
+                          <Ionicons name="calendar-outline" size={14} color="#fff" />
+                          <Text style={styles.eventDetailText}>
+                            {eventDate}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.registerContainer}>
+                        <TouchableOpacity
+                          style={styles.registerButton}
+                          onPress={() =>
+                            navigation.navigate("App", {
+                              screen: "EventsDetail",
+                              params: { eventDetail: event },
+                            })
+                          }
+                        >
+                          <Text style={styles.registerText}>Register</Text>
+                        </TouchableOpacity>
                       </View>
                     </BlurWrapper>
                   </View>
@@ -582,6 +555,7 @@ const styles = StyleSheet.create({
   eventImage: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   shareButton: {
     position: "absolute",
@@ -612,18 +586,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     flexDirection: "row",
   },
-  eventDetailsColumn: {},
-  dflex: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-  },
-  dflex2: {
-    gap: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
+  eventDetailsColumn: {
+    flex: 1,
+    justifyContent: "center",
   },
   eventTitle: {
     fontSize: 16,
@@ -632,7 +597,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eventDetail: {
-    width: "60%",
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
   },
   eventDetailText: {
@@ -644,9 +610,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingLeft: 8,
-    width: "40%",
-    flex: 1,
-    alignSelf: "flex-end",
   },
   registerButton: {
     backgroundColor: "#E3000F",
