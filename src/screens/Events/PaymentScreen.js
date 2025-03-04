@@ -20,6 +20,7 @@ import { ExentRegister } from "../../api/event_api"
 const { width } = Dimensions.get("window");
 import Toast from "react-native-toast-message";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
+import { CheckAccessToken } from "../../api/token_api";
 
 const TicketItem = ({ registration, onRemove, index }) => {
   return (
@@ -120,56 +121,77 @@ export default function PaymentScreen() {
 
   const handleRegister = async () => {
     try {
-      const userId = await AsyncStorage.getItem("role")
-      setIsLoading(true)
-      // console.log("aaaaaaaaaaaa", ticketList)
-      const formattedParticipants = ticketList.map((participant) => {
-        const sessionTotal = (participant.sessionName || []).reduce(
-          (sum, session) => sum + Number(session.rate || 0),
-          0
-        );
+      const res = await CheckAccessToken();
+      if (res) {
+        const userId = await AsyncStorage.getItem("role")
+        setIsLoading(true)
+        // console.log("aaaaaaaaaaaa", ticketList)
+        const formattedParticipants = ticketList.map((participant) => {
+          const sessionTotal = (participant.sessionName || []).reduce(
+            (sum, session) => sum + Number(session.rate || 0),
+            0
+          );
 
-        let ticketCategory = "Participant";
+          let ticketCategory = "Participant";
 
 
-        return {
-          byParticipant: userId || null,
-          name: participant.name,
-          dob: participant.dateOfBirth,
-          eventName: eventDetail._id,
-          age: participant.age,
-          sessionName: (participant.sessionName || []).map(session => session.value),
-          ticketCategory,
-          country: eventDetail.countryDetail[0]._id,
-          TicketType: participant.TicketType._id, // Extract the correct value
-          isActive: true,
-          registrationCharge: participant.registrationCharge
+          return {
+            byParticipant: userId || null,
+            name: participant.name,
+            dob: participant.dateOfBirth,
+            eventName: eventDetail._id,
+            age: participant.age,
+            sessionName: (participant.sessionName || []).map(session => session.value),
+            ticketCategory,
+            country: eventDetail.countryDetail[0]._id,
+            TicketType: participant.TicketType._id, // Extract the correct value
+            isActive: true,
+            registrationCharge: participant.registrationCharge
+          };
+        });
+        const payload = {
+          couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
+          byParticipant: userId,
+          eventName: eventDetail._id, // Replace with actual event ID
+          country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
+          participants: formattedParticipants,
+          afterDiscountTotal: grandTotal,
+          currency: eventDetail.countryDetail[0].CurrencyCode
         };
-      });
-      const payload = {
-        couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
-        byParticipant: userId,
-        eventName: eventDetail._id, // Replace with actual event ID
-        country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
-        participants: formattedParticipants,
-        afterDiscountTotal: grandTotal
-      };
 
 
-      const response = await ExentRegister(payload)
-      console.log("-----------------------------", response)
-      if (response.isOk) {
-        await handlesendMial(response.data[0].orderId)
+        const response = await ExentRegister(payload)
+        console.log("-----------------------------", response)
+        if (response.isOk) {
+          await handlesendMial(response.data[0].orderId)
 
+        }
+        else {
+          setIsLoading(false)
+          Toast.show({
+            type: "error",
+            text2: response.message || "Someting Went Wrong",
+            text1: response.status === 401 ? "Login Again Session Expired" : "",
+            position: "top",
+            visibilityTime: 3000,
+          });
+          if (response.status === 401) {
+            setTimeout(() => {
+              navigation.navigate("Auth");
+            }, 2000);
+          }
+        }
       }
       else {
-        setIsLoading(false)
         Toast.show({
           type: "error",
-          text1: res.message || "Someting Went Wrong",
+          text1: "Login Again Session Expired",
           position: "top",
           visibilityTime: 2000,
         });
+        setTimeout(() => {
+          navigation.navigate("Auth");
+        }, 100);
       }
     }
     catch (error) {
@@ -190,7 +212,7 @@ export default function PaymentScreen() {
     try {
       const response = await sendEventTicketByOrderId(orderId)
       console.log("-----------------------------", response)
-      if (response.isOk || response.status===200) {
+      if (response.isOk || response.status === 200) {
         setIsLoading(false)
         Toast.show({
           type: "success",
@@ -366,7 +388,7 @@ export default function PaymentScreen() {
         <View style={styles.bottomBar}>
           <View style={styles.totalSection}>
             <Text style={styles.grandTotalText}>
-              Grand Total: ${grandTotal}
+              Grand Total: {eventDetail.countryDetail[0].Currency} {grandTotal}
             </Text>
           </View>
           <TouchableOpacity
@@ -384,6 +406,7 @@ export default function PaymentScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <Toast />
     </View>
   );
 }

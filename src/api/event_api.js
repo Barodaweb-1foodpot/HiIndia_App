@@ -93,6 +93,7 @@ export const SaveEvent = async (values) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+      
       }
     );
     console.log("Response received:", response.data);
@@ -111,12 +112,20 @@ export const SaveEvent = async (values) => {
 export const ExentRegister = async (payload) => {
   try {
     console.log("Registering event with payload:", payload);
+    const token = await AsyncStorage.getItem("Token");
+    console.log(token)
     const response = await axios.post(
       `${API_BASE_URL}/auth/create/EventRegister`,
-      payload
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true
+      }, 
     );
     console.log("Response received:", response.data);
-    return response.data;
+    return response.data || false;
   } catch (error) {
     console.error("Error registering event:", error);
     Toast.show({
