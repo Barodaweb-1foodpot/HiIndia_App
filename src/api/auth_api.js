@@ -10,6 +10,7 @@ export const handleLogin = async (values) => {
       validateStatus: () => true,
     });
     console.log("[handleLogin] Response received:", res.data);
+
     if (res.data.isOk) {
       console.log("[handleLogin] Login successful:", res.data.data);
       await AsyncStorage.setItem("role", res.data.data._id);
@@ -107,6 +108,7 @@ export const handleSignup = async (values) => {
       { validateStatus: () => true }
     );
     console.log("[handleSignup] Signup response:", res.data);
+
     if (res.data.isOk) {
       Toast.show({
         type: "success",
@@ -137,7 +139,10 @@ export const fetchActiveCountries = async () => {
     console.log("[fetchActiveCountries] Fetched data:", res.data);
     return res.data;
   } catch (error) {
-    console.error("[fetchActiveCountries] Error fetching active countries:", error);
+    console.error(
+      "[fetchActiveCountries] Error fetching active countries:",
+      error
+    );
     Toast.show({
       type: "error",
       text1: "Country Codes Error",
@@ -149,7 +154,10 @@ export const fetchActiveCountries = async () => {
 
 export const fetchProfile = async (participantId) => {
   try {
-    console.log("[fetchProfile] Fetching profile for participantId:", participantId);
+    console.log(
+      "[fetchProfile] Fetching profile for participantId:",
+      participantId
+    );
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`
     );
@@ -168,8 +176,10 @@ export const fetchProfile = async (participantId) => {
 
 export const updateProfileByApp = async (participantId, formData) => {
   try {
-    console.log(`[updateProfileByApp] Updating profile for participantId: ${participantId}`);
-    const token = await AsyncStorage.getItem("Token");
+    console.log(
+      `[updateProfileByApp] Updating profile for participantId: ${participantId}`
+    );
+
     const res = await axios.patch(
       `${API_BASE_URL}/auth/updateProfileByApp/${participantId}`,
       formData,
@@ -217,17 +227,24 @@ export const handleGoogleLogin = async (email) => {
 export const verifyGoogleToken = async (token) => {
   try {
     console.log("[verifyGoogleToken] Verifying Google token:", token);
-    const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, { token: token });
+
+    const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, {
+      token,
+    });
     console.log("[verifyGoogleToken] Token verification response:", res.data);
+
     if (res.data.isOk) {
       const response = await handleGoogleLogin(res.data.email);
       console.log("[verifyGoogleToken] handleGoogleLogin response:", response);
+
       if (response.status === 200) {
-        console.log("[verifyGoogleToken] Setting AsyncStorage items for Google login");
+        console.log(
+          "[verifyGoogleToken] Setting AsyncStorage items for Google login"
+        );
         await AsyncStorage.setItem("role", response.data._id);
         await AsyncStorage.setItem("Token", response.token);
         await AsyncStorage.setItem("RefreshToken", response.refreshToken);
-  
+
         Toast.show({
           type: "success",
           text1: "Login Successful",
@@ -235,7 +252,10 @@ export const verifyGoogleToken = async (token) => {
         });
         return true;
       } else {
-        console.log("[verifyGoogleToken] Google login failed with response:", response);
+        console.log(
+          "[verifyGoogleToken] Google login failed with response:",
+          response
+        );
         Toast.show({
           type: "success",
           text1: response.message,
@@ -244,7 +264,10 @@ export const verifyGoogleToken = async (token) => {
       }
     }
   } catch (error) {
-    console.error("[verifyGoogleToken] Error during Google token verification:", error);
+    console.error(
+      "[verifyGoogleToken] Error during Google token verification:",
+      error
+    );
     Toast.show({
       type: "error",
       text1: "Google Token Verification Error",

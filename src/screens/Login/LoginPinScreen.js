@@ -147,7 +147,7 @@ const LoginPinScreen = ({ navigation }) => {
                               styles.pinInput,
                               values.pin[index] && styles.pinInputFilled,
                             ]}
-                            keyboardType="numeric"
+                            keyboardType="phone-pad"
                             maxLength={1}
                             value={values.pin[index]}
                             onChangeText={(value) => {

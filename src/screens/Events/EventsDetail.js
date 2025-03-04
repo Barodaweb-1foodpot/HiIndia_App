@@ -15,8 +15,8 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatDateRange, formatTimeRange } from "../../helper/helper_Function";
-import moment from "moment";
+import { formatEventDateTime } from "../../helper/helper_Function"; // <-- Using formatEventDateTime
+import moment from "moment"; // (kept if you still need it elsewhere)
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { LinearGradient } from "expo-linear-gradient";
@@ -74,7 +74,14 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
 
   return (
     <View style={style}>
-      {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+      {!loaded && (
+        <SkeletonLoader
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
+        />
+      )}
       <Image
         source={
           uri && !error
@@ -118,7 +125,9 @@ export default function EventsDetail({ navigation, route }) {
       }
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(
+          2
+        );
         setFileSize(sizeInMB);
       } else {
         console.warn("Content-Length header is missing.");
@@ -130,7 +139,10 @@ export default function EventsDetail({ navigation, route }) {
 
   // Download PDF file
   const downloadPDF = async () => {
-    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
+    if (
+      !eventDetail?.EventCatalogue ||
+      eventDetail?.EventCatalogue === "null"
+    ) {
       return;
     }
 
@@ -178,7 +190,10 @@ export default function EventsDetail({ navigation, route }) {
 
   // Preview PDF in browser
   const previewPDF = async () => {
-    if (!eventDetail?.EventCatalogue || eventDetail?.EventCatalogue === "null") {
+    if (
+      !eventDetail?.EventCatalogue ||
+      eventDetail?.EventCatalogue === "null"
+    ) {
       return;
     }
 
@@ -195,12 +210,11 @@ export default function EventsDetail({ navigation, route }) {
   // Share the entire event details
   const shareEvent = async () => {
     try {
-      const eventDate =
-        eventDetail?.StartDate && eventDetail?.EndDate
-          ? `${moment(eventDetail.StartDate).format("D/M/YY HH:mm")} to ${moment(
-              eventDetail.EndDate
-            ).format("D/M/YY HH:mm")}`
-          : "Date not available";
+      // Use formatEventDateTime for date/time
+      const eventDate = formatEventDateTime(
+        eventDetail?.StartDate,
+        eventDetail?.EndDate
+      );
       const shareMessage =
         `🎶 Check out this event!\n\n` +
         `Event: ${eventDetail?.EventName}\n` +
@@ -225,9 +239,6 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // ---------------------------------------------
-  // Calculate TICKETS SOLD and place an indicator
-  // ---------------------------------------------
   const ticketsSold = eventDetail?.EventRegisterDetail?.length || 0;
   const totalTickets = eventDetail?.NoOfParticipants || 0;
   const percentageSold =
@@ -274,7 +285,9 @@ export default function EventsDetail({ navigation, route }) {
             </Text>
 
             {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
+              <TouchableOpacity
+                onPress={() => setTitleReadMore(!titleReadMore)}
+              >
                 <Text style={styles.readMoreText}>
                   {titleReadMore ? "Read Less" : "Read More"}
                 </Text>
@@ -293,7 +306,8 @@ export default function EventsDetail({ navigation, route }) {
               {eventDetail?.EventLocation || "Location Unavailable"}
             </Text>
           </View>
-          {/* Date row */}
+
+          {/* Single row for date/time via formatEventDateTime */}
           <View style={styles.headerCardRow}>
             <Ionicons
               name="calendar-outline"
@@ -302,21 +316,10 @@ export default function EventsDetail({ navigation, route }) {
               style={styles.headerCardIcon}
             />
             <Text style={styles.headerCardSubtitle}>
-              {formatDateRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Date not available"}
-            </Text>
-          </View>
-          {/* Time row */}
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="time-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {formatTimeRange(eventDetail?.StartDate, eventDetail?.EndDate) ||
-                "Time not available"}
+              {formatEventDateTime(
+                eventDetail?.StartDate,
+                eventDetail?.EndDate
+              ) || "Date/Time not available"}
             </Text>
           </View>
         </View>
@@ -346,10 +349,7 @@ export default function EventsDetail({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text
-                  style={[
-                    styles.ticketIndicatorText,
-                    { color: "#721c24" },
-                  ]}
+                  style={[styles.ticketIndicatorText, { color: "#721c24" }]}
                 >
                   Registrations are full!
                 </Text>
@@ -373,10 +373,7 @@ export default function EventsDetail({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text
-                  style={[
-                    styles.ticketIndicatorText,
-                    { color: "#856404" },
-                  ]}
+                  style={[styles.ticketIndicatorText, { color: "#856404" }]}
                 >
                   Tickets filling fast!
                 </Text>
@@ -399,25 +396,28 @@ export default function EventsDetail({ navigation, route }) {
           ) : null}
 
           {/* Artist Info */}
+          {/* 
+              IMAGE + NAME on the same row, 
+              with details below 
+          */}
           <View style={styles.artistInfoContainer}>
-            <EventImage
-              uri={
-                eventDetail?.EventImage
-                  ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
-                  : undefined
-              }
-              style={styles.artistImage}
-              defaultSource={require("../../../assets/placeholder.jpg")}
-            />
-            <View style={styles.artistTextContainer}>
+            <View style={styles.artistNameRow}>
+              <EventImage
+                uri={
+                  eventDetail?.EventImage
+                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+                    : undefined
+                }
+                style={styles.artistImage}
+                defaultSource={require("../../../assets/placeholder.jpg")}
+              />
               <Text style={styles.artistName}>
                 {eventDetail?.artistName || "Artist Name Unavailable"}
               </Text>
-              <Text style={styles.artistDetail}>
-                {eventDetail?.artistDesc ||
-                  "No artist description available"}
-              </Text>
             </View>
+            <Text style={styles.artistDetail}>
+              {eventDetail?.artistDesc || "No artist description available"}
+            </Text>
           </View>
 
           {/* Description */}
@@ -518,11 +518,7 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.pdfActionButton}
                       onPress={previewPDF}
                     >
-                      <Ionicons
-                        name="eye-outline"
-                        size={18}
-                        color="#E3000F"
-                      />
+                      <Ionicons name="eye-outline" size={18} color="#E3000F" />
                       <Text style={styles.pdfActionText}>Preview</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -545,7 +541,11 @@ export default function EventsDetail({ navigation, route }) {
                 </View>
               ) : (
                 <View style={styles.noCatalogueContainer}>
-                  <Ionicons name="document-text-outline" size={40} color="#CCC" />
+                  <Ionicons
+                    name="document-text-outline"
+                    size={40}
+                    color="#CCC"
+                  />
                   <Text style={styles.noCatalogueText}>
                     No Catalogue Available
                   </Text>
@@ -556,7 +556,8 @@ export default function EventsDetail({ navigation, route }) {
 
           {selectedTab === "Gallery" && (
             <View style={styles.galleryGrid}>
-              {eventDetail?.GalleryImages && eventDetail?.GalleryImages.length > 0 ? (
+              {eventDetail?.GalleryImages &&
+              eventDetail?.GalleryImages.length > 0 ? (
                 eventDetail.GalleryImages.map((image, index) => (
                   <View key={index} style={styles.galleryItem}>
                     <EventImage
@@ -567,7 +568,11 @@ export default function EventsDetail({ navigation, route }) {
                       style={styles.shareIcon}
                       onPress={() => shareGalleryImage(image)}
                     >
-                      <Ionicons name="share-social-outline" size={18} color="#FFF" />
+                      <Ionicons
+                        name="share-social-outline"
+                        size={18}
+                        color="#FFF"
+                      />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -584,9 +589,13 @@ export default function EventsDetail({ navigation, route }) {
         </ScrollView>
 
         {/* Bottom Bar */}
-        {eventDetail?.EventRegisterDetail?.length < eventDetail?.NoOfParticipants && (
+        {eventDetail?.EventRegisterDetail?.length <
+          eventDetail?.NoOfParticipants && (
           <View style={styles.bottomBar}>
-            {console.log("External link available?", eventDetail.hasExternalLink)}
+            {console.log(
+              "External link available?",
+              eventDetail.hasExternalLink
+            )}
             <Text
               style={[
                 styles.priceText,
@@ -613,10 +622,15 @@ export default function EventsDetail({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.buyButton}
                   onPress={() => {
-                    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+                    if (
+                      eventDetail.hasExternalLink &&
+                      eventDetail.externalLink
+                    ) {
                       Linking.openURL(eventDetail.externalLink);
                     } else {
-                      navigation.navigate("BuyTicket", { eventDetail: eventDetail });
+                      navigation.navigate("BuyTicket", {
+                        eventDetail: eventDetail,
+                      });
                     }
                   }}
                 >
@@ -670,7 +684,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 15,
+    top: Platform.OS === "ios" ? 50 : 25,
     left: 16,
     zIndex: 10,
     width: 34,
@@ -683,7 +697,7 @@ const styles = StyleSheet.create({
   },
   shareTopButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 15,
+    top: Platform.OS === "ios" ? 50 : 25,
     right: 16,
     zIndex: 10,
     width: 34,
@@ -792,30 +806,31 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
   },
   artistInfoContainer: {
+    marginBottom: 20,
+  },
+  artistNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 4,
   },
   artistImage: {
     width: 48,
     height: 48,
     borderRadius: 24,
     resizeMode: "cover",
-  },
-  artistTextContainer: {
-    marginLeft: 12,
+    marginRight: 12,
   },
   artistName: {
     fontSize: 16,
     fontFamily: "Poppins-Bold",
     color: "#000000",
-    marginBottom: 4,
   },
   artistDetail: {
     fontSize: 12,
-    paddingRight: 30,
     fontFamily: "Poppins-Regular",
     color: "#666666",
+    textAlign: "justify",
+    marginTop: 6,
   },
   sectionContainer: {
     marginBottom: 20,
@@ -831,6 +846,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#666666",
     lineHeight: 20,
+    textAlign: "justify",
   },
   readMoreText: {
     fontSize: 14,

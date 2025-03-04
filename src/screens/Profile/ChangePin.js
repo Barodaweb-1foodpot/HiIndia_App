@@ -102,7 +102,7 @@ export default function ChangePin({ navigation }) {
                           styles.pinInput,
                           values.pin[index] && styles.pinInputFilled,
                         ]}
-                        keyboardType="numeric"
+                        keyboardType="phone-pad"
                         maxLength={1}
                         value={values.pin[index] || ""}
                         onChangeText={(val) => {
@@ -149,7 +149,7 @@ export default function ChangePin({ navigation }) {
                           styles.pinInput,
                           values.confirmPin[index] && styles.pinInputFilled,
                         ]}
-                        keyboardType="numeric"
+                        keyboardType="phone-pad"
                         maxLength={1}
                         value={values.confirmPin[index] || ""}
                         onChangeText={(val) => {
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 45 : 15,
+    marginTop: Platform.OS === "ios" ? 45 : 25,
     marginBottom: 16,
   },
   backButton: {

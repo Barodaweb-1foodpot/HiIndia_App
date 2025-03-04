@@ -72,7 +72,7 @@ export default function PrivacyPolicy({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 65 : 15,
+    paddingTop: Platform.OS === "ios" ? 65 : 25,
     backgroundColor: "#fff",
     paddingHorizontal: 20,
   },
