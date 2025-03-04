@@ -121,6 +121,7 @@ export default function TicketScreen({ navigation }) {
       if (res.isOk && res.data && res.data.length > 0) {
         const transformedTickets = res.data.map((order) => ({
           id: order._id,
+          isActive: order.isActive,
           countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
           date: formatEventDateTime(order.event?.StartDate, order.event?.EndDate),
@@ -137,6 +138,7 @@ export default function TicketScreen({ navigation }) {
           total: order.totalRate,
           coupon: order.couponDiscount || 0,
         }));
+        console.log(transformedTickets)
         setTickets(transformedTickets);
       } else {
         setTickets([]);
