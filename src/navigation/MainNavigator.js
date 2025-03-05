@@ -13,7 +13,7 @@ const Stack = createStackNavigator();
 const MainNavigator = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(null); // Null indicates loading
+  const [isAuthenticated, setIsAuthenticated] = useState(null); 
 
   useEffect(() => {
     const loadAssets = async () => {

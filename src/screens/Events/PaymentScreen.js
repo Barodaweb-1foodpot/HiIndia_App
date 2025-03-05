@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,21 +10,30 @@ import {
   Platform,
   Dimensions,
   Animated,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
+
+// Stripe hooks
+import { useStripe } from "@stripe/stripe-react-native";
+
+// Your helper and API imports
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../../helper/helper_Function";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CheckAccessToken } from "../../api/token_api";
 import { ExentRegister } from "../../api/event_api";
-const { width } = Dimensions.get("window");
-import Toast from "react-native-toast-message";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
+import { createPaymentIntent, updatePaymentStatus } from "../../api/payment_api";
 
-// Import FontAwesomeIcon and the Stripe icon
+// FontAwesomeIcon for Stripe icon
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faStripe } from "@fortawesome/free-brands-svg-icons";
+
+const { width } = Dimensions.get("window");
 
 // --- Skeleton Loader Components ---
 const SkeletonLoader = React.memo(({ style }) => {
@@ -101,9 +110,8 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
   );
 });
 // --- End Skeleton Loader Components ---
-import { CheckAccessToken } from "../../api/token_api";
 
-const TicketItem = ({ registration, onRemove, index }) => {
+const TicketItem = ({ registration }) => {
   return (
     <View style={styles.ticketItemContainer}>
       <LinearGradient
@@ -113,7 +121,6 @@ const TicketItem = ({ registration, onRemove, index }) => {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.ticketAccent} />
-
         <View style={styles.ticketContent}>
           <View style={styles.ticketRow}>
             <View style={styles.leftSection}>
@@ -125,14 +132,12 @@ const TicketItem = ({ registration, onRemove, index }) => {
                   <Ionicons name="ticket" size={16} color="#FFF" />
                 </LinearGradient>
               </View>
-
               <View style={styles.ticketDetails}>
                 <Text style={styles.ticketName}>
                   {registration.name || "Unnamed"}
                 </Text>
               </View>
             </View>
-
             <LinearGradient
               colors={["#FFE5E5", "#FFF5F5"]}
               style={styles.priceTag}
@@ -140,7 +145,7 @@ const TicketItem = ({ registration, onRemove, index }) => {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.priceTagText}>
-                {registration.TicketType.TicketType || "Free Event ticket"}
+                {registration.TicketType?.TicketType || "Free Event ticket"}
               </Text>
             </LinearGradient>
           </View>
@@ -153,11 +158,19 @@ const TicketItem = ({ registration, onRemove, index }) => {
 export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const {
+    registrations = [],
+    grandTotal,
+    eventDetail,
+    appliedCoupon,
+  } = route.params || {};
+
+  // Stripe PaymentSheet hooks
+  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } =
+    useStripe();
+
   const [titleReadMore, setTitleReadMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const { registrations = [], grandTotal, eventDetail, appliedCoupon } =
-    route.params || {};
 
   // Deserialize registrations so that dateOfBirth is a Date object again
   const deserializedRegistrations = registrations.map((reg) => ({
@@ -170,9 +183,41 @@ export default function PaymentScreen() {
   // Set default payment method to Stripe
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
 
+  const [payment_id, setPayment_id] = useState("")
+
   useEffect(() => {
     recalcTotal();
   }, [ticketList]);
+
+  // Deep Linking: Handle URLs (e.g., after 3D Secure redirects)
+  const handleDeepLink = useCallback(
+    async (url) => {
+      if (url) {
+        const stripeHandled = await handleURLCallback(url);
+        if (stripeHandled) {
+          // Stripe handled the redirect
+        } else {
+          // Handle non-Stripe URLs if needed
+        }
+      }
+    },
+    [handleURLCallback]
+  );
+
+  useEffect(() => {
+    const getInitialUrl = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      handleDeepLink(initialUrl);
+    };
+
+    getInitialUrl();
+
+    const urlListener = Linking.addEventListener("url", (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => urlListener.remove();
+  }, [handleDeepLink]);
 
   const recalcTotal = () => {
     let newTotal = 0;
@@ -184,27 +229,104 @@ export default function PaymentScreen() {
     setPaymentTotal(newTotal);
   };
 
-  const removeTicket = (index) => {
-    const updatedList = [...ticketList];
-    updatedList.splice(index, 1);
-    setTicketList(updatedList);
-  };
-
   const handlePaymentMethodChange = (method) => {
     setSelectedPaymentMethod(method);
   };
 
-  const handleMakePayment = () => {
-    console.log("Making Payment with:", selectedPaymentMethod);
-    handleRegister();
+  const handleMakePayment = async () => {
+    const res = await CheckAccessToken();
+    if (res) {
+      try {
+        setIsLoading(true);
+
+        // const amountInCents = Math.round(grandTotal * 100);
+        // const currency = eventDetail?.countryDetail?.[0]?.CurrencyCode || "usd";
+        // const registrationIds=await AsyncStorage.getItem("role");
+        // Create PaymentIntent
+        const  clientSecret  = await handleRegister();
+        console.log("lllllllllll",clientSecret)
+        if (!clientSecret) {
+          const res = await updatePaymentStatus(clientSecret, "Failed to create PaymentIntent" , false);
+          Toast.show({
+            type: "error",
+            text1: "Failed to create PaymentIntent",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const { error: initError } = await initPaymentSheet({
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: eventDetail?.EventName || "HiIndia",
+          returnURL: "hiindiaapp://stripe-redirect",
+        });
+        if (initError) {
+
+          const res = await updatePaymentStatus(clientSecret, initError.message , false);
+
+          Toast.show({
+            type: "error",
+            text1: "PaymentSheet init failed",
+            text2: initError.message,
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const { error: paymentError } = await presentPaymentSheet();
+        if (paymentError) {
+          const res = await updatePaymentStatus(clientSecret,  paymentError.message , false);
+
+          Toast.show({
+            type: "error",
+            text1: "Payment error",
+            text2: paymentError.message,
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        Toast.show({
+          type: "success",
+          text1: "Payment successful!",
+        });
+        const res = await updatePaymentStatus(clientSecret, "success" , true);
+        console.log("------------pppppppppppppp-------------",res)
+        console.log(res.data.isOk)
+        if(res.isOk) await handlesendMial(res.orderId);
+        // await handleRegister();
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error making payment:", error);
+        Toast.show({
+          type: "error",
+          text1: "Payment error",
+          text2: error.message,
+        });
+        setIsLoading(false);
+      }
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Login Again Session Expired",
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.navigate("Auth");
+      }, 100);
+    }
   };
 
   const handleRegister = async () => {
     try {
       const res = await CheckAccessToken();
       if (res) {
-        const userId = await AsyncStorage.getItem("role")
-        setIsLoading(true)
+        const userId = await AsyncStorage.getItem("role");
+        const amountInCents = Math.round(grandTotal * 100);
+        // const currency = eventDetail?.countryDetail?.[0]?.CurrencyCode || "usd";
+        // const registrationIds=await AsyncStorage.getItem("role");
+        setIsLoading(true);
         // console.log("aaaaaaaaaaaa", ticketList)
         const formattedParticipants = ticketList.map((participant) => {
           const sessionTotal = (participant.sessionName || []).reduce(
@@ -214,19 +336,20 @@ export default function PaymentScreen() {
 
           let ticketCategory = "Participant";
 
-
           return {
             byParticipant: userId || null,
             name: participant.name,
             dob: participant.dateOfBirth,
             eventName: eventDetail._id,
             age: participant.age,
-            sessionName: (participant.sessionName || []).map(session => session.value),
+            sessionName: (participant.sessionName || []).map(
+              (session) => session.value
+            ),
             ticketCategory,
             country: eventDetail.countryDetail[0]._id,
             TicketType: participant.TicketType._id, // Extract the correct value
             isActive: true,
-            registrationCharge: participant.registrationCharge
+            registrationCharge: participant.registrationCharge,
           };
         });
         const payload = {
@@ -236,18 +359,18 @@ export default function PaymentScreen() {
           country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
           participants: formattedParticipants,
           afterDiscountTotal: grandTotal,
-          currency: eventDetail.countryDetail[0].CurrencyCode
+          currency: eventDetail.countryDetail[0].CurrencyCode,
+          amountInCents:amountInCents|| "usd"
         };
 
-
-        const response = await ExentRegister(payload)
-        console.log("-----------------------------", response)
+        const response = await ExentRegister(payload);
+        console.log("-----------------------------", response);
         if (response.isOk) {
-          await handlesendMial(response.data[0].orderId)
-
-        }
-        else {
-          setIsLoading(false)
+          // setPayment_id(response.payment_id)
+          return response.clientSecret
+          // await handlesendMial(response.data[0].orderId);
+        } else {
+          setIsLoading(false);
           Toast.show({
             type: "error",
             text2: response.message || "Someting Went Wrong",
@@ -261,8 +384,7 @@ export default function PaymentScreen() {
             }, 2000);
           }
         }
-      }
-      else {
+      } else {
         Toast.show({
           type: "error",
           text1: "Login Again Session Expired",
@@ -287,10 +409,11 @@ export default function PaymentScreen() {
 
   const handlesendMial = async (orderId) => {
     try {
-      const response = await sendEventTicketByOrderId(orderId)
-      console.log("-----------------------------", response)
+      console.log(orderId)
+      const response = await sendEventTicketByOrderId(orderId);
+      console.log("-----------------------------", response);
       if (response.isOk || response.status === 200) {
-        setIsLoading(false)
+        setIsLoading(false);
         Toast.show({
           type: "success",
           text1: response.message,
@@ -320,6 +443,115 @@ export default function PaymentScreen() {
       throw new Error(error);
     }
   };
+  // const handleRegister = async () => {
+  //   try {
+  //     const tokenCheck = await CheckAccessToken();
+  //     if (!tokenCheck) {
+  //       Toast.show({
+  //         type: "error",
+  //         text1: "Login Again Session Expired",
+  //         position: "top",
+  //         visibilityTime: 2000,
+  //       });
+  //       navigation.navigate("Auth");
+  //       return;
+  //     }
+
+  //     const userId = await AsyncStorage.getItem("role");
+
+  //     const formattedParticipants = ticketList.map((participant) => {
+  //       let ticketCategory = "Participant";
+  //       return {
+  //         byParticipant: userId || null,
+  //         name: participant.name,
+  //         dob: participant.dateOfBirth,
+  //         eventName: eventDetail._id,
+  //         age: participant.age,
+  //         sessionName: (participant.sessionName || []).map((s) => s.value),
+  //         ticketCategory,
+  //         country: eventDetail.countryDetail[0]._id,
+  //         TicketType: participant.TicketType._id,
+  //         isActive: true,
+  //         registrationCharge: participant.registrationCharge,
+  //       };
+  //     });
+
+  //     const payload = {
+  //       couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
+  //       byParticipant: userId,
+  //       eventName: eventDetail._id,
+  //       country: eventDetail.countryDetail[0]._id,
+  //       participants: formattedParticipants,
+  //       afterDiscountTotal: grandTotal,
+  //       currency: eventDetail.countryDetail[0].CurrencyCode,
+  //     };
+
+  //     const response = await ExentRegister(payload);
+  //     console.log("Registration response:", response);
+
+  //     if (response.isOk) {
+  //       await handlesendMail(response.data[0].orderId);
+  //     } else {
+  //       Toast.show({
+  //         type: "error",
+  //         text2: response.message || "Something Went Wrong",
+  //         text1: response.status === 401 ? "Login Again Session Expired" : "",
+  //         position: "top",
+  //         visibilityTime: 3000,
+  //       });
+  //       if (response.status === 401) {
+  //         setTimeout(() => {
+  //           navigation.navigate("Auth");
+  //         }, 2000);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error during registration:", error);
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Registration Error",
+  //       text2: "Something went wrong. Please try again.",
+  //     });
+  //     throw new Error(error);
+  //   }
+  // };
+
+  // /**
+  //  * Sends an email with the tickets after successful registration.
+  //  */
+  // const handlesendMail = async (orderId) => {
+  //   try {
+  //     const response = await sendEventTicketByOrderId(orderId);
+  //     console.log("sendEventTicketByOrderId response:", response);
+
+  //     if (response.isOk || response.status === 200) {
+  //       Toast.show({
+  //         type: "success",
+  //         text1: response.message,
+  //         position: "top",
+  //         visibilityTime: 2000,
+  //       });
+  //       setTimeout(() => {
+  //         navigation.navigate("Tab");
+  //       }, 2000);
+  //     } else {
+  //       Toast.show({
+  //         type: "error",
+  //         text1: "Something went wrong sending the mail",
+  //         position: "top",
+  //         visibilityTime: 2000,
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error during sending mail:", error);
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Mail Error",
+  //       text2: "Something went wrong. Please try again.",
+  //     });
+  //     throw new Error(error);
+  //   }
+  // };
 
   return (
     <View style={styles.rootContainer}>
@@ -333,7 +565,6 @@ export default function PaymentScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
-        {/* Use EventImage with skeleton loader for the top image */}
         <EventImage
           uri={
             eventDetail?.EventImage
@@ -343,7 +574,6 @@ export default function PaymentScreen() {
           style={styles.topImage}
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
-
         <View style={styles.headerCard}>
           <Text
             style={styles.headerCardTitle}
@@ -375,11 +605,7 @@ export default function PaymentScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionTitle}>
-            Complete Event Registration
-          </Text>
-
-          {/* Payment Methods */}
+          <Text style={styles.sectionTitle}>Complete Event Registration</Text>
           {grandTotal > 0 && (
             <>
               <Text style={styles.paymentMethodTitle}>
@@ -414,55 +640,17 @@ export default function PaymentScreen() {
                     }
                   />
                 </TouchableOpacity>
-
-                {/* <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    selectedPaymentMethod === "PayPal" &&
-                      styles.paymentOptionSelected,
-                  ]}
-                  onPress={() => handlePaymentMethodChange("PayPal")}
-                >
-                  <View style={styles.paymentOptionRow}>
-                    <Ionicons
-                      name="logo-paypal"
-                      size={24}
-                      color="#003087"
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text style={styles.paymentOptionText}>PayPal</Text>
-                  </View>
-                  <Ionicons
-                    name={
-                      selectedPaymentMethod === "PayPal"
-                        ? "radio-button-on"
-                        : "radio-button-off"
-                    }
-                    size={24}
-                    color={
-                      selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"
-                    }
-                  />
-                </TouchableOpacity> */}
               </View>
             </>
           )}
-
-          {/* Tickets Booked */}
           {ticketList.length > 0 && (
             <>
               <Text style={styles.ticketsBookedTitle}>Tickets Booked</Text>
               {ticketList.map((reg, index) => (
-                <TicketItem
-                  key={index}
-                  registration={reg}
-                  onRemove={removeTicket}
-                  index={index}
-                />
+                <TicketItem key={index} registration={reg} />
               ))}
             </>
           )}
-
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -499,11 +687,9 @@ export default function PaymentScreen() {
   );
 }
 
+// -------------------- STYLES --------------------
 const styles = StyleSheet.create({
-  rootContainer: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  rootContainer: { flex: 1, backgroundColor: "#fff" },
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -524,10 +710,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  topImage: {
-    width: "100%",
-    height: "100%",
-  },
+  topImage: { width: "100%", height: "100%" },
   headerCard: {
     position: "absolute",
     bottom: 25,
@@ -556,11 +739,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginLeft: 2,
   },
-  headerCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 6,
-  },
+  headerCardSubtitle: { fontSize: 12, color: "#666", marginLeft: 6 },
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFF",
@@ -568,10 +747,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
-  scrollContent: {
-    paddingTop: 90,
-    paddingHorizontal: 20,
-  },
+  scrollContent: { paddingTop: 90, paddingHorizontal: 20 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -601,18 +777,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E9ECEF",
   },
-  paymentOptionSelected: {
-    borderColor: "#E3000F",
-    borderWidth: 1,
-  },
-  paymentOptionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  paymentOptionText: {
-    fontSize: 15,
-    color: "#000",
-  },
+  paymentOptionSelected: { borderColor: "#E3000F", borderWidth: 1 },
+  paymentOptionRow: { flexDirection: "row", alignItems: "center" },
+  paymentOptionText: { fontSize: 15, color: "#000" },
   ticketsBookedTitle: {
     fontSize: 16,
     fontWeight: "600",
@@ -628,29 +795,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  ticketItem: {
-    borderRadius: 16,
-    overflow: "hidden",
-    flexDirection: "row",
-  },
-  ticketAccent: {
-    width: 4,
-    backgroundColor: "#E3000F",
-  },
-  ticketContent: {
-    flex: 1,
-    padding: 16,
-  },
-  ticketRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  leftSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
+  ticketItem: { borderRadius: 16, overflow: "hidden", flexDirection: "row" },
+  ticketAccent: { width: 4, backgroundColor: "#E3000F" },
+  ticketContent: { flex: 1, padding: 16 },
+  ticketRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  leftSection: { flexDirection: "row", alignItems: "center", flex: 1 },
   ticketIconContainer: {
     width: 40,
     height: 40,
@@ -669,18 +818,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ticketDetails: {
-    flexDirection: "column",
-  },
+  ticketDetails: { flexDirection: "column" },
   ticketName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#222",
     marginBottom: 4,
-  },
-  removeTicketButton: {
-    padding: 4,
-    marginLeft: 8,
   },
   priceTag: {
     paddingHorizontal: 7,
@@ -690,11 +833,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
     marginTop: 4,
   },
-  priceTagText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#E3000F",
-  },
+  priceTagText: { fontSize: 12, fontWeight: "700", color: "#E3000F" },
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -709,14 +848,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E9ECEF",
   },
-  totalSection: {
-    flex: 1,
-  },
-  grandTotalText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
-  },
+  totalSection: { flex: 1 },
+  grandTotalText: { fontSize: 16, fontWeight: "700", color: "#222" },
   makePaymentButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -731,9 +864,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  makePaymentButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#FFF",
-  },
+  makePaymentButtonText: { fontSize: 15, fontWeight: "600", color: "#FFF" },
 });
