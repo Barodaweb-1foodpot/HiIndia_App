@@ -23,7 +23,47 @@ export const listActiveEvents = async () => {
   }
 };
 
-export const fetchEvents = async (query, categoryFilter, filterDate) => {
+// export const fetchEvents = async (query, categoryFilter, filterDate) => {
+//   try {
+//     console.log(
+//       "Requesting events with query:",
+//       query,
+//       "filterDate:",
+//       filterDate,
+//       "categoryFilter:",
+//       categoryFilter
+//     );
+//     const response = await axios.post(
+//       `${API_BASE_URL}/auth/list-by-params/eventforApp`,
+//       {
+//         match: query,
+//         IsActive: true,
+//         filterDate,
+//         categoryFilter,
+//       }
+//     );
+//     console.log("Response received:", response.data);
+//     if (!response.data[0]) {
+//       console.log("No events found. Data:", response.data);
+//     }
+//     return response?.data[0];
+//   } catch (error) {
+//     console.error("Error fetching events:", error);
+//     Toast.show({
+//       type: "error",
+//       text1: "Fetch Error",
+//       text2: "Something went wrong. Please try again.",
+//     });
+//     throw new Error(error);
+//   }
+// };
+
+export const fetchEvents = async (
+  query,
+  categoryFilter,
+  filterDate,
+  priceFilter
+) => {
   try {
     console.log(
       "Requesting events with query:",
@@ -31,8 +71,11 @@ export const fetchEvents = async (query, categoryFilter, filterDate) => {
       "filterDate:",
       filterDate,
       "categoryFilter:",
-      categoryFilter
+      categoryFilter,
+      "priceFilter:",
+      priceFilter
     );
+
     const response = await axios.post(
       `${API_BASE_URL}/auth/list-by-params/eventforApp`,
       {
@@ -40,13 +83,15 @@ export const fetchEvents = async (query, categoryFilter, filterDate) => {
         IsActive: true,
         filterDate,
         categoryFilter,
+        priceFilter,
       }
     );
+
     console.log("Response received:", response.data);
     if (!response.data[0]) {
       console.log("No events found. Data:", response.data);
     }
-    return response?.data[0];
+    return response?.data[0]; 
   } catch (error) {
     console.error("Error fetching events:", error);
     Toast.show({

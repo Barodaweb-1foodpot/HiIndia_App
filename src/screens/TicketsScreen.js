@@ -69,7 +69,9 @@ const TicketImage = memo(({ source, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={source && !error ? source : require("../../assets/placeholder.jpg")}
+        source={
+          source && !error ? source : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -118,13 +120,17 @@ export default function TicketScreen({ navigation }) {
     }
     try {
       const res = await getTickets();
+      console.log("ppppppppppppppppppppppp", res.data);
       if (res.isOk && res.data && res.data.length > 0) {
         const transformedTickets = res.data.map((order) => ({
           id: order._id,
           isActive: order.isActive,
           countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
-          date: formatEventDateTime(order.event?.StartDate, order.event?.EndDate),
+          date: formatEventDateTime(
+            order.event?.StartDate,
+            order.event?.EndDate
+          ),
           endDate: order.event?.EndDate, // used for filtering Past vs Upcoming
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
@@ -133,12 +139,13 @@ export default function TicketScreen({ navigation }) {
             name: reg.name,
             type: reg.TicketType?.name || "Standard",
             price: reg.total || 0,
+            ticketId: reg.ticketId,
           })),
           totalRate: order.subTotal,
           total: order.totalRate,
           coupon: order.couponDiscount || 0,
         }));
-        console.log(transformedTickets)
+        console.log("------------", transformedTickets);
         setTickets(transformedTickets);
       } else {
         setTickets([]);
@@ -210,7 +217,10 @@ export default function TicketScreen({ navigation }) {
         },
       ]}
     >
-      <LinearGradient colors={["#FFFFFF", "#F8F9FA"]} style={styles.cardGradient}>
+      <LinearGradient
+        colors={["#FFFFFF", "#F8F9FA"]}
+        style={styles.cardGradient}
+      >
         {/* Ticket Header */}
         <View style={styles.ticketHeader}>
           <View style={styles.imageContainer}>
@@ -219,13 +229,19 @@ export default function TicketScreen({ navigation }) {
           <View style={styles.eventInfo}>
             <View style={styles.titleContainer}>
               <View style={styles.ticketIconContainer}>
-                <LinearGradient colors={["#FF1A1A", "#E3000F"]} style={styles.ticketIconBg}>
+                <LinearGradient
+                  colors={["#FF1A1A", "#E3000F"]}
+                  style={styles.ticketIconBg}
+                >
                   <Ionicons name="ticket" size={16} color="#FFF" />
                 </LinearGradient>
               </View>
               <View style={{ width: "90%" }}>
                 <TouchableOpacity onPress={() => handleViewTicket(ticket)}>
-                  <Text style={styles.eventTitle} numberOfLines={readMoreMap[ticket.id] ? undefined : 2}>
+                  <Text
+                    style={styles.eventTitle}
+                    numberOfLines={readMoreMap[ticket.id] ? undefined : 2}
+                  >
                     {ticket.title}
                   </Text>
                 </TouchableOpacity>
@@ -246,18 +262,26 @@ export default function TicketScreen({ navigation }) {
               </View>
             </View>
             <Text style={styles.eventDate}>{ticket.date}</Text>
-            <Text style={styles.ticketCount}>{ticket.tickets.length} Ticket's</Text>
+            <Text style={styles.ticketCount}>
+              {ticket.tickets.length} Ticket's
+            </Text>
           </View>
         </View>
 
         {/* View Details Button */}
-        <TouchableOpacity style={styles.floatingButtonRight} onPress={() => handleViewTicket(ticket)}>
+        <TouchableOpacity
+          style={styles.floatingButtonRight}
+          onPress={() => handleViewTicket(ticket)}
+        >
           <Ionicons name="eye-outline" size={18} color="#fff" />
         </TouchableOpacity>
 
         {/* Order Details Container */}
         <TouchableOpacity
-          style={[styles.orderDetailsContainer, expandedOrders[ticket.id] && styles.expandedContainer]}
+          style={[
+            styles.orderDetailsContainer,
+            expandedOrders[ticket.id] && styles.expandedContainer,
+          ]}
           onPress={() => toggleOrderDetails(ticket.id)}
         >
           {!expandedOrders[ticket.id] ? (
@@ -271,9 +295,13 @@ export default function TicketScreen({ navigation }) {
               {ticket.tickets.map((t, index) => (
                 <View key={index}>
                   <View style={styles.ticketHolderRow}>
-                    <Text style={styles.ticketHolderName}>{t.name}</Text>
+                  
+                    <Text style={styles.ticketHolderName}>  {t.ticketId} {t.name} </Text>
                     <View style={styles.priceTypeContainer}>
-                      <LinearGradient colors={["#EFEAFF", "#E5E0FF"]} style={styles.purplePriceBox}>
+                      <LinearGradient
+                        colors={["#EFEAFF", "#E5E0FF"]}
+                        style={styles.purplePriceBox}
+                      >
                         <Text style={styles.purplePriceText}>
                           {ticket.countryCurrency} {t.price}
                         </Text>
@@ -283,7 +311,9 @@ export default function TicketScreen({ navigation }) {
                       </Text>
                     </View>
                   </View>
-                  {index < ticket.tickets.length - 1 && <View style={styles.rowSeparator} />}
+                  {index < ticket.tickets.length - 1 && (
+                    <View style={styles.rowSeparator} />
+                  )}
                 </View>
               ))}
 
@@ -301,7 +331,9 @@ export default function TicketScreen({ navigation }) {
                 {ticket.coupon ? (
                   <>
                     <View style={styles.whiteTotalsRow}>
-                      <Text style={styles.whiteTotalsLabel}>Coupon applied</Text>
+                      <Text style={styles.whiteTotalsLabel}>
+                        Coupon applied
+                      </Text>
                       <Text style={styles.couponValue}>
                         -{ticket.countryCurrency}
                         {Math.abs(Number(ticket.coupon)).toFixed(2)}
@@ -333,9 +365,17 @@ export default function TicketScreen({ navigation }) {
 
               {/* Hide Order Details Button */}
               <View style={styles.hideDetailsButtonRow}>
-                <TouchableOpacity style={styles.hideDetailsButton} onPress={() => toggleOrderDetails(ticket.id)}>
+                <TouchableOpacity
+                  style={styles.hideDetailsButton}
+                  onPress={() => toggleOrderDetails(ticket.id)}
+                >
                   <Text style={styles.hideDetailsText}>Hide Order Details</Text>
-                  <Ionicons name="chevron-up" size={20} color="#1F2937" style={{ marginLeft: 4 }} />
+                  <Ionicons
+                    name="chevron-up"
+                    size={20}
+                    color="#1F2937"
+                    style={{ marginLeft: 4 }}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -347,15 +387,25 @@ export default function TicketScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       {/* Black Header Gradient */}
       <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>
         <View style={styles.headerContent}>
-          <Image source={require("../../assets/logo.png")} style={styles.logo} />
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+          />
           <View style={styles.headerIcons}>
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Notification" })}
+              onPress={() =>
+                navigation.navigate("App", { screen: "Notification" })
+              }
             >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
@@ -378,13 +428,27 @@ export default function TicketScreen({ navigation }) {
             style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
             onPress={() => setActiveTab("Upcoming")}
           >
-            <Text style={[styles.tabText, activeTab === "Upcoming" && styles.activeTabText]}>Upcoming</Text>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Upcoming" && styles.activeTabText,
+              ]}
+            >
+              Upcoming
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === "Past" && styles.activeTab]}
             onPress={() => setActiveTab("Past")}
           >
-            <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>Past</Text>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Past" && styles.activeTabText,
+              ]}
+            >
+              Past
+            </Text>
           </TouchableOpacity>
         </View>
         {/* Loader or Tickets List */}
@@ -402,7 +466,9 @@ export default function TicketScreen({ navigation }) {
             renderItem={renderTicket}
             ListEmptyComponent={
               <Text style={styles.noTicketsText}>
-                {activeTab === "Past" ? "No past tickets" : "No upcoming tickets"}
+                {activeTab === "Past"
+                  ? "No past tickets"
+                  : "No upcoming tickets"}
               </Text>
             }
           />

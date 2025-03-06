@@ -27,7 +27,10 @@ import { formatEventDateTime } from "../../helper/helper_Function";
 import { CheckAccessToken } from "../../api/token_api";
 import { ExentRegister } from "../../api/event_api";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
-import { createPaymentIntent, updatePaymentStatus } from "../../api/payment_api";
+import {
+  createPaymentIntent,
+  updatePaymentStatus,
+} from "../../api/payment_api";
 
 // FontAwesomeIcon for Stripe icon
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
@@ -183,7 +186,7 @@ export default function PaymentScreen() {
   // Set default payment method to Stripe
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
 
-  const [payment_id, setPayment_id] = useState("")
+  const [payment_id, setPayment_id] = useState("");
 
   useEffect(() => {
     recalcTotal();
@@ -243,10 +246,25 @@ export default function PaymentScreen() {
         // const currency = eventDetail?.countryDetail?.[0]?.CurrencyCode || "usd";
         // const registrationIds=await AsyncStorage.getItem("role");
         // Create PaymentIntent
-        const  clientSecret  = await handleRegister();
-        console.log("lllllllllll",clientSecret)
+        const clientSecret = await handleRegister();
+        if (clientSecret === "Free") {
+          Toast.show({
+            type: "success",
+            text1: "Registration successful!",
+          });
+          setIsLoading(false);
+          setTimeout(() => {
+            navigation.navigate("Tab");
+          }, 2000);
+          return;
+        }
+        console.log("lllllllllll", clientSecret);
         if (!clientSecret) {
-          const res = await updatePaymentStatus(clientSecret, "Failed to create PaymentIntent" , false);
+          const res = await updatePaymentStatus(
+            clientSecret,
+            "Failed to create PaymentIntent",
+            false
+          );
           Toast.show({
             type: "error",
             text1: "Failed to create PaymentIntent",
@@ -261,8 +279,11 @@ export default function PaymentScreen() {
           returnURL: "hiindiaapp://stripe-redirect",
         });
         if (initError) {
-
-          const res = await updatePaymentStatus(clientSecret, initError.message , false);
+          const res = await updatePaymentStatus(
+            clientSecret,
+            initError.message,
+            false
+          );
 
           Toast.show({
             type: "error",
@@ -275,7 +296,11 @@ export default function PaymentScreen() {
 
         const { error: paymentError } = await presentPaymentSheet();
         if (paymentError) {
-          const res = await updatePaymentStatus(clientSecret,  paymentError.message , false);
+          const res = await updatePaymentStatus(
+            clientSecret,
+            paymentError.message,
+            false
+          );
 
           Toast.show({
             type: "error",
@@ -290,10 +315,10 @@ export default function PaymentScreen() {
           type: "success",
           text1: "Payment successful!",
         });
-        const res = await updatePaymentStatus(clientSecret, "success" , true);
-        console.log("------------pppppppppppppp-------------",res)
-        console.log(res.data.isOk)
-        if(res.isOk) await handlesendMial(res.orderId);
+        const res = await updatePaymentStatus(clientSecret, "success", true);
+        console.log("------------pppppppppppppp-------------", res);
+        console.log(res.data.isOk);
+        if (res.isOk) await handlesendMial(res.orderId);
         // await handleRegister();
         setIsLoading(false);
       } catch (error) {
@@ -360,14 +385,18 @@ export default function PaymentScreen() {
           participants: formattedParticipants,
           afterDiscountTotal: grandTotal,
           currency: eventDetail.countryDetail[0].CurrencyCode,
-          amountInCents:amountInCents|| "usd"
+          amountInCents: amountInCents || "usd",
         };
 
         const response = await ExentRegister(payload);
         console.log("-----------------------------", response);
         if (response.isOk) {
+          console.log(eventDetail);
+
           // setPayment_id(response.payment_id)
-          return response.clientSecret
+          if (response.clientSecret) return response.clientSecret;
+          else if (response.isOk && eventDetail.IsPaid === false) return "Free";
+
           // await handlesendMial(response.data[0].orderId);
         } else {
           setIsLoading(false);
@@ -409,7 +438,7 @@ export default function PaymentScreen() {
 
   const handlesendMial = async (orderId) => {
     try {
-      console.log(orderId)
+      console.log(orderId);
       const response = await sendEventTicketByOrderId(orderId);
       console.log("-----------------------------", response);
       if (response.isOk || response.status === 200) {

@@ -405,7 +405,7 @@ export default function EventsDetail({ navigation, route }) {
               <EventImage
                 uri={
                   eventDetail?.EventImage
-                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.artistImage}`
                     : undefined
                 }
                 style={styles.artistImage}
