@@ -12,7 +12,8 @@ import {
   Share,
   Animated,
   ActivityIndicator,
-  Linking, // <-- Import Linking for external URL
+  Linking,
+  RefreshControl,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
@@ -20,21 +21,16 @@ import Checkbox from "expo-checkbox";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 
-// API calls
 import {
   fetchEvents,
   listActiveEvents,
   getEventCategoriesByPartner,
 } from "../api/event_api";
 
-// Helpers
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
 
-/**
- * A wrapper to blur the background content. On Android,
- * we manually add a dark overlay since BlurView is iOS only.
- */
+// Reusable Blur wrapper for iOS vs Android
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -95,9 +91,6 @@ const SkeletonLoader = ({ style }) => {
   );
 };
 
-/**
- * EventImage - wraps an Image with a SkeletonLoader until loaded.
- */
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -119,11 +112,6 @@ const EventImage = ({ uri, style }) => {
   );
 };
 
-/**
- * HomeScreen - Shows a list of upcoming/past events with
- * filtering, searching, and a "Book Now" button that
- * either opens an external link or navigates to BuyTicket.
- */
 export default function HomeScreen({ navigation }) {
   // Search & Filter States
   const [searchVisible, setSearchVisible] = useState(false);
@@ -140,13 +128,13 @@ export default function HomeScreen({ navigation }) {
   // Tab states: "Upcoming" or "Past"
   const [activeTab, setActiveTab] = useState("Upcoming");
 
-  // The main list of events to display
+  // Grouped events (by artist)
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  /**
-   * Show status bar on focus
-   */
+  // For pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
   useFocusEffect(
     React.useCallback(() => {
       StatusBar.setHidden(false);
@@ -155,24 +143,15 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  /**
-   * Initial load: fetch active events & categories
-   */
   useEffect(() => {
-    fetchActiveEvent();   // basic call to load "active" events (if used)
-    loadCategories();     // load category data for filtering
+    fetchActiveEvent();
+    loadCategories();
   }, []);
 
-  /**
-   * Refetch events whenever tab, search, or filters change
-   */
   useEffect(() => {
     fetchEvent();
   }, [activeTab, searchText, priceFilter, selectedCategoryIds]);
 
-  /**
-   * loadCategories - fetch the categories for the category filter
-   */
   const loadCategories = async () => {
     try {
       const res = await getEventCategoriesByPartner();
@@ -184,9 +163,6 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  /**
-   * fetchActiveEvent - example of listing active events (if needed)
-   */
   const fetchActiveEvent = async () => {
     try {
       await listActiveEvents();
@@ -196,25 +172,21 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  /**
-   * fetchEvent - fetch events from the API with the current filters
-   */
   const fetchEvent = async () => {
     try {
       setLoading(true);
 
-      // If no categories selected, pass "All"
       const catFilter = selectedCategoryIds.length
         ? selectedCategoryIds
         : "All";
+      const filterDate = activeTab;
 
-      const filterDate = activeTab; // "Upcoming" or "Past"
+      // Expecting grouped data like:
+      // [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
+      const data = await fetchEvents(searchText, catFilter, filterDate, priceFilter);
 
-      // Attempt to fetch with all parameters
-      const res = await fetchEvents(searchText, catFilter, filterDate, priceFilter);
-
-      if (res && res.data) {
-        setEvents(res.data);
+      if (Array.isArray(data) && data.length > 0 && data[0].data) {
+        setEvents(data[0].data);
       } else {
         setEvents([]);
       }
@@ -226,9 +198,14 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  /**
-   * navigateToDetails - view event details screen
-   */
+  // Refresh function for main content
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Re-fetch without showing center loader
+    await fetchEvent();
+    setRefreshing(false);
+  };
+
   const navigateToDetails = (event) => {
     navigation.navigate("App", {
       screen: "EventsDetail",
@@ -236,9 +213,6 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
-  /**
-   * shareEvent - open share dialog for a given event
-   */
   const shareEvent = async (event) => {
     try {
       const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
@@ -259,23 +233,14 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  /**
-   * toggleFilterPanel - show/hide the filter panel
-   */
   const toggleFilterPanel = () => {
     setShowFilterPanel(!showFilterPanel);
   };
 
-  /**
-   * handleSelectPrice - select "Paid", "Free", or "All" (radio style)
-   */
   const handleSelectPrice = (value) => {
     setPriceFilter(value);
   };
 
-  /**
-   * toggleCategory - add/remove a category from the selectedCategoryIds
-   */
   const toggleCategory = (catId) => {
     setSelectedCategoryIds((prev) => {
       if (prev.includes(catId)) {
@@ -286,18 +251,11 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
-  /**
-   * handleClearFilter - reset all filters
-   */
   const handleClearFilter = () => {
     setPriceFilter("All");
     setSelectedCategoryIds([]);
   };
 
-  /**
-   * handleBookNow - if event has an external link, open it.
-   * Otherwise, navigate to "BuyTicket" with event details.
-   */
   const handleBookNow = (event) => {
     if (event.hasExternalLink && event.externalLink) {
       Linking.openURL(event.externalLink);
@@ -334,13 +292,10 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      {/* White Section with content */}
+      {/* White Section */}
       <View style={styles.whiteSection}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Search & Filter Header */}
+        {/* Sticky Header (Title, Search, Filter & Tabs) */}
+        <View style={styles.stickyContainer}>
           <View style={styles.eventsHeader}>
             <Text style={styles.eventsTitle}>All Events</Text>
             <View style={{ flexDirection: "row" }}>
@@ -361,7 +316,6 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Search Bar */}
           {searchVisible && (
             <View style={styles.searchWrapper}>
               <View style={styles.searchContainer}>
@@ -393,7 +347,6 @@ export default function HomeScreen({ navigation }) {
                   </View>
                   <Text style={styles.filterPriceLabel}>Paid</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={styles.filterPriceItem}
                   onPress={() => handleSelectPrice("Free")}
@@ -403,7 +356,6 @@ export default function HomeScreen({ navigation }) {
                   </View>
                   <Text style={styles.filterPriceLabel}>Free</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={styles.filterPriceItem}
                   onPress={() => handleSelectPrice("All")}
@@ -416,9 +368,7 @@ export default function HomeScreen({ navigation }) {
               </View>
 
               {/* Category Filter (multi-select) */}
-              <Text style={[styles.filterHeading, { marginTop: 12 }]}>
-                Categories
-              </Text>
+              <Text style={[styles.filterHeading, { marginTop: 12 }]}>Categories</Text>
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat._id}
@@ -452,12 +402,7 @@ export default function HomeScreen({ navigation }) {
               style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
               onPress={() => setActiveTab("Upcoming")}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "Upcoming" && styles.activeTabText,
-                ]}
-              >
+              <Text style={[styles.tabText, activeTab === "Upcoming" && styles.activeTabText]}>
                 Upcoming
               </Text>
             </TouchableOpacity>
@@ -465,118 +410,115 @@ export default function HomeScreen({ navigation }) {
               style={[styles.tab, activeTab === "Past" && styles.activeTab]}
               onPress={() => setActiveTab("Past")}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "Past" && styles.activeTabText,
-                ]}
-              >
+              <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>
                 Past
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Main Events List */}
-          <View style={styles.section}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#000" style={styles.loader} />
-            ) : events.length === 0 ? (
-              <Text style={styles.noEventsText}>
-                {activeTab === "Past" ? "No past events" : "No events found"}
-              </Text>
-            ) : (
-              events.map((event, index) => {
-                const eventImageUri = event.EventImage
-                  ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
-                  : null;
-                const eventDate = formatEventDateTime(
-                  event.StartDate,
-                  event.EndDate
-                );
+        {/* Main Content with Refresh Control */}
+        <ScrollView
+          contentContainerStyle={styles.mainContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Show center loader only if loading and not refreshing */}
+          {loading && !refreshing ? (
+            <ActivityIndicator size="large" color="#000" style={styles.loader} />
+          ) : events.length === 0 ? (
+            <Text style={styles.noEventsText}>
+              {activeTab === "Past" ? "No past events" : "No events found"}
+            </Text>
+          ) : (
+            // Map each "artist group"
+            events.map((group, groupIndex) => (
+              <View key={groupIndex} style={{ marginBottom: 24 }}>
+                {/* Artist Name */}
+                <Text style={styles.artistName}>
+                  {group.artistName || "Unknown Artist"}
+                </Text>
 
-                return (
-                  <View key={index} style={styles.eventCard}>
-                    {/* Badge: Paid or Free */}
-                    {event.IsPaid ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>Paid</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.badge, styles.freeBadge]}>
-                        <Text style={styles.badgeText}>Free</Text>
-                      </View>
-                    )}
+                {/* Map the events in group.data */}
+                {group.data.map((event, index) => {
+                  const eventImageUri = event.EventImage
+                    ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+                    : null;
+                  const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
 
-                    {/* Event image */}
-                    <EventImage uri={eventImageUri} style={styles.eventImage} />
-
-                    {/* Top-right icons (info + share) */}
-                    <View style={styles.topRightIcons}>
-                      <TouchableOpacity
-                        style={styles.infoButton}
-                        onPress={() => navigateToDetails(event)}
-                      >
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={20}
-                          color="#000"
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.shareButton}
-                        onPress={() => shareEvent(event)}
-                      >
-                        <Ionicons
-                          name="share-social-outline"
-                          size={20}
-                          color="#000"
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Event content overlay (title, location, date, Book Now) */}
-                    <BlurWrapper style={styles.eventContent}>
-                      <View style={styles.eventDetailsColumn}>
-                        <Text style={styles.eventTitle} numberOfLines={1}>
-                          {event.EventName}
-                        </Text>
-                        <View style={styles.eventDetail}>
-                          <Ionicons
-                            name="location-outline"
-                            size={14}
-                            color="#fff"
-                          />
-                          <Text style={styles.eventDetailText} numberOfLines={2}>
-                            {event.EventLocation}
-                          </Text>
+                  return (
+                    <View key={index} style={styles.eventCard}>
+                      {/* Badge: Paid or Free */}
+                      {event.IsPaid ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Paid</Text>
                         </View>
-                        <View style={styles.eventDetail}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color="#fff"
-                          />
-                          <Text style={styles.eventDetailText}>
-                            {eventDate}
-                          </Text>
+                      ) : (
+                        <View style={[styles.badge, styles.freeBadge]}>
+                          <Text style={styles.badgeText}>Free</Text>
                         </View>
-                      </View>
+                      )}
 
-                      {/* Book Now button - uses external link if available */}
-                      <View style={styles.registerContainer}>
+                      {/* Event image */}
+                      <EventImage uri={eventImageUri} style={styles.eventImage} />
+
+                      {/* Top-right icons (info + share) */}
+                      <View style={styles.topRightIcons}>
                         <TouchableOpacity
-                          style={styles.registerButton}
-                          onPress={() => handleBookNow(event)}
+                          style={styles.infoButton}
+                          onPress={() => navigateToDetails(event)}
                         >
-                          <Text style={styles.registerText}>Book Now</Text>
+                          <Ionicons name="information-circle-outline" size={20} color="#000" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.shareButton}
+                          onPress={() => shareEvent(event)}
+                        >
+                          <Ionicons name="share-social-outline" size={20} color="#000" />
                         </TouchableOpacity>
                       </View>
-                    </BlurWrapper>
-                  </View>
-                );
-              })
-            )}
-          </View>
+
+                      {/* Event content overlay (title, location, date, Book Now) */}
+                      <BlurWrapper style={styles.eventContent}>
+                        <View style={styles.eventDetailsColumn}>
+                          <Text style={styles.eventTitle} numberOfLines={1}>
+                            {event.EventName}
+                          </Text>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="location-outline" size={14} color="#fff" />
+                            <Text style={styles.eventDetailText} numberOfLines={2}>
+                              {event.EventLocation}
+                            </Text>
+                          </View>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="calendar-outline" size={14} color="#fff" />
+                            <Text style={styles.eventDetailText}>
+                              {eventDate}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Book Now button */}
+                        <View style={styles.registerContainer}>
+                          <TouchableOpacity
+                            style={styles.registerButton}
+                            onPress={() => handleBookNow(event)}
+                          >
+                            <Text style={styles.registerText}>Book Now</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </BlurWrapper>
+                    </View>
+                  );
+                })}
+              </View>
+            ))
+          )}
         </ScrollView>
       </View>
     </View>
@@ -631,7 +573,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
   },
-  scrollContainer: {
+  stickyContainer: {
+    backgroundColor: "#fff",
+  },
+  mainContent: {
     paddingBottom: 120,
   },
   eventsHeader: {
@@ -766,11 +711,9 @@ const styles = StyleSheet.create({
     color: "#000",
     fontWeight: "600",
   },
-  section: {
-    marginBottom: 16,
-  },
   loader: {
     marginTop: 30,
+    alignSelf: "center",
   },
   noEventsText: {
     textAlign: "center",
@@ -778,6 +721,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
+  // Artist grouping
+  artistName: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  // Event card
   eventCard: {
     borderRadius: 16,
     overflow: "hidden",

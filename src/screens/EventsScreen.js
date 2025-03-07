@@ -11,18 +11,17 @@ import {
   Platform,
   Share,
   Animated,
+  RefreshControl,
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
 import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
+import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
-import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
-// --- Skeleton Loader Component ---
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -31,7 +30,7 @@ const SkeletonLoader = ({ style }) => {
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
-        useNativeDriver: true, 
+        useNativeDriver: true,
       })
     ).start();
   }, [animation]);
@@ -65,7 +64,6 @@ const SkeletonLoader = ({ style }) => {
   );
 };
 
-// --- EventImage with Skeleton Loader ---
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -74,20 +72,25 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          setLoaded(true);
+          console.log("Image loaded:", uri);
+        }}
         onError={() => {
           setError(true);
           setLoaded(true);
+          console.log("Error loading image:", uri);
         }}
       />
     </View>
   );
 };
 
-// --- Blur Wrapper ---
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -103,13 +106,14 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
-// --- Header Component ---
 const Header = React.memo(({ navigation }) => {
   const handleNotificationPress = useCallback(() => {
+    console.log("Navigating to Notification screen");
     navigation.navigate("App", { screen: "Notification" });
   }, [navigation]);
 
   const handleCalenderPress = useCallback(() => {
+    console.log("Navigating to Calendar screen");
     navigation.navigate("App", { screen: "Calender" });
   }, [navigation]);
 
@@ -118,10 +122,16 @@ const Header = React.memo(({ navigation }) => {
       <View style={styles.headerContent}>
         <Image source={require("../../assets/logo.png")} style={styles.logo} />
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconCircle} onPress={handleNotificationPress}>
+          <TouchableOpacity
+            style={styles.iconCircle}
+            onPress={handleNotificationPress}
+          >
             <Ionicons name="notifications-outline" size={20} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconCircle} onPress={handleCalenderPress}>
+          <TouchableOpacity
+            style={styles.iconCircle}
+            onPress={handleCalenderPress}
+          >
             <Ionicons name="calendar-outline" size={20} color="#000" />
           </TouchableOpacity>
         </View>
@@ -130,7 +140,6 @@ const Header = React.memo(({ navigation }) => {
   );
 });
 
-// --- SearchBar Component ---
 const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
   visible ? (
     <View style={styles.searchWrapper}>
@@ -147,9 +156,14 @@ const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
   ) : null
 );
 
-// --- Dropdown Component ---
 const Dropdown = React.memo(
-  ({ dropdownOpen, selectedCategory, category, onToggle, onSelectCategory }) => (
+  ({
+    dropdownOpen,
+    selectedCategory,
+    category,
+    onToggle,
+    onSelectCategory,
+  }) => (
     <View style={styles.dropdownWrapper}>
       <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
         <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
@@ -159,13 +173,20 @@ const Dropdown = React.memo(
         <View style={styles.dropdownList}>
           {category?.map((cat, index) => (
             <View key={index}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => onSelectCategory(cat)}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => onSelectCategory(cat)}
+              >
                 <Text style={styles.dropdownItemText}>{cat.name}</Text>
               </TouchableOpacity>
-              {index < category.length - 1 && <View style={styles.dropdownSeparator} />}
+              {index < category.length - 1 && (
+                <View style={styles.dropdownSeparator} />
+              )}
             </View>
           ))}
-          {category && category.length > 0 && <View style={styles.dropdownSeparator} />}
+          {category && category.length > 0 && (
+            <View style={styles.dropdownSeparator} />
+          )}
           <TouchableOpacity
             style={styles.dropdownItem}
             onPress={() => onSelectCategory({ _id: "All", name: "All" })}
@@ -178,7 +199,6 @@ const Dropdown = React.memo(
   )
 );
 
-// --- CategoryCard Component ---
 const CategoryCard = React.memo(({ item, navigation }) => (
   <TouchableOpacity
     onPress={() =>
@@ -187,17 +207,21 @@ const CategoryCard = React.memo(({ item, navigation }) => (
         params: { eventDetail: item },
       })
     }
+    style={{ marginBottom: 16 }}
   >
     <View style={styles.categoryCard}>
       <EventImage
-        uri={item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined}
+        uri={
+          item.EventImage
+            ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+            : undefined
+        }
         style={styles.categoryCardImage}
       />
       <View style={styles.categoryCardContent}>
         <Text style={styles.categoryCardTitle} numberOfLines={1}>
           {item.EventName}
         </Text>
-        {/* UPDATED: Use unified date & time helper function */}
         <Text style={styles.categoryCardDate}>
           {formatEventDateTime(item.StartDate, item.EndDate)}
         </Text>
@@ -219,11 +243,14 @@ const CategoryCard = React.memo(({ item, navigation }) => (
   </TouchableOpacity>
 ));
 
-// --- OtherEventCard Component ---
 const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
   <View style={styles.eventCard}>
     <EventImage
-      uri={item.EventImage ? `${API_BASE_URL_UPLOADS}/${item.EventImage}` : undefined}
+      uri={
+        item.EventImage
+          ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+          : undefined
+      }
       style={styles.eventImage}
     />
     <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
@@ -242,7 +269,6 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
         </View>
         <View style={styles.eventDetail}>
           <Ionicons name="calendar-outline" size={14} color="#fff" />
-          
           <Text style={styles.eventDetailText}>
             {formatEventDateTime(item.StartDate, item.EndDate)}
           </Text>
@@ -271,11 +297,13 @@ export default function EventsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState("All events");
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [artistGroups, setArtistGroups] = useState([]);
   const [catId, setCatId] = useState("");
   const [firstTime, setFirstTime] = useState(true);
   const [allEvent, setAllEvent] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -294,29 +322,49 @@ export default function EventsScreen({ navigation }) {
   }, [searchText, selectedCategory]);
 
   const fetchEvent = async () => {
-    setLoadingEvents(true);
-    const res = await fetchEvents(searchText, catId);
-    console.log("Fetched events:", res);
-    if (res?.data?.length > 0) {
-      if (firstTime) {
-        setAllEvent(res.data);
+    try {
+      if (!refreshing) {
+        setLoading(true);
+        console.log("Fetching events (initial load)...");
       }
-      setEvents(res.data);
-      setFirstTime(false);
-    } else {
-      setEvents([]);
+      const res = await fetchEvents(searchText, catId);
+      console.log("Fetched events:", res);
+
+      if (Array.isArray(res) && res.length > 0 && res[0].data) {
+        const groups = res[0].data;
+        if (firstTime) {
+          let flattened = [];
+          groups.forEach((g) => {
+            flattened.push(...g.data);
+          });
+          setAllEvent(flattened);
+          setFirstTime(false);
+        }
+        setArtistGroups(groups);
+      } else {
+        setArtistGroups([]);
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setArtistGroups([]);
+    } finally {
+      setLoading(false);
     }
-    setLoadingEvents(false);
   };
 
   const fetchCategory = async () => {
-    const res = await getEventCategoriesByPartner();
-    console.log("Categories:", res.data);
-    if (res.data.data?.length > 0) {
-      setCategory(res.data.data);
+    try {
+      const res = await getEventCategoriesByPartner();
+      console.log("Fetched categories:", res.data);
+      if (res.data.data?.length > 0) {
+        setCategory(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
     }
   };
 
+  // --- Event Sharing ---
   const shareEvent = useCallback(async (event) => {
     try {
       const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
@@ -329,6 +377,7 @@ export default function EventsScreen({ navigation }) {
         `📍 *Location:* ${event.EventLocation}\n` +
         `🗓️ *Date:* ${eventDate}\n` +
         (eventImageUri ? `🖼️ *Image:* ${eventImageUri}\n` : "");
+      console.log("Sharing event with message:", shareMessage);
       await Share.share({ message: shareMessage });
     } catch (error) {
       console.error("Error sharing event", error);
@@ -336,57 +385,105 @@ export default function EventsScreen({ navigation }) {
   }, []);
 
   const handleSelectCategory = useCallback((cat) => {
+    console.log("Selected category:", cat);
     setCatId(cat._id);
     setSelectedCategory(cat.name);
     setDropdownOpen(false);
   }, []);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchEvent();
+    setRefreshing(false);
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
+      {/* Header Section */}
       <Header navigation={navigation} />
+
       <View style={styles.whiteSection}>
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {/* Search Header */}
-          <View style={styles.eventsHeader}>
-            <Text style={styles.eventsTitle}>Events</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setSearchVisible((prev) => !prev);
-                if (!searchVisible) setSearchText("");
-              }}
-            >
-              <Ionicons name="search-outline" size={24} color="#000" />
-            </TouchableOpacity>
-          </View>
-          <SearchBar visible={searchVisible} searchText={searchText} setSearchText={setSearchText} />
-          <Dropdown
-            dropdownOpen={dropdownOpen}
-            selectedCategory={selectedCategory}
-            category={category}
-            onToggle={() => setDropdownOpen(!dropdownOpen)}
-            onSelectCategory={handleSelectCategory}
-          />
-          {/* Main Events List */}
-          {loadingEvents ? (
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#000" />
-            </View>
-          ) : events.length > 0 ? (
-            <>
-              {events.map((item) => (
-                <CategoryCard key={item._id} item={item} navigation={navigation} />
-              ))}
-            </>
+        {/* Title and Search Icon */}
+        <View style={styles.eventsHeader}>
+          <Text style={styles.eventsTitle}>Events</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setSearchVisible((prev) => !prev);
+              if (!searchVisible) setSearchText("");
+            }}
+          >
+            <Ionicons name="search-outline" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar */}
+        <SearchBar
+          visible={searchVisible}
+          searchText={searchText}
+          setSearchText={setSearchText}
+        />
+
+        {/* Dropdown for Category Filtering */}
+        <Dropdown
+          dropdownOpen={dropdownOpen}
+          selectedCategory={selectedCategory}
+          category={category}
+          onToggle={() => setDropdownOpen(!dropdownOpen)}
+          onSelectCategory={handleSelectCategory}
+        />
+
+        {/* Main Events List with Pull-to-Refresh */}
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainer}
+        >
+          {artistGroups.length > 0 ? (
+            artistGroups.map((group, groupIndex) => (
+              <View key={groupIndex} style={{ marginBottom: 24 }}>
+                <Text style={styles.artistName}>
+                  {group.artistName || "Unknown Artist"}
+                </Text>
+                {group.data.map((item) => (
+                  <CategoryCard
+                    key={item._id}
+                    item={item}
+                    navigation={navigation}
+                  />
+                ))}
+              </View>
+            ))
           ) : (
             <Text style={styles.noEventsText}>No events found.</Text>
           )}
+
           {/* Other Events Section */}
           {allEvent.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Other events</Text>
               {allEvent.map((item) => (
-                <OtherEventCard key={item._id} item={item} navigation={navigation} onShare={shareEvent} />
+                <OtherEventCard
+                  key={item._id}
+                  item={item}
+                  navigation={navigation}
+                  onShare={shareEvent}
+                />
               ))}
             </>
           )}
@@ -397,20 +494,11 @@ export default function EventsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  loaderContainer: {
-    paddingVertical: 30,
-    alignItems: "center",
-  },
-  noEventsText: {
-    textAlign: "center",
-    color: "#666",
-    fontSize: 16,
-    marginVertical: 20,
-  },
   container: {
     flex: 1,
     backgroundColor: "#000",
   },
+
   header: {
     height: "15%",
     backgroundColor: "#000",
@@ -440,6 +528,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // White section container
   whiteSection: {
     flex: 1,
     backgroundColor: "#fff",
@@ -447,9 +536,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 16,
     paddingTop: 20,
-  },
-  scrollContainer: {
-    paddingBottom: 120,
   },
   eventsHeader: {
     flexDirection: "row",
@@ -465,6 +551,7 @@ const styles = StyleSheet.create({
   searchWrapper: {
     marginBottom: 16,
   },
+
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -472,11 +559,11 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 16,
     height: 46,
-    elevation: 1,
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
-    shadowRadius: 1,
+    shadowRadius: 2,
   },
   searchInput: {
     flex: 1,
@@ -520,11 +607,29 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#ccc",
   },
+  scrollContainer: {
+    paddingBottom: 120,
+  },
+  noEventsText: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: 16,
+    marginVertical: 20,
+  },
+
+  artistName: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 8,
+    marginTop: 16,
+    marginLeft: 4,
+  },
+
   categoryCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 16,
-    marginBottom: 16,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -534,6 +639,7 @@ const styles = StyleSheet.create({
     borderColor: "#f0f0f0",
     overflow: "hidden",
     width: "100%",
+    height: 140,
   },
   categoryCardImage: {
     width: 120,
@@ -583,12 +689,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    marginVertical: 16,
-  },
+
   eventCard: {
     borderRadius: 16,
     overflow: "hidden",
@@ -671,16 +772,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000",
+    marginVertical: 16,
+  },
+
   loaderContainer: {
-    paddingVertical: 30,
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
   },
-  noEventsText: {
-    textAlign: "center",
-    color: "#666",
-    fontSize: 16,
-    marginVertical: 20,
-  },
 });
-
-export { EventsScreen };

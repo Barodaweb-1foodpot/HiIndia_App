@@ -15,8 +15,7 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatEventDateTime } from "../../helper/helper_Function"; // <-- Using formatEventDateTime
-import moment from "moment"; // (kept if you still need it elsewhere)
+import { formatEventDateTime } from "../../helper/helper_Function";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,7 +23,6 @@ import * as WebBrowser from "expo-web-browser";
 
 const { width, height } = Dimensions.get("window");
 
-// Skeleton Loader Component for Images wrapped in React.memo
 const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -33,7 +31,7 @@ const SkeletonLoader = React.memo(({ style }) => {
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
-        useNativeDriver: false, // Only transforms are fully supported by native driver
+        useNativeDriver: false,
       })
     ).start();
   }, [animation]);
@@ -67,7 +65,6 @@ const SkeletonLoader = React.memo(({ style }) => {
   );
 });
 
-// Component for handling event images with a skeleton loader until loaded, wrapped in React.memo
 const EventImage = React.memo(({ uri, style, defaultSource }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -137,7 +134,6 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // Download PDF file
   const downloadPDF = async () => {
     if (
       !eventDetail?.EventCatalogue ||
@@ -151,11 +147,9 @@ export default function EventsDetail({ navigation, route }) {
       const pdfUrl = `${API_BASE_URL_UPLOADS}/${eventDetail.EventCatalogue}`;
       const encodedPdfUrl = encodeURI(pdfUrl);
 
-      // Local file path
       const fileName = eventDetail.EventCatalogue.split("/").pop();
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      // Download with progress tracking
       const downloadResumable = FileSystem.createDownloadResumable(
         encodedPdfUrl,
         fileUri,
@@ -170,7 +164,6 @@ export default function EventsDetail({ navigation, route }) {
 
       const { uri } = await downloadResumable.downloadAsync();
 
-      // Check if sharing is available on this device
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
         await Sharing.shareAsync(uri);
@@ -188,7 +181,6 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // Preview PDF in browser
   const previewPDF = async () => {
     if (
       !eventDetail?.EventCatalogue ||
@@ -207,10 +199,8 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // Share the entire event details
   const shareEvent = async () => {
     try {
-      // Use formatEventDateTime for date/time
       const eventDate = formatEventDateTime(
         eventDetail?.StartDate,
         eventDetail?.EndDate
@@ -229,7 +219,6 @@ export default function EventsDetail({ navigation, route }) {
     }
   };
 
-  // Share a gallery image only
   const shareGalleryImage = async (galleryImage) => {
     try {
       const imageUrl = `${API_BASE_URL_UPLOADS}/${galleryImage}`;
@@ -411,13 +400,30 @@ export default function EventsDetail({ navigation, route }) {
                 style={styles.artistImage}
                 defaultSource={require("../../../assets/placeholder.jpg")}
               />
-              <Text style={styles.artistName}>
-                {eventDetail?.artistName || "Artist Name Unavailable"}
-              </Text>
+              <View style={styles.nameInfoColumn}>
+                <Text style={styles.artistName}>
+                  {eventDetail?.artistName || "Artist Name Unavailable"}
+                </Text>
+                <Text
+                  style={styles.viewArtistInfoText}
+                  onPress={() =>
+                    navigation.navigate("ArtistDetails", {
+                      artistName: eventDetail.artistName,
+                      artistImage: eventDetail.artistImage,
+                      artistDesc: eventDetail.artistDesc,
+                      eventName: eventDetail.EventName,
+                      eventDateTime: formatEventDateTime(
+                        eventDetail.StartDate,
+                        eventDetail.EndDate
+                      ),
+                      eventLocation: eventDetail.EventLocation,
+                    })
+                  }
+                >
+                  View artist info
+                </Text>
+              </View>
             </View>
-            <Text style={styles.artistDetail}>
-              {eventDetail?.artistDesc || "No artist description available"}
-            </Text>
           </View>
 
           {/* Description */}
@@ -813,6 +819,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  nameInfoColumn: {
+    flexDirection: "column",
+  },
   artistImage: {
     width: 48,
     height: 48,
@@ -824,6 +833,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins-Bold",
     color: "#000000",
+    marginBottom: 4,
+  },
+  viewArtistInfoText: {
+    fontSize: 12,
+    fontFamily: "Poppins-Regular",
+    color: "#E3000F",
   },
   artistDetail: {
     fontSize: 12,
