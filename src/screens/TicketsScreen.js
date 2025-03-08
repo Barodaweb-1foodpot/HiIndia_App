@@ -126,7 +126,7 @@ export default function TicketScreen({ navigation }) {
       setRefreshing(true);
     }
     try {
-      const res = await getTickets();
+      const res = await getTickets(true);
       console.log("Tickets data:", res.data);
       if (res.isOk && res.data && res.data.length > 0) {
         const transformedTickets = res.data.map((order) => ({
