@@ -12,16 +12,25 @@ import {
   Share,
   Animated,
   ActivityIndicator,
+  Linking,
+  RefreshControl,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { fetchEvents, listActiveEvents } from "../api/event_api";
-import { API_BASE_URL_UPLOADS } from "@env";
-import moment from "moment";
-import { useFocusEffect } from "@react-navigation/native";
+import Checkbox from "expo-checkbox";
 import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect } from "@react-navigation/native";
+
+import {
+  fetchEvents,
+  listActiveEvents,
+  getEventCategoriesByPartner,
+} from "../api/event_api";
+
+import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
 
+// Reusable Blur wrapper for iOS vs Android
 const BlurWrapper = ({ style, children }) => {
   if (Platform.OS === "android") {
     return (
@@ -37,6 +46,9 @@ const BlurWrapper = ({ style, children }) => {
   );
 };
 
+/**
+ * SkeletonLoader - a shimmering placeholder while an image is loading
+ */
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -48,7 +60,7 @@ const SkeletonLoader = ({ style }) => {
         useNativeDriver: false,
       })
     ).start();
-  }, []);
+  }, [animation]);
 
   const translateX = animation.interpolate({
     inputRange: [0, 1],
@@ -87,9 +99,7 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={
-          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
-        }
+        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -103,14 +113,27 @@ const EventImage = ({ uri, style }) => {
 };
 
 export default function HomeScreen({ navigation }) {
+  // Search & Filter States
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [activeTab, setActiveTab] = useState("All");
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+
+  // Price filter radio: "All", "Paid", or "Free"
+  const [priceFilter, setPriceFilter] = useState("All");
+
+  // Category filter (multi-select)
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+
+  // Tab states: "Upcoming" or "Past"
+  const [activeTab, setActiveTab] = useState("Upcoming");
+
+  // Grouped events (by artist)
   const [events, setEvents] = useState([]);
-  const [activeEvent, setActiveEvents] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [allEvents, setAllEvents] = useState([]);
-  const [pastEvents, setPastEvents] = useState([]);
+
+  // For pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -121,49 +144,73 @@ export default function HomeScreen({ navigation }) {
   );
 
   useEffect(() => {
-   
-    if (searchText === "") {
-      if (activeTab === "All" && allEvents.length > 0) {
-        setEvents(allEvents);
-        return;
-      }
-      if (activeTab === "Past" && pastEvents.length > 0) {
-        setEvents(pastEvents);
-        return;
-      }
-    }
-    fetchEvent();
-  }, [activeTab, searchText]);
-
-  useEffect(() => {
     fetchActiveEvent();
+    loadCategories();
   }, []);
 
-  const fetchEvent = async () => {
-    setLoading(true);
-    const res = await fetchEvents(searchText, "All", activeTab);
-    console.log("Fetched events:", res);
-    if (res && res.data && res.data.length > 0) {
-     
-      if (searchText === "") {
-        if (activeTab === "All") {
-          setAllEvents(res.data);
-        } else if (activeTab === "Past") {
-          setPastEvents(res.data);
-        }
+  useEffect(() => {
+    fetchEvent();
+  }, [activeTab, searchText, priceFilter, selectedCategoryIds]);
+
+  const loadCategories = async () => {
+    try {
+      const res = await getEventCategoriesByPartner();
+      if (res?.data?.data) {
+        setCategories(res.data.data);
       }
-      setEvents(res.data);
-    } else {
-      setEvents([]);
+    } catch (err) {
+      console.error("Error loading categories:", err);
     }
-    setLoading(false);
   };
 
   const fetchActiveEvent = async () => {
-    const res = await listActiveEvents();
-    if (res && res.data && res.data.length > 0) {
-      setActiveEvents(res.data);
+    try {
+      await listActiveEvents();
+      // No direct usage here, but you can expand if needed
+    } catch (error) {
+      console.error("Error fetching active events:", error);
     }
+  };
+
+  const fetchEvent = async () => {
+    try {
+      setLoading(true);
+
+      const catFilter = selectedCategoryIds.length
+        ? selectedCategoryIds
+        : "All";
+      const filterDate = activeTab;
+
+      // Expecting grouped data like:
+      // [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
+      const data = await fetchEvents(searchText, catFilter, filterDate, priceFilter);
+
+      if (Array.isArray(data) && data.length > 0 && data[0].data) {
+        setEvents(data[0].data);
+      } else {
+        setEvents([]);
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh function for main content
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Re-fetch without showing center loader
+    await fetchEvent();
+    setRefreshing(false);
+  };
+
+  const navigateToDetails = (event) => {
+    navigation.navigate("App", {
+      screen: "EventsDetail",
+      params: { eventDetail: event },
+    });
   };
 
   const shareEvent = async (event) => {
@@ -172,40 +219,66 @@ export default function HomeScreen({ navigation }) {
       const eventImageUri = event.EventImage
         ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
         : null;
+
       const shareMessage =
         `🎶 *Check out this event!*\n\n` +
         `📌 *Event:* ${event.EventName}\n` +
         `📍 *Location:* ${event.EventLocation}\n` +
         `🗓️ *Date:* ${eventDate}\n` +
         (eventImageUri ? `🖼️ *Image:* ${eventImageUri}\n` : "");
+
       await Share.share({ message: shareMessage });
     } catch (error) {
-      console.error("Error sharing event", error);
+      console.error("Error sharing event:", error);
+    }
+  };
+
+  const toggleFilterPanel = () => {
+    setShowFilterPanel(!showFilterPanel);
+  };
+
+  const handleSelectPrice = (value) => {
+    setPriceFilter(value);
+  };
+
+  const toggleCategory = (catId) => {
+    setSelectedCategoryIds((prev) => {
+      if (prev.includes(catId)) {
+        return prev.filter((id) => id !== catId);
+      } else {
+        return [...prev, catId];
+      }
+    });
+  };
+
+  const handleClearFilter = () => {
+    setPriceFilter("All");
+    setSelectedCategoryIds([]);
+  };
+
+  const handleBookNow = (event) => {
+    if (event.hasExternalLink && event.externalLink) {
+      Linking.openURL(event.externalLink);
+    } else {
+      navigation.navigate("App", {
+        screen: "BuyTicket",
+        params: { eventDetail: event },
+      });
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-        animated
-      />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
 
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Image
-            source={require("../../assets/logo.png")}
-            style={styles.logo}
-          />
+          <Image source={require("../../assets/logo.png")} style={styles.logo} />
           <View style={styles.headerIcons}>
             <TouchableOpacity
               style={styles.iconCircle}
-              onPress={() =>
-                navigation.navigate("App", { screen: "Notification" })
-              }
+              onPress={() => navigation.navigate("App", { screen: "Notification" })}
             >
               <Ionicons name="notifications-outline" size={20} color="#000" />
             </TouchableOpacity>
@@ -219,26 +292,30 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Main Content */}
+      {/* White Section */}
       <View style={styles.whiteSection}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Search Header */}
+        {/* Sticky Header (Title, Search, Filter & Tabs) */}
+        <View style={styles.stickyContainer}>
           <View style={styles.eventsHeader}>
             <Text style={styles.eventsTitle}>All Events</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setSearchVisible((prev) => !prev);
-                if (!searchVisible) setSearchText("");
-              }}
-            >
-              <Ionicons name="search-outline" size={24} color="#000" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row" }}>
+              {/* Toggle search bar */}
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchVisible((prev) => !prev);
+                  if (!searchVisible) setSearchText("");
+                }}
+                style={{ marginRight: 16 }}
+              >
+                <Ionicons name="search-outline" size={24} color="#000" />
+              </TouchableOpacity>
+              {/* Toggle filter panel */}
+              <TouchableOpacity onPress={toggleFilterPanel}>
+                <Ionicons name="options-outline" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Search Input */}
           {searchVisible && (
             <View style={styles.searchWrapper}>
               <View style={styles.searchContainer}>
@@ -253,175 +330,194 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Tabs */}
+          {/* Filter Panel */}
+          {showFilterPanel && (
+            <View style={styles.filterPanel}>
+              <Text style={styles.filterPanelTitle}>Filter Events</Text>
+
+              {/* Price Filter (radio) */}
+              <Text style={styles.filterHeading}>Price</Text>
+              <View style={styles.filterPriceRow}>
+                <TouchableOpacity
+                  style={styles.filterPriceItem}
+                  onPress={() => handleSelectPrice("Paid")}
+                >
+                  <View style={styles.radioOuter}>
+                    {priceFilter === "Paid" && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.filterPriceLabel}>Paid</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.filterPriceItem}
+                  onPress={() => handleSelectPrice("Free")}
+                >
+                  <View style={styles.radioOuter}>
+                    {priceFilter === "Free" && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.filterPriceLabel}>Free</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.filterPriceItem}
+                  onPress={() => handleSelectPrice("All")}
+                >
+                  <View style={styles.radioOuter}>
+                    {priceFilter === "All" && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.filterPriceLabel}>All</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Category Filter (multi-select) */}
+              <Text style={[styles.filterHeading, { marginTop: 12 }]}>Categories</Text>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat._id}
+                  style={styles.categoryRow}
+                  onPress={() => toggleCategory(cat._id)}
+                >
+                  <Checkbox
+                    value={selectedCategoryIds.includes(cat._id)}
+                    onValueChange={() => toggleCategory(cat._id)}
+                    style={styles.checkbox}
+                  />
+                  <Text style={styles.categoryLabel}>{cat.name}</Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* Filter Actions */}
+              <View style={styles.filterActions}>
+                <TouchableOpacity onPress={handleClearFilter}>
+                  <Text style={styles.filterClearText}>Clear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={toggleFilterPanel}>
+                  <Text style={styles.filterDoneText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Tabs: Upcoming / Past */}
           <View style={styles.tabsContainer}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === "All" && styles.activeTab]}
-              onPress={() => setActiveTab("All")}
+              style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
+              onPress={() => setActiveTab("Upcoming")}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "All" && styles.activeTabText,
-                ]}
-              >
-                All
+              <Text style={[styles.tabText, activeTab === "Upcoming" && styles.activeTabText]}>
+                Upcoming
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === "Past" && styles.activeTab]}
               onPress={() => setActiveTab("Past")}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "Past" && styles.activeTabText,
-                ]}
-              >
+              <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>
                 Past
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Event Cards */}
-          <View style={styles.section}>
-            {loading ? (
-              <ActivityIndicator
-                size="large"
-                color="#000"
-                style={styles.loader}
-              />
-            ) : activeTab === "Past" && events.length === 0 ? (
-              <Text style={styles.noEventsText}>No past events</Text>
-            ) : (
-              events.map((event, index) => {
-                const eventImageUri = event.EventImage
-                  ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
-                  : null;
-                const eventDate = formatEventDateTime(
-                  event.StartDate,
-                  event.EndDate
-                );
-                return (
-                  <View key={index} style={styles.eventCard}>
-                    <EventImage uri={eventImageUri} style={styles.eventImage} />
-                    <TouchableOpacity
-                      style={styles.shareButton}
-                      onPress={() => shareEvent(event)}
-                    >
-                      <Ionicons
-                        name="share-social-outline"
-                        size={20}
-                        color="#000"
-                      />
-                    </TouchableOpacity>
-                    <BlurWrapper style={styles.eventContent}>
-                      <View style={styles.eventDetailsColumn}>
-                        <Text style={styles.eventTitle} numberOfLines={1}>
-                          {event.EventName}
-                        </Text>
-                        <View style={styles.eventDetail}>
-                          <Ionicons name="location-outline" size={14} color="#fff" />
-                          <Text style={styles.eventDetailText} numberOfLines={2}>
-                            {event.EventLocation}
-                          </Text>
+        {/* Main Content with Refresh Control */}
+        <ScrollView
+          contentContainerStyle={styles.mainContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Show center loader only if loading and not refreshing */}
+          {loading && !refreshing ? (
+            <ActivityIndicator size="large" color="#000" style={styles.loader} />
+          ) : events.length === 0 ? (
+            <Text style={styles.noEventsText}>
+              {activeTab === "Past" ? "No past events" : "No events found"}
+            </Text>
+          ) : (
+            // Map each "artist group"
+            events.map((group, groupIndex) => (
+              <View key={groupIndex} style={{ marginBottom: 24 }}>
+                {/* Artist Name */}
+                <Text style={styles.artistName}>
+                  {group.artistName || "Unknown Artist"}
+                </Text>
+
+                {/* Map the events in group.data */}
+                {group.data.map((event, index) => {
+                  const eventImageUri = event.EventImage
+                    ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
+                    : null;
+                  const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
+
+                  return (
+                    <View key={index} style={styles.eventCard}>
+                      {/* Badge: Paid or Free */}
+                      {event.IsPaid ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Paid</Text>
                         </View>
-                        <View style={styles.eventDetail}>
-                          <Ionicons name="calendar-outline" size={14} color="#fff" />
-                          <Text style={styles.eventDetailText}>
-                            {eventDate}
-                          </Text>
+                      ) : (
+                        <View style={[styles.badge, styles.freeBadge]}>
+                          <Text style={styles.badgeText}>Free</Text>
                         </View>
-                      </View>
-                      <View style={styles.registerContainer}>
+                      )}
+
+                      {/* Event image */}
+                      <EventImage uri={eventImageUri} style={styles.eventImage} />
+
+                      {/* Top-right icons (info + share) */}
+                      <View style={styles.topRightIcons}>
                         <TouchableOpacity
-                          style={styles.registerButton}
-                          onPress={() =>
-                            navigation.navigate("App", {
-                              screen: "EventsDetail",
-                              params: { eventDetail: event },
-                            })
-                          }
+                          style={styles.infoButton}
+                          onPress={() => navigateToDetails(event)}
                         >
-                          <Text style={styles.registerText}>Register</Text>
+                          <Ionicons name="information-circle-outline" size={20} color="#000" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.shareButton}
+                          onPress={() => shareEvent(event)}
+                        >
+                          <Ionicons name="share-social-outline" size={20} color="#000" />
                         </TouchableOpacity>
                       </View>
-                    </BlurWrapper>
-                  </View>
-                );
-              })
-            )}
-          </View>
 
-          {/* Event Hub Section (visible only in "All" tab) */}
-          {activeTab === "All" && (
-            <View style={styles.hubSection}>
-              <Text style={styles.sectionTitle}>The Event Hub</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.hubScrollView}
-              >
-                {activeEvent.map((item, index) => {
-                  const eventImageUri =
-                    item.EventImage &&
-                    `${API_BASE_URL_UPLOADS}/${item.EventImage}`;
-                  const eventDate = formatEventDateTime(
-                    item.StartDate,
-                    item.EndDate
-                  );
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => {
-                        // Navigate to event details if found in the main events list
-                        const selectedEvent = events.find(
-                          (e) => e._id === item._id
-                        );
-                        if (selectedEvent) {
-                          navigation.navigate("App", {
-                            screen: "EventsDetail",
-                            params: { eventDetail: selectedEvent },
-                          });
-                        }
-                      }}
-                    >
-                      <View style={styles.hubCard}>
-                        <EventImage
-                          uri={eventImageUri}
-                          style={styles.hubCardImage}
-                        />
-                        <View style={styles.hubCardContent}>
-                          <Text style={styles.hubCardTitle} numberOfLines={1}>
-                            {item.EventName}
+                      {/* Event content overlay (title, location, date, Book Now) */}
+                      <BlurWrapper style={styles.eventContent}>
+                        <View style={styles.eventDetailsColumn}>
+                          <Text style={styles.eventTitle} numberOfLines={1}>
+                            {event.EventName}
                           </Text>
-                          <Text style={styles.hubCardDate}>
-                            <Ionicons
-                              name="calendar-outline"
-                              style={styles.iconCircle}
-                            />{" "}
-                            {eventDate}
-                          </Text>
-                          <View style={styles.hubLocationContainer}>
-                            <Ionicons
-                              name="location-outline"
-                              size={12}
-                              color="#666"
-                            />
-                            <Text
-                              style={styles.hubLocationText}
-                              numberOfLines={1}
-                            >
-                              {item.EventLocation}
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="location-outline" size={14} color="#fff" />
+                            <Text style={styles.eventDetailText} numberOfLines={2}>
+                              {event.EventLocation}
+                            </Text>
+                          </View>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="calendar-outline" size={14} color="#fff" />
+                            <Text style={styles.eventDetailText}>
+                              {eventDate}
                             </Text>
                           </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
+
+                        {/* Book Now button */}
+                        <View style={styles.registerContainer}>
+                          <TouchableOpacity
+                            style={styles.registerButton}
+                            onPress={() => handleBookNow(event)}
+                          >
+                            <Text style={styles.registerText}>Book Now</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </BlurWrapper>
+                    </View>
                   );
                 })}
-              </ScrollView>
-            </View>
+              </View>
+            ))
           )}
         </ScrollView>
       </View>
@@ -429,6 +525,7 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+// ------------------- STYLES -------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -462,6 +559,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   whiteSection: {
     flex: 1,
@@ -471,7 +573,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
   },
-  scrollContainer: {
+  stickyContainer: {
+    backgroundColor: "#fff",
+  },
+  mainContent: {
     paddingBottom: 120,
   },
   eventsHeader: {
@@ -508,7 +613,82 @@ const styles = StyleSheet.create({
     color: "#000",
     marginLeft: 8,
   },
-  /* Tabs */
+  filterPanel: {
+    backgroundColor: "#f8f8f8",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  filterPanelTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  filterHeading: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  filterPriceRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  filterPriceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 20,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#E3000F",
+    marginRight: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#E3000F",
+  },
+  filterPriceLabel: {
+    fontSize: 14,
+    color: "#000",
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    marginLeft: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    marginRight: 6,
+  },
+  categoryLabel: {
+    fontSize: 14,
+    color: "#000",
+  },
+  filterActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+  filterClearText: {
+    fontSize: 14,
+    color: "red",
+  },
+  filterDoneText: {
+    fontSize: 14,
+    color: "#E3000F",
+    fontWeight: "600",
+  },
   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -521,25 +701,35 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "rgba(0, 0, 0, 1)",
+    borderBottomColor: "#000",
   },
   tabText: {
     fontSize: 16,
     color: "#6B7280",
   },
   activeTabText: {
-    color: "rgba(0, 0, 0, 1)",
-    fontWeight: "600",
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
     color: "#000",
-    marginBottom: 16,
+    fontWeight: "600",
   },
+  loader: {
+    marginTop: 30,
+    alignSelf: "center",
+  },
+  noEventsText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#666",
+  },
+  // Artist grouping
+  artistName: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  // Event card
   eventCard: {
     borderRadius: 16,
     overflow: "hidden",
@@ -551,23 +741,59 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     height: 250,
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "#E3000F",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  freeBadge: {
+    backgroundColor: "#28a745",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
   },
   eventImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
-  shareButton: {
+  topRightIcons: {
     position: "absolute",
     top: 12,
     right: 12,
+    flexDirection: "row",
+    zIndex: 2,
+  },
+  infoButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    marginRight: 4,
+  },
+  shareButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -613,7 +839,7 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     backgroundColor: "#E3000F",
-    paddingHorizontal: 24,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
   },
@@ -621,103 +847,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
-  },
-  viewMoreContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  viewMoreButton: {
-    borderWidth: 1,
-    borderColor: "#000",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  viewMoreButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  viewMoreText: {
-    fontSize: 14,
-    color: "#000",
-    fontWeight: "600",
-  },
-  hubSection: {
-    marginTop: 0,
-  },
-  hubScrollView: {
-    marginTop: 16,
-  },
-  hubCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginRight: 16,
-    width: 340,
-    minHeight: 100,
-    maxHeight: 120,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-    overflow: "hidden",
-    alignItems: "center",
-  },
-  hubCardImage: {
-    width: 100,
-    height: "100%",
-  },
-  hubCardContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "center",
-  },
-  hubCardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 4,
-  },
-  hubCardDate: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
-  },
-  hubLocationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  hubLocationText: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 4,
-  },
-  categoryPill: {
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  categoryText: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "#666",
-  },
-  noEventsText: {
-    textAlign: "center",
-    color: "#000",
-    marginTop: 20,
-    fontSize: 16,
-  },
-  loader: {
-    marginVertical: 20,
   },
 });

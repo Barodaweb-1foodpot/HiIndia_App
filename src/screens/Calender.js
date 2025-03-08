@@ -12,7 +12,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { fetchEvents } from "../api/event_api"; // Using fetchEvents instead of listActiveEvents
+import { fetchEvents } from "../api/event_api"; 
 import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function CalendarScreen({ navigation }) {
