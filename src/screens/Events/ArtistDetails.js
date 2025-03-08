@@ -18,14 +18,14 @@ import { SharedElement } from "react-navigation-shared-element";
 
 const ArtistDetails = () => {
   const navigation = useNavigation();
-  const { 
-    artistName, 
-    artistImage, 
-    artistDesc, 
+  const {
+    artistName,
+    artistImage,
+    artistDesc,
     artistGenres = [],
     eventName,
     eventDateTime,
-    eventLocation 
+    eventLocation,
   } = useRoute().params;
 
   const handleShare = async () => {
@@ -43,10 +43,10 @@ const ArtistDetails = () => {
     <View style={styles.container}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="#f7f7f7"
+        backgroundColor="transparent"
+        translucent
         animated
       />
-      
       {/* Fixed Header with Blur: Only back and share icons */}
       <View style={styles.headerContainer}>
         <BlurView intensity={80} tint="light" style={styles.header}>
@@ -62,7 +62,7 @@ const ArtistDetails = () => {
           </TouchableOpacity> */}
         </BlurView>
       </View>
-      
+
       {/* Regular ScrollView */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -86,7 +86,7 @@ const ArtistDetails = () => {
             </Text>
           </SharedElement>
         </View>
-        
+
         {/* About Section with Share Icon */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
@@ -96,7 +96,7 @@ const ArtistDetails = () => {
             {artistDesc || "No artist description available."}
           </Text>
         </View>
-        
+
         {/* Extra space at bottom for better scrolling */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -118,6 +118,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
     backgroundColor: "#f7f7f7",
+    
   },
   header: {
     flexDirection: "row",
@@ -125,12 +126,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingTop: Platform.OS === "ios" ? 44 : 16,
+    paddingTop: Platform.OS === "ios" ? 45 : 0,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
   backButton: {
     padding: 10,
+    top: Platform.OS === "ios" ? 0 : 35,
     borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.05)",
   },
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: "center",
   },
- 
+
   eventDetailsContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
