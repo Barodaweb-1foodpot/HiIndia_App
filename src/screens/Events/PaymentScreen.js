@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -295,21 +295,13 @@ export default function PaymentScreen() {
         console.log("Event is free – no payment required");
         Toast.show({ type: "success", text1: "Registration successful!" });
         setIsLoading(false);
-        await updatePaymentStatus(
-          clientSecret,
-          "Free event",
-          true
-        );
-        setTimeout(() => navigation.navigate("Tab"), 2000);
+        await updatePaymentStatus(clientSecret, "Free event", true);
+        setTimeout(() => navigation.navigate("Tab", { screen: "Tickets" }), 2000);
         return;
       }
       if (!clientSecret) {
         console.log("No client secret received");
-        await updatePaymentStatus(
-          clientSecret,
-          "Failed to create PaymentIntent",
-          false
-        );
+        await updatePaymentStatus(clientSecret, "Failed to create PaymentIntent", false);
         Toast.show({ type: "error", text1: "Failed to create PaymentIntent" });
         setIsLoading(false);
         return;
@@ -348,13 +340,13 @@ export default function PaymentScreen() {
       }
       console.log("Payment successful!");
       Toast.show({ type: "success", text1: "Payment successful!" });
-      const updateRes = await updatePaymentStatus(
-        clientSecret,
-        "success",
-        true
-      );
+      const updateRes = await updatePaymentStatus(clientSecret, "success", true);
       console.log("Payment status updated:", updateRes);
-      if (updateRes.isOk) await handleSendMail(updateRes.orderId);
+      if (updateRes.isOk) {
+        await handleSendMail(updateRes.orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => navigation.navigate("Tab", { screen: "Tickets" }), 2000);
+      }
       setIsLoading(false);
     } catch (error) {
       console.error("Error during payment process:", error);
@@ -463,7 +455,6 @@ export default function PaymentScreen() {
           position: "top",
           visibilityTime: 2000,
         });
-        setTimeout(() => navigation.navigate("Tab"), 2000);
       } else {
         setIsLoading(false);
         Toast.show({
@@ -839,11 +830,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   grandTotalText: {
-    fontSize:16,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#E3000F",
   },
-  
   makePaymentButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -864,3 +854,5 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 });
+
+export { PaymentScreen };

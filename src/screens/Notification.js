@@ -13,7 +13,12 @@ import { BlurView } from "expo-blur";
 const NotificationScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+     <StatusBar
+         barStyle="dark-content"
+         backgroundColor="transparent"
+         translucent
+         animated
+       />
       <BlurView intensity={80} tint="light" style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -50,7 +55,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 45 : 20,
+    paddingTop: Platform.OS === "ios" ? 45 : 30,
     paddingBottom: 15,
     backgroundColor: "rgba(255,255,255,0.9)",
     borderBottomWidth: 1,

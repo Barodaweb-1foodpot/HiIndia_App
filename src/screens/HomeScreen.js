@@ -10,14 +10,11 @@ import {
   StatusBar,
   Platform,
   Share,
-  Animated,
   ActivityIndicator,
   Linking,
   RefreshControl,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { BlurView } from "expo-blur";
-import Checkbox from "expo-checkbox";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -30,66 +27,12 @@ import {
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
 
-// Reusable Blur wrapper for iOS vs Android
-const BlurWrapper = ({ style, children }) => {
-  if (Platform.OS === "android") {
-    return (
-      <View style={[style, { backgroundColor: "rgba(0,0,0,0.7)" }]}>
-        {children}
-      </View>
-    );
-  }
-  return (
-    <BlurView intensity={50} tint="dark" style={style}>
-      {children}
-    </BlurView>
-  );
-};
+// Custom components
+import Header from "../components/Header";
+import SkeletonLoader from "../components/SkeletonLoader";
+import BlurWrapper from "../components/BlurWrapper";
 
-/**
- * SkeletonLoader - a shimmering placeholder while an image is loading
- */
-const SkeletonLoader = ({ style }) => {
-  const [animation] = useState(new Animated.Value(0));
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(animation, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: false,
-      })
-    ).start();
-  }, [animation]);
-
-  const translateX = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-300, 300],
-  });
-
-  return (
-    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
-      <Animated.View
-        style={{
-          width: "100%",
-          height: "100%",
-          transform: [{ translateX }],
-        }}
-      >
-        <LinearGradient
-          colors={[
-            "rgba(255, 255, 255, 0)",
-            "rgba(255, 255, 255, 0.5)",
-            "rgba(255, 255, 255, 0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </Animated.View>
-    </View>
-  );
-};
+import Checkbox from "expo-checkbox";
 
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
@@ -181,12 +124,27 @@ export default function HomeScreen({ navigation }) {
         : "All";
       const filterDate = activeTab;
 
-      // Expecting grouped data like:
-      // [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
+      // Data format: [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
       const data = await fetchEvents(searchText, catFilter, filterDate, priceFilter);
 
       if (Array.isArray(data) && data.length > 0 && data[0].data) {
-        setEvents(data[0].data);
+        // Sort each group's events by StartDate
+        const sortedGroups = data[0].data.map((group) => {
+          // Clone group.data before sorting to avoid mutating original array
+          const sortedEvents = [...group.data].sort(
+            (a, b) => new Date(a.StartDate) - new Date(b.StartDate)
+          );
+          return { ...group, data: sortedEvents };
+        });
+
+        // (Optional) Sort the entire array of groups by earliest event date
+        sortedGroups.sort((a, b) => {
+          const earliestA = a.data[0] ? new Date(a.data[0].StartDate).getTime() : Infinity;
+          const earliestB = b.data[0] ? new Date(b.data[0].StartDate).getTime() : Infinity;
+          return earliestA - earliestB;
+        });
+
+        setEvents(sortedGroups);
       } else {
         setEvents([]);
       }
@@ -201,7 +159,6 @@ export default function HomeScreen({ navigation }) {
   // Refresh function for main content
   const onRefresh = async () => {
     setRefreshing(true);
-    // Re-fetch without showing center loader
     await fetchEvent();
     setRefreshing(false);
   };
@@ -271,26 +228,15 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
 
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Image source={require("../../assets/logo.png")} style={styles.logo} />
-          <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Notification" })}
-            >
-              <Ionicons name="notifications-outline" size={20} color="#000" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Calender" })}
-            >
-              <Ionicons name="calendar-outline" size={20} color="#000" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      {/* Header Section using custom Header component */}
+      <Header 
+        onNotificationPress={() =>
+          navigation.navigate("App", { screen: "Notification" })
+        }
+        onCalendarPress={() =>
+          navigation.navigate("App", { screen: "Calender" })
+        }
+      />
 
       {/* White Section */}
       <View style={styles.whiteSection}>
@@ -326,6 +272,11 @@ export default function HomeScreen({ navigation }) {
                   value={searchText}
                   onChangeText={setSearchText}
                 />
+                {searchText !== "" && (
+                  <TouchableOpacity onPress={() => setSearchText("")}>
+                    <Ionicons name="close-circle" size={24} color="#000" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -420,12 +371,7 @@ export default function HomeScreen({ navigation }) {
         {/* Main Content with Refresh Control */}
         <ScrollView
           contentContainerStyle={styles.mainContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
         >
           {/* Show center loader only if loading and not refreshing */}
@@ -530,40 +476,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
-  },
-  header: {
-    height: "15%",
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    justifyContent: "flex-end",
-    paddingBottom: 16,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logo: {
-    width: 160,
-    height: 50,
-    resizeMode: "contain",
-  },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   whiteSection: {
     flex: 1,
@@ -721,7 +633,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
-  // Artist grouping
   artistName: {
     fontSize: 20,
     fontWeight: "700",
@@ -729,7 +640,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginLeft: 4,
   },
-  // Event card
   eventCard: {
     borderRadius: 16,
     overflow: "hidden",

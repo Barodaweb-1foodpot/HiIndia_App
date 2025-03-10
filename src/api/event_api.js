@@ -164,3 +164,45 @@ export const EventTicket = async () => {
     throw new Error(error);
   }
 };
+
+export const fetchCalendarEvents = async (
+  query = "",
+  categoryFilter = "All",
+  filterDate = "All",
+  priceFilter = "All"
+) => {
+  try {
+    console.log(
+      "Requesting calendar events with query:",
+      query,
+      "filterDate:",
+      filterDate,
+      "categoryFilter:",
+      categoryFilter,
+      "priceFilter:",
+      priceFilter
+    );
+
+    const response = await axios.post(
+      `${API_BASE_URL}/auth/list-by-params/eventforAppCalender`,
+      {
+        match: query,
+        IsActive: true,
+        filterDate,
+        categoryFilter,
+        priceFilter,
+      }
+    );
+
+    console.log("Calendar events response received:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching calendar events:", error);
+    Toast.show({
+      type: "error",
+      text1: "Calendar Events Error",
+      text2: "Something went wrong. Please try again.",
+    });
+    throw new Error(error);
+  }
+};
