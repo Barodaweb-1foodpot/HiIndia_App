@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   Animated,
+  Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,8 +22,6 @@ import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../../helper/helper_Function";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProfile } from "../../api/auth_api";
-
-const { width } = Dimensions.get("window");
 
 /**
  * SkeletonLoader Component
@@ -72,7 +71,7 @@ const SkeletonLoader = ({ style }) => {
 
 /**
  * EventImage Component
- * Displays the event image with a skeleton loader until the image is fully loaded.
+ * Displays the event image with a skeleton loader until fully loaded.
  */
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
@@ -82,13 +81,19 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          setLoaded(true);
+          console.log("Image loaded:", uri);
+        }}
         onError={() => {
           setError(true);
           setLoaded(true);
+          console.error("Error loading image:", uri);
         }}
       />
     </View>
@@ -97,29 +102,47 @@ const EventImage = ({ uri, style }) => {
 
 /**
  * BuyTicketScreen Component
- * Main screen for ticket purchase which handles registrations, ticket type selection, coupon application,
- * order summary, and proceeding to payment.
+ * Handles ticket purchasing logic: registrations, ticket types, coupons, order summary, etc.
  */
 export default function BuyTicketScreen({ route }) {
-  const { eventDetail } = route.params || {};
   const navigation = useNavigation();
-  const [grandTotal, setGrandTotal] = useState(0);
-  const [sameTicketInfo, setsameTicketInfo] = useState(false);
+  const { eventDetail } = route.params || {};
+
+  // State for the number of registrations
   const [numRegistrationsInput, setNumRegistrationsInput] = useState("1");
   const [hasClickedNext, setHasClickedNext] = useState(false);
+
+  // Registrations array storing each participant's data
   const [registrations, setRegistrations] = useState([]);
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-  const [activeRegIndexDOB, setActiveRegIndexDOB] = useState(null);
+
+  // State for copying details from the first registration to all others
+  const [sameTicketInfo, setsameTicketInfo] = useState(false);
+
+  // State for total cost calculations
+  const [grandTotal, setGrandTotal] = useState(0);
+
+  // Downloading states for PDF or other resources (not used here, but kept for reference)
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
+  // State for coupon application
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+  // Validation state
+  const [showValidation, setShowValidation] = useState(false);
+
+  // Modals
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [activeRegIndexTicket, setActiveRegIndexTicket] = useState(null);
   const [showCouponsModal, setShowCouponsModal] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [showValidation, setShowValidation] = useState(false);
+  const [titleReadMore, setTitleReadMore] = useState(false);
 
-  // State to hold the logged in user's full name
+  // State to hold the logged-in user's full name
   const [loggedInUserName, setLoggedInUserName] = useState("");
 
-  // Fetch logged in user's profile on mount
+  /**
+   * Fetch the user's profile on mount to get their name for the first registration
+   */
   useEffect(() => {
     const getProfile = async () => {
       try {
@@ -137,27 +160,15 @@ export default function BuyTicketScreen({ route }) {
     getProfile();
   }, []);
 
-  // Update the grand total whenever the registrations change
+  /**
+   * Whenever registrations change, recalculate the total
+   */
   useEffect(() => {
     calculateGrandTotal();
   }, [registrations]);
 
   /**
-   * Helper function to calculate age from a given date.
-   */
-  const calculateAgeFromDate = (date) => {
-    const today = new Date();
-    let age = today.getFullYear() - date.getFullYear();
-    const m = today.getMonth() - date.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < date.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  /**
-   * Handle proceeding after entering number of registrations.
-   * Validates the number and initializes the registrations state.
+   * Step 1: user enters the number of registrations
    */
   const handleNext = () => {
     const count = parseInt(numRegistrationsInput, 10);
@@ -165,30 +176,31 @@ export default function BuyTicketScreen({ route }) {
       alert("Please enter a valid number (1–10).");
       return;
     }
+    console.log("User clicked next with registration count:", count);
+    // Initialize the registrations array
     const newRegs = Array.from({ length: count }, (_, index) => ({
       name: index === 0 ? loggedInUserName : "",
       age: "",
       TicketType: "",
       registrationCharge: 0,
-      copyDetails: false,
     }));
     setRegistrations(newRegs);
     setHasClickedNext(true);
+    Keyboard.dismiss();
   };
 
   /**
-   * Adds a new registration.
-   * If sameTicketInfo is enabled, copies the details from the first registration.
+   * Add another registration
+   * If sameTicketInfo is enabled, copy details from the first registration
    */
   const handleAddRegistration = () => {
-    const lastReg = registrations[registrations.length - 1];
-    if (sameTicketInfo === true) {
-      let newReg = {
-        ...lastReg,
-        name: registrations[0]?.name,
-        age: registrations[0]?.age,
-        TicketType: registrations[0]?.TicketType,
-        registrationCharge: Number(registrations[0].registrationCharge) || 0,
+    if (registrations.length >= 10) {
+      return;
+    }
+    if (sameTicketInfo && registrations[0]) {
+      const firstReg = registrations[0];
+      const newReg = {
+        ...firstReg,
       };
       setRegistrations((prev) => [...prev, newReg]);
     } else {
@@ -200,138 +212,106 @@ export default function BuyTicketScreen({ route }) {
       };
       setRegistrations((prev) => [...prev, newReg]);
     }
+    console.log("Added another registration. Total:", registrations.length + 1);
   };
 
   /**
-   * Removes a registration at a given index.
-   * Also removes applied coupon if minimum participant requirement is no longer met.
+   * Cancel a registration at a given index
    */
   const handleCancelRegistration = (index) => {
+    console.log("Removing registration at index:", index);
     const newRegs = [...registrations];
     newRegs.splice(index, 1);
     setRegistrations(newRegs);
+
+    // If a coupon was applied, check if we still meet min participant requirements
     if (appliedCoupon && newRegs.length < appliedCoupon.minParticipant) {
+      console.log(
+        "Removing coupon due to participant count dropping below requirement"
+      );
       setAppliedCoupon(null);
       calculateGrandTotal(true);
     }
   };
 
   /**
-   * Opens the date picker modal for the selected registration.
+   * When sameTicketInfo toggles, copy the first registration details to all others
    */
-  const showDatePicker = (regIndex) => {
-    setActiveRegIndexDOB(regIndex);
-    setDatePickerVisible(true);
+  useEffect(() => {
+    if (sameTicketInfo && registrations.length > 1) {
+      const firstReg = registrations[0];
+      setRegistrations((prev) =>
+        prev.map((reg, idx) => (idx === 0 ? reg : { ...firstReg }))
+      );
+      calculateGrandTotal();
+    }
+  }, [sameTicketInfo]);
+
+  /**
+   * Calculate total cost
+   * If a coupon is applied, apply the discount
+   */
+  const calculateGrandTotal = (removeCoupon = false) => {
+    const rawTotal = registrations.reduce(
+      (acc, reg) => acc + (reg.registrationCharge || 0),
+      0
+    );
+    let newTotal = rawTotal;
+    if (!removeCoupon && appliedCoupon) {
+      handleApplyCoupon(appliedCoupon, rawTotal);
+    } else {
+      setGrandTotal(newTotal);
+    }
   };
 
   /**
-   * Hides the date picker modal.
+   * Handle coupon application
    */
-  const hideDatePicker = () => {
-    setDatePickerVisible(false);
-    setActiveRegIndexDOB(null);
+  const handleApplyCoupon = (coupon, rawTotal) => {
+    if (!coupon) return;
+    const discount = Math.min(
+      (rawTotal * coupon.dicountPercentage) / 100,
+      coupon.maxDiscountAmount
+    );
+    const discountedTotal = rawTotal - discount;
+    setAppliedCoupon(coupon);
+    setGrandTotal(discountedTotal);
+    setShowCouponsModal(false);
   };
 
   /**
-   * Handles the confirmation of the selected date of birth.
-   * Updates the corresponding registration with formatted DOB and calculated age.
+   * Remove the applied coupon
    */
-  const handleConfirmDOB = (date) => {
-    const newRegs = [...registrations];
-    newRegs[activeRegIndexDOB].dateOfBirth = date;
-
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    newRegs[activeRegIndexDOB].dobString = `${dd}/${mm}/${yyyy}`;
-
-    newRegs[activeRegIndexDOB].age = calculateAgeFromDate(date);
-    setRegistrations(newRegs);
-    hideDatePicker();
+  const handleRemoveCoupon = () => {
+    console.log("Removing coupon:", appliedCoupon?.couponCode);
+    setAppliedCoupon(null);
+    calculateGrandTotal(true);
   };
 
   /**
-   * Handles the ticket type selection.
-   * Updates the registration with the selected ticket details.
+   * Opens the ticket type modal for a specific registration index
+   */
+  const handleOpenTicketModal = (index) => {
+    console.log("Opening ticket modal for registration index:", index);
+    setActiveRegIndexTicket(index);
+    setShowTicketModal(true);
+  };
+
+  /**
+   * Select a ticket type for the active registration
    */
   const handleTicketTypeSelect = (type) => {
+    console.log("Selected ticket type:", type.TicketTypeDetail?.TicketType);
     const newRegs = [...registrations];
     newRegs[activeRegIndexTicket].TicketType = type.TicketTypeDetail;
     newRegs[activeRegIndexTicket].registrationCharge = type.ratesForParticipant;
-
     setRegistrations(newRegs);
     setShowTicketModal(false);
     setActiveRegIndexTicket(null);
   };
 
   /**
-   * When sameTicketInfo is toggled, copies the details from the first registration to all others.
-   */
-  useEffect(() => {
-    if (sameTicketInfo) {
-      setRegistrations((prevParticipants) => {
-        const firstParticipantName = prevParticipants[0]?.name;
-        const firstParticipantTicketType = prevParticipants[0]?.TicketType;
-        const firstAge = prevParticipants[0]?.age;
-        return prevParticipants.map((registration, index) => {
-          if (index === 0) return registration;
-          return {
-            ...registration,
-            age: firstAge,
-            registrationCharge: Number(prevParticipants[0].registrationCharge) || 0,
-            TicketType: firstParticipantTicketType,
-            name: firstParticipantName,
-          };
-        });
-      });
-      calculateGrandTotal();
-    }
-  }, [sameTicketInfo]);
-
-  /**
-   * Applies a coupon to the order.
-   * Calculates the discount and updates the grand total.
-   */
-  const handleApplyCoupon = async (coupon, grandTotal) => {
-    const discount = Math.min(
-      (grandTotal * coupon.dicountPercentage) / 100,
-      coupon.maxDiscountAmount
-    );
-    const newTotal = grandTotal - discount;
-    setAppliedCoupon(coupon);
-    setGrandTotal(newTotal);
-    setShowCouponsModal(false);
-  };
-
-  /**
-   * Removes the applied coupon and recalculates the grand total.
-   */
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    calculateGrandTotal(true);
-  };
-
-  /**
-   * Calculates the grand total based on all registration charges.
-   * If a coupon is applied, it recalculates the discount.
-   */
-  let finalTotal = 0;
-  const calculateGrandTotal = (code) => {
-    const rawTotal = registrations.reduce(
-      (acc, reg) => acc + reg.registrationCharge,
-      0
-    );
-    finalTotal = rawTotal;
-    setGrandTotal(finalTotal);
-    if (!code || code === undefined) {
-      if (appliedCoupon) {
-        handleApplyCoupon(appliedCoupon, finalTotal);
-      }
-    }
-  };
-
-  /**
-   * Validates the registration details and proceeds to the payment screen.
+   * Final check and proceed to PaymentScreen
    */
   const handleProceed = () => {
     let hasError = false;
@@ -339,42 +319,75 @@ export default function BuyTicketScreen({ route }) {
       if (!reg.name.trim() || !reg.age.toString().trim()) {
         hasError = true;
       }
+      if (eventDetail.IsPaid && !reg.TicketType) {
+        hasError = true;
+      }
     });
     if (hasError) {
+      console.log("Validation error. Missing fields in registrations.");
       setShowValidation(true);
       return;
     }
-    const serializedRegistrations = registrations.map((reg) => ({
-      ...reg,
-      dateOfBirth: reg.dateOfBirth ? reg.dateOfBirth.toISOString() : null,
-    }));
+    console.log(
+      "Proceeding to PaymentScreen with registrations:",
+      registrations
+    );
     navigation.navigate("PaymentScreen", {
-      registrations: serializedRegistrations,
+      registrations,
       grandTotal,
       eventDetail,
       appliedCoupon,
     });
   };
 
-  // Calculate subtotal and coupon discount for the order summary
+  // Subtotal for order summary
   const subtotal = registrations.reduce(
-    (acc, reg) => acc + reg.registrationCharge,
+    (acc, reg) => acc + (reg.registrationCharge || 0),
     0
   );
+  // If coupon is applied, how much discount?
   const couponDiscount = appliedCoupon ? subtotal - grandTotal : 0;
+
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
 
   return (
     <View style={styles.rootContainer}>
       <StatusBar style="auto" />
 
-      {/* TOP SECTION with event image and back button */}
+      {/* 
+        Top Section with Event Image 
+        Using the same styling for back and share button as in EventsDetail
+      */}
       <View style={styles.topSection}>
+        {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
+
+        {/* Share Button */}
+        <TouchableOpacity
+          style={styles.shareTopButton}
+          onPress={() => {
+            console.log(
+              "Sharing event from BuyTicketScreen:",
+              eventDetail?.EventName
+            );
+            // Add your share logic if needed
+          }}
+        >
+          <Ionicons name="share-social-outline" size={20} color="#FFF" />
+        </TouchableOpacity>
+
+        {/* Event Image with Skeleton Loader */}
         <EventImage
           uri={
             eventDetail?.EventImage
@@ -383,23 +396,36 @@ export default function BuyTicketScreen({ route }) {
           }
           style={styles.topImage}
         />
-        <LinearGradient
-          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
-          style={styles.imageGradient}
-        />
-      </View>
 
-      {/* WHITE SECTION with registration details */}
-      <View style={styles.whiteContainer}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Event Details */}
-          <View style={styles.eventDetails}>
-            <Text style={styles.eventName}>
+        {/* Floating Card with ONLY Event Name */}
+        <View style={styles.headerCard}>
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
               {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* White Container */}
+      <View style={styles.whiteContainer}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* 
+            Event Location and Date/Time 
+            Moved from the top to the white container
+          */}
+          <View style={styles.eventInfoContainer}>
+            {/* Location Row */}
             <View style={styles.eventInfoRow}>
               <Ionicons
                 name="location-outline"
@@ -411,6 +437,7 @@ export default function BuyTicketScreen({ route }) {
                 {eventDetail?.EventLocation || "Location Unavailable"}
               </Text>
             </View>
+            {/* Date/Time Row */}
             <View style={styles.eventInfoRow}>
               <Ionicons
                 name="calendar-outline"
@@ -427,10 +454,10 @@ export default function BuyTicketScreen({ route }) {
             </View>
           </View>
 
-          {/* Number of Registrations Input */}
+          {/* Step 1: Number of Registrations */}
           {!hasClickedNext && (
             <View style={styles.registrationNumberSection}>
-              <Text style={styles.sectionLabel}>Number of Registration</Text>
+              <Text style={styles.sectionLabel}>Number of Registrations</Text>
               <View style={styles.numberRegContainer}>
                 <TextInput
                   style={styles.numberRegInput}
@@ -459,19 +486,19 @@ export default function BuyTicketScreen({ route }) {
 
           {/* Registration Cards */}
           {hasClickedNext &&
-            registrations?.map((reg, index) => {
+            registrations.map((reg, index) => {
               const nameInvalid = showValidation && !reg.name.trim();
               const ageInvalid = showValidation && !reg.age.toString().trim();
-              const ticketTypeInvalid = showValidation && !reg.TicketType;
+              const ticketTypeInvalid =
+                showValidation && eventDetail.IsPaid && !reg.TicketType;
 
               return (
                 <View key={index} style={styles.registrationCard}>
                   <View style={styles.registrationHeader}>
-                    <View style={styles.registrationTitleContainer}>
-                      <Text style={styles.registrationTitle}>
-                        Registration #{index + 1}
-                      </Text>
-                    </View>
+                    <Text style={styles.registrationTitle}>
+                      Registration #{index + 1}
+                    </Text>
+                    {/* Cancel button for additional registrations */}
                     {registrations.length > 1 && (
                       <TouchableOpacity
                         style={styles.cancelButton}
@@ -486,7 +513,7 @@ export default function BuyTicketScreen({ route }) {
                     )}
                   </View>
 
-                  {/* Full Name Input */}
+                  {/* Name Input */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Full Name</Text>
                     <View
@@ -501,13 +528,13 @@ export default function BuyTicketScreen({ route }) {
                         placeholder="Enter your full name"
                         placeholderTextColor="#999"
                         value={reg.name}
-                        onChangeText={(val) => {
-                          setRegistrations((prevRegistrations) =>
-                            prevRegistrations.map((item, i) =>
+                        onChangeText={(val) =>
+                          setRegistrations((prev) =>
+                            prev.map((item, i) =>
                               i === index ? { ...item, name: val } : item
                             )
-                          );
-                        }}
+                          )
+                        }
                       />
                     </View>
                     {nameInvalid && (
@@ -536,13 +563,13 @@ export default function BuyTicketScreen({ route }) {
                         placeholder="Enter your age"
                         placeholderTextColor="#999"
                         value={reg.age}
-                        onChangeText={(val) => {
-                          setRegistrations((prevRegistrations) =>
-                            prevRegistrations.map((item, i) =>
+                        onChangeText={(val) =>
+                          setRegistrations((prev) =>
+                            prev.map((item, i) =>
                               i === index ? { ...item, age: val } : item
                             )
-                          );
-                        }}
+                          )
+                        }
                         keyboardType="number-pad"
                       />
                     </View>
@@ -562,10 +589,7 @@ export default function BuyTicketScreen({ route }) {
                           styles.dropdownContainer,
                           ticketTypeInvalid && styles.inputError,
                         ]}
-                        onPress={() => {
-                          setActiveRegIndexTicket(index);
-                          setShowTicketModal(true);
-                        }}
+                        onPress={() => handleOpenTicketModal(index)}
                       >
                         <View style={styles.ticketOption}>
                           <View style={styles.ticketIconContainer}>
@@ -579,17 +603,16 @@ export default function BuyTicketScreen({ route }) {
                             <Text
                               style={[
                                 styles.ticketLabel,
-                                !reg?.TicketType?.TicketType &&
-                                  styles.placeholderText,
+                                !reg.TicketType && styles.placeholderText,
                               ]}
                             >
-                              {reg?.TicketType?.TicketType
+                              {reg.TicketType
                                 ? reg.TicketType.TicketType
                                 : "Select a ticket type"}
                             </Text>
-                            {reg?.TicketType?.TicketType && (
+                            {reg.TicketType && (
                               <Text style={styles.ticketPrice}>
-                                {eventDetail.countryDetail[0]?.Currency}{" "}
+                                {eventDetail?.countryDetail?.[0]?.Currency}{" "}
                                 {reg.registrationCharge}
                               </Text>
                             )}
@@ -630,7 +653,7 @@ export default function BuyTicketScreen({ route }) {
               );
             })}
 
-          {/* Button to add another registration (max 10) */}
+          {/* Add Another Registration Button (if < 10) */}
           {hasClickedNext && registrations.length < 10 && (
             <TouchableOpacity
               style={styles.addRegistrationButton}
@@ -651,7 +674,7 @@ export default function BuyTicketScreen({ route }) {
                 <View style={styles.appliedCouponContainer}>
                   <View style={styles.appliedCouponInfo}>
                     <View style={styles.couponIconContainer}>
-                      <Ionicons name="pricetag" size={24} color="#28A745" />
+                      <Ionicons name="ticket" size={20} color="#FFFFFF" />
                     </View>
                     <View style={styles.appliedCouponTexts}>
                       <Text style={styles.appliedCouponTitle}>
@@ -668,7 +691,7 @@ export default function BuyTicketScreen({ route }) {
                     style={styles.removeCouponButton}
                     onPress={handleRemoveCoupon}
                   >
-                    <Ionicons name="close-circle" size={24} color="#E3000F" />
+                    <Ionicons name="close-circle" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -679,26 +702,32 @@ export default function BuyTicketScreen({ route }) {
                   <View style={styles.viewCouponsContent}>
                     <View style={styles.couponIconContainer}>
                       <Ionicons
-                        name="pricetags-outline"
-                        size={22}
-                        color="#E3000F"
+                        name="ticket-outline"
+                        size={18}
+                        color="#FFFFFF"
                       />
                     </View>
                     <Text style={styles.viewCouponsText}>
                       View Available Coupons
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={22} color="#666" />
+                  <View style={styles.arrowContainer}>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
           )}
-
           {/* Order Summary Section */}
           {hasClickedNext && registrations.length > 0 && (
             <View style={styles.summarySection}>
               <Text style={styles.summaryTitle}>Order Summary</Text>
               <View style={styles.summaryCard}>
+                {/* Show each ticket with its cost */}
                 {registrations.map((reg, index) => (
                   <View key={index} style={styles.summaryItem}>
                     <Text style={styles.summaryText}>
@@ -706,58 +735,65 @@ export default function BuyTicketScreen({ route }) {
                       {reg?.TicketType?.TicketType || "No ticket selected"}
                     </Text>
                     <Text style={styles.summaryPrice}>
-                      {eventDetail.countryDetail[0]?.Currency}{" "}
+                      {eventDetail?.countryDetail?.[0]?.Currency}{" "}
                       {reg.registrationCharge || 0}
                     </Text>
                   </View>
                 ))}
-                <View style={styles.summaryDivider} />
+
+                {/* <View style={styles.summaryDivider} /> */}
+
+                {/* Subtotal */}
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryText}>Subtotal</Text>
                   <Text style={styles.summaryPrice}>
-                    {eventDetail.countryDetail[0]?.Currency} {subtotal}
+                    {eventDetail?.countryDetail?.[0]?.Currency} {subtotal}
                   </Text>
                 </View>
+
+                {/* Coupon Discount */}
                 {appliedCoupon && (
                   <View style={styles.summaryDiscountContainer}>
-                    <Text style={styles.discountText}>
+                    <Text style={styles.discountLabel}>
                       Discount ({appliedCoupon.couponCode})
                     </Text>
-                    <Text style={styles.discountPrice}>
-                      - {eventDetail.countryDetail[0]?.Currency}{" "}
+                    <Text style={styles.discountAmount}>
+                      -{eventDetail?.countryDetail?.[0]?.Currency}{" "}
                       {Math.abs(couponDiscount).toFixed(2)}
                     </Text>
                   </View>
                 )}
+
+                {/* <View style={styles.summaryDivider} /> */}
+
+                {/* Grand Total */}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalText}>Total Amount</Text>
                   <Text style={styles.totalPrice}>
-                    {eventDetail.countryDetail[0]?.Currency} {grandTotal}
+                    {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
                   </Text>
                 </View>
               </View>
             </View>
           )}
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Bottom Bar with Grand Total and Proceed to Payment */}
-        {hasClickedNext && (
+        {/* Bottom Bar */}
+        {hasClickedNext && registrations.length > 0 && (
           <View style={styles.bottomBar}>
             <View style={styles.totalSection}>
               <Text style={styles.totalLabel}>Grand Total</Text>
               <Text style={styles.grandTotalText}>
-                {eventDetail.countryDetail[0]?.Currency} {grandTotal}
+                {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.proceedButton}
               onPress={handleProceed}
             >
-              <Text style={styles.proceedButtonText}>
-                Proceed to Payment
-              </Text>
+              <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
               <Ionicons
                 name="arrow-forward"
                 size={20}
@@ -768,7 +804,7 @@ export default function BuyTicketScreen({ route }) {
           </View>
         )}
 
-        {/* Ticket Type Modal */}
+        {/* Ticket Modal */}
         <Modal visible={showTicketModal} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
@@ -790,8 +826,8 @@ export default function BuyTicketScreen({ route }) {
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.ticketTypesList}>
-                {eventDetail.IsPaid &&
-                  eventDetail.eventRates?.map((item, idx) => (
+                {eventDetail?.IsPaid &&
+                  eventDetail?.eventRates?.map((item, idx) => (
                     <TouchableOpacity
                       key={idx}
                       style={styles.ticketTypeOption}
@@ -809,7 +845,7 @@ export default function BuyTicketScreen({ route }) {
                         </View>
                         <View style={styles.ticketPriceContainer}>
                           <Text style={styles.ticketTypePrice}>
-                            {eventDetail.countryDetail[0]?.Currency}{" "}
+                            {eventDetail?.countryDetail?.[0]?.Currency}{" "}
                             {item.ratesForParticipant}
                           </Text>
                         </View>
@@ -836,14 +872,15 @@ export default function BuyTicketScreen({ route }) {
               </View>
               <ScrollView>
                 {eventDetail?.couponCode?.map((coupon) => {
+                  // Check if coupon is valid based on participant count
                   const isCouponAvailable =
-                    coupon && registrations.length >= coupon?.minParticipant;
+                    registrations.length >= coupon.minParticipant;
                   return (
                     <View key={coupon.couponCode} style={styles.couponCard}>
                       <View style={styles.couponContent}>
                         <View style={styles.couponHeader}>
                           <View style={styles.couponBadge}>
-                            <Ionicons name="pricetag" size={20} color="#FFF" />
+                            <Ionicons name="ticket" size={20} color="#FFF" />
                           </View>
                           <View style={styles.couponDetails}>
                             <Text style={styles.couponCode}>
@@ -858,12 +895,14 @@ export default function BuyTicketScreen({ route }) {
                         </View>
                         <View style={styles.couponInfo}>
                           <Text style={styles.couponDescription}>
-                            Get discount up to {eventDetail.countryDetail[0]?.Currency}{" "}
+                            Get discount up to{" "}
+                            {eventDetail?.countryDetail?.[0]?.Currency}{" "}
                             {coupon.maxDiscountAmount}
                           </Text>
                           {coupon.minParticipant > 1 && (
                             <Text style={styles.couponRequirement}>
-                              Requires minimum {coupon.minParticipant} participants
+                              Requires minimum {coupon.minParticipant}{" "}
+                              participants
                             </Text>
                           )}
                         </View>
@@ -872,7 +911,8 @@ export default function BuyTicketScreen({ route }) {
                         <TouchableOpacity
                           style={styles.couponApplyButton}
                           onPress={() => {
-                            handleApplyCoupon(coupon, grandTotal);
+                            console.log("Applying coupon:", coupon.couponCode);
+                            handleApplyCoupon(coupon, subtotal);
                           }}
                         >
                           <Text style={styles.couponApplyText}>Apply</Text>
@@ -891,16 +931,6 @@ export default function BuyTicketScreen({ route }) {
             </View>
           </View>
         </Modal>
-
-        {/* Date Picker Modal */}
-        <DateTimePickerModal
-          isVisible={isDatePickerVisible}
-          mode="date"
-          onConfirm={handleConfirmDOB}
-          onCancel={hideDatePicker}
-          maximumDate={new Date()}
-          textColor="#000"
-        />
       </View>
     </View>
   );
@@ -911,6 +941,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  // Top Section with Event Image
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -928,6 +959,21 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareTopButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 25,
+    right: 16,
+    zIndex: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -935,32 +981,50 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  imageGradient: {
+  // Floating Card
+  headerCard: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 100,
+    bottom: 15,
+    alignSelf: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    width: "85%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 11,
   },
+  headerCardTitle: {
+    fontSize: 20,
+    fontFamily: "Poppins-Bold",
+    color: "#000000",
+  },
+  readMoreText: {
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    color: "#E3000F",
+    marginTop: 4,
+  },
+  // White container
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    marginTop: -50,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    marginTop: -65,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   scrollContent: {
-    paddingTop: 20,
     paddingHorizontal: 20,
+    paddingTop: 70,
+    paddingBottom: 40,
   },
-  eventDetails: {
+  // Event Info (location + date/time)
+  eventInfoContainer: {
     marginBottom: 24,
-  },
-  eventName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#000000",
-    marginBottom: 12,
   },
   eventInfoRow: {
     flexDirection: "row",
@@ -968,12 +1032,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eventInfoIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   eventInfoText: {
     fontSize: 14,
     color: "#666666",
   },
+  // Number of Registrations
   registrationNumberSection: {
     marginBottom: 24,
   },
@@ -986,7 +1051,6 @@ const styles = StyleSheet.create({
   numberRegContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
   },
   numberRegInput: {
     flex: 1,
@@ -1016,6 +1080,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  // Registration Card
   registrationCard: {
     backgroundColor: "#FFF",
     borderRadius: 16,
@@ -1034,10 +1099,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
-  },
-  registrationTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
   },
   registrationTitle: {
     fontSize: 18,
@@ -1161,137 +1222,186 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 8,
   },
-  couponsSection: {
-    marginBottom: 24,
-  },
-  viewCouponsButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#DDDDDD",
-    borderRadius: 8,
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-  },
-  viewCouponsContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  couponIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(227, 0, 15, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  viewCouponsText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#333333",
-  },
-  appliedCouponContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#28A745",
-    borderRadius: 8,
-    padding: 16,
-    backgroundColor: "rgba(40, 167, 69, 0.05)",
-  },
-  appliedCouponInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  appliedCouponTexts: {
-    marginLeft: 12,
-  },
-  appliedCouponTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#28A745",
-  },
-  appliedCouponDiscount: {
-    fontSize: 14,
-    color: "#666666",
-    marginTop: 2,
-  },
-  removeCouponButton: {
-    padding: 4,
-  },
+  // Coupons Section
+couponsSection: {
+  marginBottom: 24,
+},
+sectionLabel: {
+  fontSize: 16,
+  fontWeight: '700',
+  color: '#171717',
+  marginBottom: 12,
+  letterSpacing: 0.3,
+},
+viewCouponsButton: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderWidth: 0,
+  borderRadius: 12,
+  padding: 12,
+  backgroundColor: "#E3000F",
+  shadowColor: "#E3000F",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.2,
+  shadowRadius: 6,
+  elevation: 4,
+},
+viewCouponsContent: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+couponIconContainer: {
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  backgroundColor: "rgba(255, 255, 255, 0.2)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 12,
+},
+viewCouponsText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#FFFFFF",
+  letterSpacing: 0.2,
+},
+arrowContainer: {
+  backgroundColor: "rgba(255, 255, 255, 0.2)",
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  justifyContent: "center",
+  alignItems: "center",
+},
+appliedCouponContainer: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderWidth: 0,
+  borderRadius: 12,
+  padding: 12,
+  backgroundColor: "#FF3B4E",
+  shadowColor: "rgba(227, 0, 15, 0.4)",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.2,
+  shadowRadius: 6,
+  elevation: 4,
+},
+appliedCouponInfo: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+},
+appliedCouponTexts: {
+  marginLeft: 12,
+},
+appliedCouponTitle: {
+  fontSize: 15,
+  fontWeight: "700",
+  color: "#FFFFFF",
+  letterSpacing: 0.5,
+},
+appliedCouponDiscount: {
+  fontSize: 12,
+  color: "rgba(255, 255, 255, 0.9)",
+  marginTop: 2,
+  letterSpacing: 0.1,
+},
+removeCouponButton: {
+  padding: 6,
+  backgroundColor: "rgba(255, 255, 255, 0.15)",
+  borderRadius: 16,
+  width: 32,
+  height: 32,
+  justifyContent: "center",
+  alignItems: "center",
+},
+  // Order Summary
   summarySection: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   summaryTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#222222",
     marginBottom: 16,
+    letterSpacing: 0.3,
   },
   summaryCard: {
-    borderWidth: 1,
-    borderColor: "#EEEEEE",
-    borderRadius: 12,
-    padding: 16,
+    borderWidth: 0,
+    borderRadius: 20,
+    padding: 24,
     backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
   },
   summaryItem: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   summaryText: {
-    fontSize: 14,
-    color: "#666666",
+    fontSize: 15,
+    color: "#555555",
+    letterSpacing: 0.1,
   },
   summaryPrice: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 15,
+    fontWeight: "600",
     color: "#333333",
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: "#EEEEEE",
-    marginVertical: 12,
+    backgroundColor: "#F0F0F0",
+    marginVertical: 16,
   },
   summaryDiscountContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(40, 167, 69, 0.1)",
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 8,
+    backgroundColor: "rgba(40, 167, 69, 0.08)",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#28A745",
   },
-  discountText: {
-    fontSize: 14,
+  discountLabel: {
+    fontSize: 15,
     color: "#28A745",
     fontWeight: "600",
+    letterSpacing: 0.2,
   },
-  discountPrice: {
-    fontSize: 14,
-    fontWeight: "600",
+  discountAmount: {
+    fontSize: 15,
     color: "#28A745",
+    fontWeight: "700",
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    marginTop: 10,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    alignItems: "center",
   },
   totalText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#222222",
+    letterSpacing: 0.2,
   },
   totalPrice: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
     color: "#E3000F",
+    letterSpacing: 0.3,
   },
+  // Bottom Bar
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -1337,9 +1447,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFF",
   },
+  // Modal Overlays
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   ticketModalContainer: {
@@ -1402,6 +1513,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#E3000F",
   },
+  // Coupon Modal
   couponModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1474,6 +1586,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     alignSelf: "flex-start",
+  },
+  discountText: {
+    fontSize: 14,
+    color: "#E3000F",
   },
   couponInfo: {
     marginBottom: 8,

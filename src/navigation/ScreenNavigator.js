@@ -12,6 +12,7 @@ import CalendarScreen from "../screens/Calender";
 import NotificationScreen from "../screens/Notification";
 import TicketDetailsScreen from "../screens/TicketDetails";
 import ArtistDetails from "../screens/Events/ArtistDetails";
+import ViewTickets from "../screens/Profile/ViewTickets";
 
 const ScreenStack = createStackNavigator();
 
@@ -35,6 +36,7 @@ const ScreenNavigator = () => {
       <ScreenStack.Screen name="License" component={License} />
       <ScreenStack.Screen name="ArtistDetails" component={ArtistDetails} />
       <ScreenStack.Screen name="TicketDetails" component={TicketDetailsScreen} />
+      <ScreenStack.Screen name="ViewTickets" component={ViewTickets} />
     </ScreenStack.Navigator>
   );
 };

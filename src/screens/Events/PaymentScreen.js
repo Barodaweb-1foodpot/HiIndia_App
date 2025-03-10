@@ -27,10 +27,7 @@ import { formatEventDateTime } from "../../helper/helper_Function";
 import { CheckAccessToken } from "../../api/token_api";
 import { ExentRegister } from "../../api/event_api";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
-import {
-  createPaymentIntent,
-  updatePaymentStatus,
-} from "../../api/payment_api";
+import { createPaymentIntent, updatePaymentStatus } from "../../api/payment_api";
 
 // FontAwesomeIcon for Stripe icon
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
@@ -47,6 +44,7 @@ const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
   useEffect(() => {
+    console.log("SkeletonLoader: starting animation loop");
     const animationLoop = Animated.loop(
       Animated.timing(animation, {
         toValue: 1,
@@ -56,6 +54,7 @@ const SkeletonLoader = React.memo(({ style }) => {
     );
     animationLoop.start();
     return () => {
+      console.log("SkeletonLoader: stopping animation loop");
       animationLoop.stop();
     };
   }, [animation]);
@@ -110,12 +109,10 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
 
   return (
     <View style={style}>
+      {/* Show skeleton loader while image is loading */}
       {!loaded && (
         <SkeletonLoader
-          style={[
-            StyleSheet.absoluteFill,
-            { borderRadius: style?.borderRadius || 0 },
-          ]}
+          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
         />
       )}
       <Image
@@ -191,21 +188,17 @@ const TicketItem = ({ registration }) => {
 /*
   PaymentScreen Component:
   Manages the event registration and payment flow using Stripe’s PaymentSheet.
+  Updated header card now displays only the event name with a "Read More" button if the name is long.
 */
 export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const {
-    registrations = [],
-    grandTotal,
-    eventDetail,
-    appliedCoupon,
-  } = route.params || {};
+  const { registrations = [], grandTotal, eventDetail, appliedCoupon } = route.params || {};
 
   // Stripe PaymentSheet hooks
-  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } =
-    useStripe();
+  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } = useStripe();
 
+  // State for toggling Read More in the header card
   const [titleReadMore, setTitleReadMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -218,12 +211,9 @@ export default function PaymentScreen() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
   const [payment_id, setPayment_id] = useState("");
 
-  // Recalculate total (if needed) using reduce; here used for logging
+  // Debug: Log recalculated total from ticketList
   const recalcTotal = () => {
-    const newTotal = ticketList.reduce(
-      (sum, t) => sum + (t.ticketPrice || 0),
-      0
-    );
+    const newTotal = ticketList.reduce((sum, t) => sum + (t.ticketPrice || 0), 0);
     console.log("Recalculated total from ticketList:", newTotal);
   };
 
@@ -236,6 +226,12 @@ export default function PaymentScreen() {
     console.log("Changing payment method to:", method);
     setSelectedPaymentMethod(method);
   };
+
+  // Toggle the Read More state for the header card
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
 
   // Handle deep linking (e.g., for 3D Secure redirects)
   const handleDeepLink = useCallback(
@@ -296,7 +292,10 @@ export default function PaymentScreen() {
         Toast.show({ type: "success", text1: "Registration successful!" });
         setIsLoading(false);
         await updatePaymentStatus(clientSecret, "Free event", true);
-        setTimeout(() => navigation.navigate("Tab", { screen: "Tickets" }), 2000);
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab for free event");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
         return;
       }
       if (!clientSecret) {
@@ -345,7 +344,10 @@ export default function PaymentScreen() {
       if (updateRes.isOk) {
         await handleSendMail(updateRes.orderId);
         // Redirect to Tickets tab after a short delay
-        setTimeout(() => navigation.navigate("Tab", { screen: "Tickets" }), 2000);
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
       }
       setIsLoading(false);
     } catch (error) {
@@ -387,9 +389,7 @@ export default function PaymentScreen() {
           dob: participant.dateOfBirth,
           eventName: eventDetail._id,
           age: participant.age,
-          sessionName: (participant.sessionName || []).map(
-            (session) => session.value
-          ),
+          sessionName: (participant.sessionName || []).map((session) => session.value),
           ticketCategory: "Participant",
           country: eventDetail.countryDetail[0]._id,
           TicketType: participant.TicketType,
@@ -412,8 +412,10 @@ export default function PaymentScreen() {
       console.log("Registration response:", response);
       if (response.isOk) {
         if (response.clientSecret) {
+          console.log("Got clientSecret from server:", response.clientSecret);
           return response.clientSecret;
         } else if (eventDetail.IsPaid === false) {
+          console.log("Event is free; returning 'Free'");
           return "Free";
         }
       } else {
@@ -480,11 +482,14 @@ export default function PaymentScreen() {
     <View style={styles.rootContainer}>
       <StatusBar style="auto" />
 
-      {/* TOP SECTION: Event image with back button and header card */}
+      {/* TOP SECTION: Event image with back button and updated header card */}
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back from PaymentScreen");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
@@ -497,70 +502,46 @@ export default function PaymentScreen() {
           style={styles.topImage}
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
+        {/* Updated header card: display only the event name with a Read More button */}
         <View style={styles.headerCard}>
-          <Text
-            style={styles.headerCardTitle}
-            numberOfLines={titleReadMore ? undefined : 2}
-          >
-            Register for {eventDetail?.EventName}
-          </Text>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation}
+          <View>
+            <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+              {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
-          </View>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(
-                eventDetail?.StartDate,
-                eventDetail?.EndDate
-              ) || "Date/Time not available"}
-            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
 
       {/* WHITE SECTION: Registration details and payment options */}
       <View style={styles.whiteContainer}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>Complete Event Registration</Text>
           {grandTotal > 0 && (
             <>
-              <Text style={styles.paymentMethodTitle}>
-                Select Payment Method
-              </Text>
+              <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
               <View style={styles.paymentMethodContainer}>
                 <TouchableOpacity
                   style={[
                     styles.paymentOption,
-                    selectedPaymentMethod === "Stripe" &&
-                      styles.paymentOptionSelected,
+                    selectedPaymentMethod === "Stripe" && styles.paymentOptionSelected,
                   ]}
                   onPress={() => handlePaymentMethodChange("Stripe")}
                 >
                   <View style={styles.paymentOptionRow}>
-                    <FontAwesomeIcon
-                      icon={faStripe}
-                      size={24}
-                      style={{ marginRight: 8 }}
-                    />
+                    <FontAwesomeIcon icon={faStripe} size={24} style={{ marginRight: 8 }} />
                     <Text style={styles.paymentOptionText}>Stripe</Text>
                   </View>
                   <Ionicons
-                    name={
-                      selectedPaymentMethod === "Stripe"
-                        ? "radio-button-on"
-                        : "radio-button-off"
-                    }
+                    name={selectedPaymentMethod === "Stripe" ? "radio-button-on" : "radio-button-off"}
                     size={24}
-                    color={
-                      selectedPaymentMethod === "Stripe" ? "#E3000F" : "#999"
-                    }
+                    color={selectedPaymentMethod === "Stripe" ? "#E3000F" : "#999"}
                   />
                 </TouchableOpacity>
               </View>
@@ -593,18 +574,9 @@ export default function PaymentScreen() {
             onPress={handleMakePayment}
           >
             <Text style={styles.makePaymentButtonText}>
-              {isLoading
-                ? "Processing..."
-                : grandTotal > 0
-                ? "Make Payment"
-                : "Proceed"}
+              {isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}
             </Text>
-            <Ionicons
-              name="arrow-forward"
-              size={20}
-              color="#FFF"
-              style={{ marginLeft: 8 }}
-            />
+            <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         </View>
       </View>
@@ -635,6 +607,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -664,16 +637,10 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 8,
   },
-  headerCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    marginLeft: 2,
-  },
-  headerCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 6,
+  readMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#E3000F",
   },
   whiteContainer: {
     flex: 1,
