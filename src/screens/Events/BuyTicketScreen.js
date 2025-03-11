@@ -722,6 +722,7 @@ export default function BuyTicketScreen({ route }) {
               )}
             </View>
           )}
+
           {/* Order Summary Section */}
           {hasClickedNext && registrations.length > 0 && (
             <View style={styles.summarySection}>
@@ -741,8 +742,6 @@ export default function BuyTicketScreen({ route }) {
                   </View>
                 ))}
 
-                {/* <View style={styles.summaryDivider} /> */}
-
                 {/* Subtotal */}
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryText}>Subtotal</Text>
@@ -758,13 +757,12 @@ export default function BuyTicketScreen({ route }) {
                       Discount ({appliedCoupon.couponCode})
                     </Text>
                     <Text style={styles.discountAmount}>
-                      -{eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                      -
+                      {eventDetail?.countryDetail?.[0]?.Currency}{" "}
                       {Math.abs(couponDiscount).toFixed(2)}
                     </Text>
                   </View>
                 )}
-
-                {/* <View style={styles.summaryDivider} /> */}
 
                 {/* Grand Total */}
                 <View style={styles.totalRow}>
@@ -774,35 +772,33 @@ export default function BuyTicketScreen({ route }) {
                   </Text>
                 </View>
               </View>
+
+              {/* 
+                NEW placement of the "Proceed to Payment" button and 
+                Grand Total section, now directly below the order summary
+              */}
+              <View style={styles.proceedContainer}>
+                <View style={styles.proceedTotalSection}>
+                  <Text style={styles.totalLabel}>Grand Total</Text>
+                  <Text style={styles.grandTotalText}>
+                    {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.proceedButton} onPress={handleProceed}>
+                  <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={20}
+                    color="#FFF"
+                    style={{ marginLeft: 8 }}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
           <View style={{ height: 120 }} />
         </ScrollView>
-
-        {/* Bottom Bar */}
-        {hasClickedNext && registrations.length > 0 && (
-          <View style={styles.bottomBar}>
-            <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalText}>
-                {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.proceedButton}
-              onPress={handleProceed}
-            >
-              <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color="#FFF"
-                style={{ marginLeft: 8 }}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Ticket Modal */}
         <Modal visible={showTicketModal} transparent animationType="fade">
@@ -1223,100 +1219,93 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   // Coupons Section
-couponsSection: {
-  marginBottom: 24,
-},
-sectionLabel: {
-  fontSize: 16,
-  fontWeight: '700',
-  color: '#171717',
-  marginBottom: 12,
-  letterSpacing: 0.3,
-},
-viewCouponsButton: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderWidth: 0,
-  borderRadius: 12,
-  padding: 12,
-  backgroundColor: "#E3000F",
-  shadowColor: "#E3000F",
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.2,
-  shadowRadius: 6,
-  elevation: 4,
-},
-viewCouponsContent: {
-  flexDirection: "row",
-  alignItems: "center",
-},
-couponIconContainer: {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
-  backgroundColor: "rgba(255, 255, 255, 0.2)",
-  justifyContent: "center",
-  alignItems: "center",
-  marginRight: 12,
-},
-viewCouponsText: {
-  fontSize: 14,
-  fontWeight: "600",
-  color: "#FFFFFF",
-  letterSpacing: 0.2,
-},
-arrowContainer: {
-  backgroundColor: "rgba(255, 255, 255, 0.2)",
-  width: 28,
-  height: 28,
-  borderRadius: 14,
-  justifyContent: "center",
-  alignItems: "center",
-},
-appliedCouponContainer: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderWidth: 0,
-  borderRadius: 12,
-  padding: 12,
-  backgroundColor: "#FF3B4E",
-  shadowColor: "rgba(227, 0, 15, 0.4)",
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.2,
-  shadowRadius: 6,
-  elevation: 4,
-},
-appliedCouponInfo: {
-  flexDirection: "row",
-  alignItems: "center",
-  flex: 1,
-},
-appliedCouponTexts: {
-  marginLeft: 12,
-},
-appliedCouponTitle: {
-  fontSize: 15,
-  fontWeight: "700",
-  color: "#FFFFFF",
-  letterSpacing: 0.5,
-},
-appliedCouponDiscount: {
-  fontSize: 12,
-  color: "rgba(255, 255, 255, 0.9)",
-  marginTop: 2,
-  letterSpacing: 0.1,
-},
-removeCouponButton: {
-  padding: 6,
-  backgroundColor: "rgba(255, 255, 255, 0.15)",
-  borderRadius: 16,
-  width: 32,
-  height: 32,
-  justifyContent: "center",
-  alignItems: "center",
-},
+  couponsSection: {
+    marginBottom: 24,
+  },
+  viewCouponsButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 0,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#E3000F",
+    shadowColor: "#E3000F",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  viewCouponsContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  couponIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  viewCouponsText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  arrowContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  appliedCouponContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 0,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#FF3B4E",
+    shadowColor: "rgba(227, 0, 15, 0.4)",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  appliedCouponInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  appliedCouponTexts: {
+    marginLeft: 12,
+  },
+  appliedCouponTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  appliedCouponDiscount: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 2,
+    letterSpacing: 0.1,
+  },
+  removeCouponButton: {
+    padding: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   // Order Summary
   summarySection: {
     marginBottom: 32,
@@ -1353,11 +1342,6 @@ removeCouponButton: {
     fontSize: 15,
     fontWeight: "600",
     color: "#333333",
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: "#F0F0F0",
-    marginVertical: 16,
   },
   summaryDiscountContainer: {
     flexDirection: "row",
@@ -1401,22 +1385,25 @@ removeCouponButton: {
     color: "#E3000F",
     letterSpacing: 0.3,
   },
-  // Bottom Bar
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+
+  // New container for "Proceed to Payment" below summary
+  proceedContainer: {
+    marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: "#FFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E9ECEF",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
   },
-  totalSection: {
+  proceedTotalSection: {
     flex: 1,
   },
   totalLabel: {
@@ -1427,6 +1414,7 @@ removeCouponButton: {
     fontSize: 16,
     fontWeight: "700",
     color: "#222",
+    marginTop: 2,
   },
   proceedButton: {
     flexDirection: "row",
@@ -1447,6 +1435,7 @@ removeCouponButton: {
     fontWeight: "600",
     color: "#FFF",
   },
+
   // Modal Overlays
   modalOverlay: {
     flex: 1,
