@@ -29,14 +29,19 @@ import SkeletonLoader from "../components/SkeletonLoader";
 // Moved outside of ProfileScreen to prevent re-creation and wrapped in React.memo.
 const ProfileImage = React.memo(({ source, style }) => {
   const [loaded, setLoaded] = useState(false);
-  const onLoadHandler = useCallback(() => {
-    console.log("[ProfileImage] Image loaded successfully");
-    setLoaded(true);
-  }, []);
+  // Check if source is remote (has a uri)
+  const isRemote = source && source.uri;
+
+  // If the image is not remote, mark it as loaded immediately
+  useEffect(() => {
+    if (!isRemote) {
+      setLoaded(true);
+    }
+  }, [isRemote]);
 
   return (
     <View style={style}>
-      {!loaded && (
+      {isRemote && !loaded && (
         <SkeletonLoader
           style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
         />
@@ -45,7 +50,10 @@ const ProfileImage = React.memo(({ source, style }) => {
         source={source}
         style={[style, { opacity: loaded ? 1 : 0 }]}
         resizeMode="cover"
-        onLoad={onLoadHandler}
+        onLoad={() => {
+          console.log("[ProfileImage] Image loaded successfully");
+          setLoaded(true);
+        }}
       />
     </View>
   );
