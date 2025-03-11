@@ -342,7 +342,7 @@ ${ticketsInfo}
                 <Text style={styles.yourTicketsText}>Your Tickets</Text>
                 <TouchableOpacity
                   style={styles.invoiceButton}
-                  // onPress={() => handleViewInvoice(ticket)}
+                  onPress={() => handleViewInvoice(ticket)}
                 >
                   <Text style={styles.invoiceButtonText}>Invoice</Text>
                   <Ionicons name="receipt-outline" size={16} color="#E3000F" style={{ marginLeft: 4 }} />

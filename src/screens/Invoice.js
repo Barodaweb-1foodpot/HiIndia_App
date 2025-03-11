@@ -9,7 +9,6 @@ import {
   StatusBar,
   Platform,
   Share,
-  SafeAreaView,
 } from "react-native";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -54,14 +53,14 @@ export default function Invoice({ route, navigation }) {
   const generateInvoiceHTML = () => {
     if (!orderData) return "";
     
-    const ticketRows = orderData.tickets.map((ticket, index) => `
-      <tr style="border-bottom: 1px solid #eee;">
+    const ticketRows = orderData.tickets.map((ticket, index) => 
+      `<tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 12px 8px;">${index + 1}</td>
         <td style="padding: 12px 8px;">${ticket.name}</td>
         <td style="padding: 12px 8px;">${ticket.type}</td>
         <td style="padding: 12px 8px; text-align: right;">$${ticket.price.toFixed(2)}</td>
-      </tr>
-    `).join('');
+      </tr>`
+    ).join('');
     
     return `
       <!DOCTYPE html>
@@ -89,7 +88,7 @@ export default function Invoice({ route, navigation }) {
           .logo {
             font-size: 24px;
             font-weight: bold;
-            color: #E3000F;
+            color: #000000;
           }
           .invoice-title {
             font-size: 28px;
@@ -128,7 +127,7 @@ export default function Invoice({ route, navigation }) {
             font-size: 18px;
             font-weight: bold;
             margin-top: 12px;
-            color: #E3000F;
+            color: #000000;
           }
           .footer {
             margin-top: 40px;
@@ -274,8 +273,8 @@ Thank you for your purchase!
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#E3000F" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {/* Header with back button */}
       <View style={styles.header}>
@@ -316,7 +315,7 @@ Thank you for your purchase!
         
         {loading ? (
           <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#E3000F" />
+            <ActivityIndicator size="large" color="#000000" />
             <Text style={styles.loadingText}>Loading invoice...</Text>
           </View>
         ) : orderData ? (
@@ -426,7 +425,7 @@ Thank you for your purchase!
           </ScrollView>
         ) : (
           <View style={styles.noDataContainer}>
-            <MaterialCommunityIcons name="receipt-text-outline" size={64} color="#D1D5DB" />
+            <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
             <Text style={styles.noDataText}>No invoice data found</Text>
             <TouchableOpacity 
               style={styles.refreshButton}
@@ -437,14 +436,14 @@ Thank you for your purchase!
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#E3000F",
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -452,6 +451,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 50 : 16, // Add extra padding for iOS status bar
   },
   headerTitle: {
     fontSize: 20,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#E3000F",
+    backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#E3000F",
+    color: "#000000",
     letterSpacing: 0.5,
   },
   invoiceDate: {
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#E3000F",
+    color: "#000000",
   },
   paymentInfoContainer: {
     borderRadius: 12,
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   refreshButton: {
-    backgroundColor: "#E3000F",
+    backgroundColor: "#000000",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
