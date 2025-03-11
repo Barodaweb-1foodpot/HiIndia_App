@@ -876,10 +876,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EEEEEE",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 1,
+    elevation: Platform.OS === "android" ? 0 : 6,
   },
   pdfHeader: {
     flexDirection: "row",

@@ -42,7 +42,9 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -125,7 +127,12 @@ export default function HomeScreen({ navigation }) {
       const filterDate = activeTab;
 
       // Data format: [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
-      const data = await fetchEvents(searchText, catFilter, filterDate, priceFilter);
+      const data = await fetchEvents(
+        searchText,
+        catFilter,
+        filterDate,
+        priceFilter
+      );
 
       if (Array.isArray(data) && data.length > 0 && data[0].data) {
         // Sort each group's events by StartDate
@@ -139,8 +146,12 @@ export default function HomeScreen({ navigation }) {
 
         // (Optional) Sort the entire array of groups by earliest event date
         sortedGroups.sort((a, b) => {
-          const earliestA = a.data[0] ? new Date(a.data[0].StartDate).getTime() : Infinity;
-          const earliestB = b.data[0] ? new Date(b.data[0].StartDate).getTime() : Infinity;
+          const earliestA = a.data[0]
+            ? new Date(a.data[0].StartDate).getTime()
+            : Infinity;
+          const earliestB = b.data[0]
+            ? new Date(b.data[0].StartDate).getTime()
+            : Infinity;
           return earliestA - earliestB;
         });
 
@@ -226,10 +237,15 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
 
       {/* Header Section using custom Header component */}
-      <Header 
+      <Header
         onNotificationPress={() =>
           navigation.navigate("App", { screen: "Notification" })
         }
@@ -294,7 +310,9 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => handleSelectPrice("Paid")}
                 >
                   <View style={styles.radioOuter}>
-                    {priceFilter === "Paid" && <View style={styles.radioInner} />}
+                    {priceFilter === "Paid" && (
+                      <View style={styles.radioInner} />
+                    )}
                   </View>
                   <Text style={styles.filterPriceLabel}>Paid</Text>
                 </TouchableOpacity>
@@ -303,7 +321,9 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => handleSelectPrice("Free")}
                 >
                   <View style={styles.radioOuter}>
-                    {priceFilter === "Free" && <View style={styles.radioInner} />}
+                    {priceFilter === "Free" && (
+                      <View style={styles.radioInner} />
+                    )}
                   </View>
                   <Text style={styles.filterPriceLabel}>Free</Text>
                 </TouchableOpacity>
@@ -312,14 +332,18 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => handleSelectPrice("All")}
                 >
                   <View style={styles.radioOuter}>
-                    {priceFilter === "All" && <View style={styles.radioInner} />}
+                    {priceFilter === "All" && (
+                      <View style={styles.radioInner} />
+                    )}
                   </View>
                   <Text style={styles.filterPriceLabel}>All</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Category Filter (multi-select) */}
-              <Text style={[styles.filterHeading, { marginTop: 12 }]}>Categories</Text>
+              <Text style={[styles.filterHeading, { marginTop: 12 }]}>
+                Categories
+              </Text>
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat._id}
@@ -353,7 +377,12 @@ export default function HomeScreen({ navigation }) {
               style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
               onPress={() => setActiveTab("Upcoming")}
             >
-              <Text style={[styles.tabText, activeTab === "Upcoming" && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Upcoming" && styles.activeTabText,
+                ]}
+              >
                 Upcoming
               </Text>
             </TouchableOpacity>
@@ -361,7 +390,12 @@ export default function HomeScreen({ navigation }) {
               style={[styles.tab, activeTab === "Past" && styles.activeTab]}
               onPress={() => setActiveTab("Past")}
             >
-              <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Past" && styles.activeTabText,
+                ]}
+              >
                 Past
               </Text>
             </TouchableOpacity>
@@ -371,12 +405,18 @@ export default function HomeScreen({ navigation }) {
         {/* Main Content with Refresh Control */}
         <ScrollView
           contentContainerStyle={styles.mainContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
           showsVerticalScrollIndicator={false}
         >
           {/* Show center loader only if loading and not refreshing */}
           {loading && !refreshing ? (
-            <ActivityIndicator size="large" color="#000" style={styles.loader} />
+            <ActivityIndicator
+              size="large"
+              color="#000"
+              style={styles.loader}
+            />
           ) : events.length === 0 ? (
             <Text style={styles.noEventsText}>
               {activeTab === "Past" ? "No past events" : "No events found"}
@@ -395,7 +435,10 @@ export default function HomeScreen({ navigation }) {
                   const eventImageUri = event.EventImage
                     ? `${API_BASE_URL_UPLOADS}/${event.EventImage}`
                     : null;
-                  const eventDate = formatEventDateTime(event.StartDate, event.EndDate);
+                  const eventDate = formatEventDateTime(
+                    event.StartDate,
+                    event.EndDate
+                  );
 
                   return (
                     <View key={index} style={styles.eventCard}>
@@ -411,7 +454,10 @@ export default function HomeScreen({ navigation }) {
                       )}
 
                       {/* Event image */}
-                      <EventImage uri={eventImageUri} style={styles.eventImage} />
+                      <EventImage
+                        uri={eventImageUri}
+                        style={styles.eventImage}
+                      />
 
                       {/* Top-right icons (info + share) */}
                       <View style={styles.topRightIcons}>
@@ -419,13 +465,21 @@ export default function HomeScreen({ navigation }) {
                           style={styles.infoButton}
                           onPress={() => navigateToDetails(event)}
                         >
-                          <Ionicons name="information-circle-outline" size={20} color="#000" />
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={20}
+                            color="#000"
+                          />
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.shareButton}
                           onPress={() => shareEvent(event)}
                         >
-                          <Ionicons name="share-social-outline" size={20} color="#000" />
+                          <Ionicons
+                            name="share-social-outline"
+                            size={20}
+                            color="#000"
+                          />
                         </TouchableOpacity>
                       </View>
 
@@ -436,15 +490,19 @@ export default function HomeScreen({ navigation }) {
                             {event.EventName}
                           </Text>
                           <View style={styles.eventDetail}>
-                            <Ionicons name="location-outline" size={14} color="#fff" />
-                            <Text style={styles.eventDetailText} numberOfLines={2}>
-                              {event.EventLocation}
+                            <Ionicons
+                              name="calendar-outline"
+                              size={14}
+                              color="#fff"
+                            />
+                            <Text style={styles.eventDetailText}>
+                              {eventDate}
                             </Text>
                           </View>
                           <View style={styles.eventDetail}>
-                            <Ionicons name="calendar-outline" size={14} color="#fff" />
-                            <Text style={styles.eventDetailText}>
-                              {eventDate}
+                            <Ionicons name="location-outline" size={14} color="#fff" />
+                            <Text style={styles.eventDetailText} numberOfLines={2}>
+                              {event.EventLocation}
                             </Text>
                           </View>
                         </View>
@@ -645,7 +703,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 16,
     backgroundColor: "#fff",
-    elevation: 8,
+    elevation: Platform.OS === "android" ? 2 : 0,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -749,7 +807,7 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     backgroundColor: "#E3000F",
-    paddingHorizontal: 18,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 20,
   },

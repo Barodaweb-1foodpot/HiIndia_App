@@ -12,6 +12,7 @@ import {
   Modal,
   Share,
   Pressable,
+  Platform,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -56,7 +57,7 @@ const TicketImage = memo(({ source, style }) => {
 export default function TicketScreen({ navigation }) {
   const [expandedOrders, setExpandedOrders] = useState({});
   const [tickets, setTickets] = useState([]);
-  // Start animation at 1 so it’s in the “expanded” state by default.
+  // Start animation at 1 so it's in the "expanded" state by default.
   const [animation] = useState(new Animated.Value(1));
   const [readMoreMap, setReadMoreMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -170,6 +171,19 @@ export default function TicketScreen({ navigation }) {
     } catch (error) {
       console.error("Error fetching ticket details:", error);
       alert("Error fetching ticket details.");
+    }
+  };
+
+  const handleViewInvoice = (ticket) => {
+    try {
+      // Navigate to the Invoice screen with the ticket/order ID
+      navigation.navigate("App", {
+        screen: "Invoice",
+        params: { orderId: ticket.id },
+      });
+    } catch (error) {
+      console.error("Error navigating to invoice:", error);
+      alert("Error viewing invoice.");
     }
   };
 
@@ -324,7 +338,16 @@ ${ticketsInfo}
             </View>
           ) : (
             <View style={styles.orderDetails}>
-              <Text style={styles.yourTicketsText}>Your Tickets</Text>
+              <View style={styles.yourTicketsHeader}>
+                <Text style={styles.yourTicketsText}>Your Tickets</Text>
+                <TouchableOpacity
+                  style={styles.invoiceButton}
+                  // onPress={() => handleViewInvoice(ticket)}
+                >
+                  <Text style={styles.invoiceButtonText}>Invoice</Text>
+                  <Ionicons name="receipt-outline" size={16} color="#E3000F" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
               {ticket.tickets.map((t, index) => (
                 <TouchableOpacity
                   key={index}
@@ -529,13 +552,13 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   ticketCard: {
-    marginBottom: 16,
+    marginBottom: 30,
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 4,
+    elevation: Platform.OS === "android" ? 0 : 6,
   },
   cardGradient: {
     borderRadius: 16,
@@ -650,12 +673,38 @@ const styles = StyleSheet.create({
   orderDetails: {
     paddingTop: 2,
   },
+  yourTicketsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    marginTop: 8,
+  },
   yourTicketsText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
-    marginBottom: 16,
-    marginTop: 8,
+  },
+  invoiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E3000F",
+    shadowColor: "rgba(227, 0, 15, 0.3)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  invoiceButtonText: {
+    color: "#E3000F",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   ticketCardContainer: {
     marginBottom: 16,

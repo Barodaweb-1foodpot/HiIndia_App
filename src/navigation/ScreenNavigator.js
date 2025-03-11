@@ -13,6 +13,7 @@ import NotificationScreen from "../screens/Notification";
 import TicketDetailsScreen from "../screens/TicketDetails";
 import ArtistDetails from "../screens/Events/ArtistDetails";
 import ViewTickets from "../screens/Profile/ViewTickets";
+import Invoice from "../screens/Invoice";
 
 const ScreenStack = createStackNavigator();
 
@@ -37,6 +38,7 @@ const ScreenNavigator = () => {
       <ScreenStack.Screen name="ArtistDetails" component={ArtistDetails} />
       <ScreenStack.Screen name="TicketDetails" component={TicketDetailsScreen} />
       <ScreenStack.Screen name="ViewTickets" component={ViewTickets} />
+      <ScreenStack.Screen name="Invoice" component={Invoice} />
     </ScreenStack.Navigator>
   );
 };

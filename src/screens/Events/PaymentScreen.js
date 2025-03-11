@@ -27,7 +27,10 @@ import { formatEventDateTime } from "../../helper/helper_Function";
 import { CheckAccessToken } from "../../api/token_api";
 import { ExentRegister } from "../../api/event_api";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
-import { createPaymentIntent, updatePaymentStatus } from "../../api/payment_api";
+import {
+  createPaymentIntent,
+  updatePaymentStatus,
+} from "../../api/payment_api";
 
 // FontAwesomeIcon for Stripe icon
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
@@ -112,7 +115,10 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
       {/* Show skeleton loader while image is loading */}
       {!loaded && (
         <SkeletonLoader
-          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
         />
       )}
       <Image
@@ -193,10 +199,16 @@ const TicketItem = ({ registration }) => {
 export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { registrations = [], grandTotal, eventDetail, appliedCoupon } = route.params || {};
+  const {
+    registrations = [],
+    grandTotal,
+    eventDetail,
+    appliedCoupon,
+  } = route.params || {};
 
   // Stripe PaymentSheet hooks
-  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } = useStripe();
+  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } =
+    useStripe();
 
   // State for toggling Read More in the header card
   const [titleReadMore, setTitleReadMore] = useState(false);
@@ -213,7 +225,10 @@ export default function PaymentScreen() {
 
   // Debug: Log recalculated total from ticketList
   const recalcTotal = () => {
-    const newTotal = ticketList.reduce((sum, t) => sum + (t.ticketPrice || 0), 0);
+    const newTotal = ticketList.reduce(
+      (sum, t) => sum + (t.ticketPrice || 0),
+      0
+    );
     console.log("Recalculated total from ticketList:", newTotal);
   };
 
@@ -286,12 +301,21 @@ export default function PaymentScreen() {
     try {
       setIsLoading(true);
       // Register the event and get the client secret for payment
-      const clientSecret = await handleRegister();
+      const { clientSecret, orderId } = await handleRegister();
+      console.log("---------------", orderId);
       if (clientSecret === "Free") {
         console.log("Event is free – no payment required");
         Toast.show({ type: "success", text1: "Registration successful!" });
         setIsLoading(false);
-        await updatePaymentStatus(clientSecret, "Free event", true);
+
+        await handleSendMail(orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+
+        // await updatePaymentStatus(clientSecret, "Free event", true);
         setTimeout(() => {
           console.log("Redirecting to Tickets tab for free event");
           navigation.navigate("Tab", { screen: "Tickets" });
@@ -300,7 +324,11 @@ export default function PaymentScreen() {
       }
       if (!clientSecret) {
         console.log("No client secret received");
-        await updatePaymentStatus(clientSecret, "Failed to create PaymentIntent", false);
+        await updatePaymentStatus(
+          clientSecret,
+          "Failed to create PaymentIntent",
+          false
+        );
         Toast.show({ type: "error", text1: "Failed to create PaymentIntent" });
         setIsLoading(false);
         return;
@@ -339,7 +367,11 @@ export default function PaymentScreen() {
       }
       console.log("Payment successful!");
       Toast.show({ type: "success", text1: "Payment successful!" });
-      const updateRes = await updatePaymentStatus(clientSecret, "success", true);
+      const updateRes = await updatePaymentStatus(
+        clientSecret,
+        "success",
+        true
+      );
       console.log("Payment status updated:", updateRes);
       if (updateRes.isOk) {
         await handleSendMail(updateRes.orderId);
@@ -389,7 +421,9 @@ export default function PaymentScreen() {
           dob: participant.dateOfBirth,
           eventName: eventDetail._id,
           age: participant.age,
-          sessionName: (participant.sessionName || []).map((session) => session.value),
+          sessionName: (participant.sessionName || []).map(
+            (session) => session.value
+          ),
           ticketCategory: "Participant",
           country: eventDetail.countryDetail[0]._id,
           TicketType: participant.TicketType,
@@ -412,8 +446,15 @@ export default function PaymentScreen() {
       console.log("Registration response:", response);
       if (response.isOk) {
         if (response.clientSecret) {
-          console.log("Got clientSecret from server:", response.clientSecret);
-          return response.clientSecret;
+          console.log(
+            "Got clientSecret from server:",
+            response.data[0].orderId
+          );
+          const data = {
+            clientSecret: response.clientSecret,
+            orderId: response.data[0].orderId,
+          };
+          return data;
         } else if (eventDetail.IsPaid === false) {
           console.log("Event is free; returning 'Free'");
           return "Free";
@@ -505,7 +546,10 @@ export default function PaymentScreen() {
         {/* Updated header card: display only the event name with a Read More button */}
         <View style={styles.headerCard}>
           <View>
-            <Text style={styles.headerCardTitle} numberOfLines={titleReadMore ? undefined : 2}>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
               {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
             {eventDetail?.EventName?.length > 50 && (
@@ -521,27 +565,43 @@ export default function PaymentScreen() {
 
       {/* WHITE SECTION: Registration details and payment options */}
       <View style={styles.whiteContainer}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.sectionTitle}>Complete Event Registration</Text>
           {grandTotal > 0 && (
             <>
-              <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
+              <Text style={styles.paymentMethodTitle}>
+                Select Payment Method
+              </Text>
               <View style={styles.paymentMethodContainer}>
                 <TouchableOpacity
                   style={[
                     styles.paymentOption,
-                    selectedPaymentMethod === "Stripe" && styles.paymentOptionSelected,
+                    selectedPaymentMethod === "Stripe" &&
+                      styles.paymentOptionSelected,
                   ]}
                   onPress={() => handlePaymentMethodChange("Stripe")}
                 >
                   <View style={styles.paymentOptionRow}>
-                    <FontAwesomeIcon icon={faStripe} size={24} style={{ marginRight: 8 }} />
+                    <FontAwesomeIcon
+                      icon={faStripe}
+                      size={24}
+                      style={{ marginRight: 8 }}
+                    />
                     <Text style={styles.paymentOptionText}>Stripe</Text>
                   </View>
                   <Ionicons
-                    name={selectedPaymentMethod === "Stripe" ? "radio-button-on" : "radio-button-off"}
+                    name={
+                      selectedPaymentMethod === "Stripe"
+                        ? "radio-button-on"
+                        : "radio-button-off"
+                    }
                     size={24}
-                    color={selectedPaymentMethod === "Stripe" ? "#E3000F" : "#999"}
+                    color={
+                      selectedPaymentMethod === "Stripe" ? "#E3000F" : "#999"
+                    }
                   />
                 </TouchableOpacity>
               </View>
@@ -574,9 +634,18 @@ export default function PaymentScreen() {
             onPress={handleMakePayment}
           >
             <Text style={styles.makePaymentButtonText}>
-              {isLoading ? "Processing..." : grandTotal > 0 ? "Make Payment" : "Proceed"}
+              {isLoading
+                ? "Processing..."
+                : grandTotal > 0
+                ? "Make Payment"
+                : "Proceed"}
             </Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color="#FFF"
+              style={{ marginLeft: 8 }}
+            />
           </TouchableOpacity>
         </View>
       </View>
