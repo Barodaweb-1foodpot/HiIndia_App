@@ -261,10 +261,10 @@ export default function ProfileScreen() {
         {/* New "View Tickets" Menu Item */}
         <TouchableOpacity
           style={styles.menuItem}
-          // onPress={() => {
-          //   console.log("[ProfileScreen] Navigating to Tickets");
-          //   navigation.navigate("App", { screen: "ViewTickets" });
-          // }}
+          onPress={() => {
+            console.log("[ProfileScreen] Navigating to Tickets");
+            navigation.navigate("App", { screen: "ViewTickets" });
+          }}
         >
           <View style={styles.menuLeft}>
             <View style={styles.iconContainer}>

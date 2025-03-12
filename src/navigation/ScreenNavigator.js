@@ -12,7 +12,7 @@ import CalendarScreen from "../screens/Calender";
 import NotificationScreen from "../screens/Notification";
 import TicketDetailsScreen from "../screens/TicketDetails";
 import ArtistDetails from "../screens/Events/ArtistDetails";
-import ViewTickets from "../screens/Profile/ViewTickets";
+import ViewTickets from "../screens/Profile/MyOrder";
 import Invoice from "../screens/Invoice";
 
 const ScreenStack = createStackNavigator();

@@ -176,16 +176,22 @@ export default function TicketScreen({ navigation }) {
 
   const handleViewInvoice = (ticket) => {
     try {
-      // Navigate to the Invoice screen with the ticket/order ID
+      const orderDetails = {
+        totalRate: ticket.totalRate,
+        couponDiscount: ticket.coupon,
+        total: ticket.total,
+      };
+  
       navigation.navigate("App", {
         screen: "Invoice",
-        params: { orderId: ticket.id },
+        params: { orderId: ticket.id, orderDetails },
       });
     } catch (error) {
       console.error("Error navigating to invoice:", error);
       alert("Error viewing invoice.");
     }
   };
+  
 
   const shareOrderDetails = async (order) => {
     const shareUrlBase = "https://participanthiindia.barodaweb.org/ticket/";
