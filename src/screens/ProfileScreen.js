@@ -261,16 +261,16 @@ export default function ProfileScreen() {
         {/* New "View Tickets" Menu Item */}
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => {
-            console.log("[ProfileScreen] Navigating to Tickets");
-            navigation.navigate("App", { screen: "ViewTickets" });
-          }}
+          // onPress={() => {
+          //   console.log("[ProfileScreen] Navigating to Tickets");
+          //   navigation.navigate("App", { screen: "ViewTickets" });
+          // }}
         >
           <View style={styles.menuLeft}>
             <View style={styles.iconContainer}>
               <Ionicons name="ticket-outline" size={20} color="#1F2937" />
             </View>
-            <Text style={styles.menuText}>View Tickets</Text>
+            <Text style={styles.menuText}>My Orders</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
