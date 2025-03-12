@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,34 +10,56 @@ import {
   Platform,
   Dimensions,
   Animated,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
+
+// Stripe hooks
+import { useStripe } from "@stripe/stripe-react-native";
+
+// API and helper imports
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../../helper/helper_Function";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CheckAccessToken } from "../../api/token_api";
 import { ExentRegister } from "../../api/event_api";
-const { width } = Dimensions.get("window");
-import Toast from "react-native-toast-message";
 import { sendEventTicketByOrderId } from "../../api/ticket_api";
+import {
+  createPaymentIntent,
+  updatePaymentStatus,
+} from "../../api/payment_api";
 
-// Import FontAwesomeIcon and the Stripe icon
+// FontAwesomeIcon for Stripe icon
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faStripe } from "@fortawesome/free-brands-svg-icons";
 
-// --- Skeleton Loader Components ---
+const { width } = Dimensions.get("window");
+
+/*
+  SkeletonLoader Component:
+  Displays a shimmering placeholder while images are loading.
+  The animation is stopped on component unmount.
+*/
 const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    Animated.loop(
+    console.log("SkeletonLoader: starting animation loop");
+    const animationLoop = Animated.loop(
       Animated.timing(animation, {
         toValue: 1,
         duration: 1500,
         useNativeDriver: false,
       })
-    ).start();
+    );
+    animationLoop.start();
+    return () => {
+      console.log("SkeletonLoader: stopping animation loop");
+      animationLoop.stop();
+    };
   }, [animation]);
 
   const translateX = animation.interpolate({
@@ -46,7 +68,15 @@ const SkeletonLoader = React.memo(({ style }) => {
   });
 
   return (
-    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
+    <View
+      style={[
+        style,
+        {
+          backgroundColor: "#E0E0E0",
+          overflow: "hidden",
+        },
+      ]}
+    >
       <Animated.View
         style={{
           width: "100%",
@@ -62,19 +92,27 @@ const SkeletonLoader = React.memo(({ style }) => {
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
+          style={{
+            width: "100%",
+            height: "100%",
+          }}
         />
       </Animated.View>
     </View>
   );
 });
 
+/*
+  EventImage Component:
+  Renders an image with a skeleton loader until the image loads.
+*/
 const EventImage = React.memo(({ uri, style, defaultSource }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
   return (
     <View style={style}>
+      {/* Show skeleton loader while image is loading */}
       {!loaded && (
         <SkeletonLoader
           style={[
@@ -91,8 +129,12 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
         }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          console.log("EventImage: Image loaded successfully");
+          setLoaded(true);
+        }}
         onError={() => {
+          console.log("EventImage: Error loading image, using placeholder");
           setError(true);
           setLoaded(true);
         }}
@@ -100,10 +142,12 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
     </View>
   );
 });
-// --- End Skeleton Loader Components ---
-import { CheckAccessToken } from "../../api/token_api";
 
-const TicketItem = ({ registration, onRemove, index }) => {
+/*
+  TicketItem Component:
+  Displays a single ticket’s details with gradient styling.
+*/
+const TicketItem = ({ registration }) => {
   return (
     <View style={styles.ticketItemContainer}>
       <LinearGradient
@@ -113,7 +157,6 @@ const TicketItem = ({ registration, onRemove, index }) => {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.ticketAccent} />
-
         <View style={styles.ticketContent}>
           <View style={styles.ticketRow}>
             <View style={styles.leftSection}>
@@ -125,14 +168,12 @@ const TicketItem = ({ registration, onRemove, index }) => {
                   <Ionicons name="ticket" size={16} color="#FFF" />
                 </LinearGradient>
               </View>
-
               <View style={styles.ticketDetails}>
                 <Text style={styles.ticketName}>
                   {registration.name || "Unnamed"}
                 </Text>
               </View>
             </View>
-
             <LinearGradient
               colors={["#FFE5E5", "#FFF5F5"]}
               style={styles.priceTag}
@@ -140,7 +181,7 @@ const TicketItem = ({ registration, onRemove, index }) => {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.priceTagText}>
-                {registration.TicketType.TicketType || "Free Event ticket"}
+                {registration.TicketType?.TicketType || "Free Event ticket"}
               </Text>
             </LinearGradient>
           </View>
@@ -150,132 +191,290 @@ const TicketItem = ({ registration, onRemove, index }) => {
   );
 };
 
+/*
+  PaymentScreen Component:
+  Manages the event registration and payment flow using Stripe’s PaymentSheet.
+  Updated header card now displays only the event name with a "Read More" button if the name is long.
+*/
 export default function PaymentScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const {
+    registrations = [],
+    grandTotal,
+    eventDetail,
+    appliedCoupon,
+  } = route.params || {};
+
+  // Stripe PaymentSheet hooks
+  const { initPaymentSheet, presentPaymentSheet, handleURLCallback } =
+    useStripe();
+
+  // State for toggling Read More in the header card
   const [titleReadMore, setTitleReadMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { registrations = [], grandTotal, eventDetail, appliedCoupon } =
-    route.params || {};
-
-  // Deserialize registrations so that dateOfBirth is a Date object again
+  // Deserialize registrations so that dateOfBirth strings become Date objects
   const deserializedRegistrations = registrations.map((reg) => ({
     ...reg,
     dateOfBirth: reg.dateOfBirth ? new Date(reg.dateOfBirth) : null,
   }));
-
   const [ticketList, setTicketList] = useState(deserializedRegistrations);
-  const [paymentTotal, setPaymentTotal] = useState(grandTotal);
-  // Set default payment method to Stripe
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
+  const [payment_id, setPayment_id] = useState("");
+
+  // Debug: Log recalculated total from ticketList
+  const recalcTotal = () => {
+    const newTotal = ticketList.reduce(
+      (sum, t) => sum + (t.ticketPrice || 0),
+      0
+    );
+    console.log("Recalculated total from ticketList:", newTotal);
+  };
 
   useEffect(() => {
     recalcTotal();
   }, [ticketList]);
 
-  const recalcTotal = () => {
-    let newTotal = 0;
-    ticketList.forEach((t) => {
-      if (t.ticketPrice) {
-        newTotal += t.ticketPrice;
-      }
-    });
-    setPaymentTotal(newTotal);
-  };
-
-  const removeTicket = (index) => {
-    const updatedList = [...ticketList];
-    updatedList.splice(index, 1);
-    setTicketList(updatedList);
-  };
-
+  // Change the selected payment method
   const handlePaymentMethodChange = (method) => {
+    console.log("Changing payment method to:", method);
     setSelectedPaymentMethod(method);
   };
 
-  const handleMakePayment = () => {
-    console.log("Making Payment with:", selectedPaymentMethod);
-    handleRegister();
-  };
+  // Toggle the Read More state for the header card
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
 
-  const handleRegister = async () => {
-    try {
-      const res = await CheckAccessToken();
-      if (res) {
-        const userId = await AsyncStorage.getItem("role")
-        setIsLoading(true)
-        // console.log("aaaaaaaaaaaa", ticketList)
-        const formattedParticipants = ticketList.map((participant) => {
-          const sessionTotal = (participant.sessionName || []).reduce(
-            (sum, session) => sum + Number(session.rate || 0),
-            0
-          );
-
-          let ticketCategory = "Participant";
-
-
-          return {
-            byParticipant: userId || null,
-            name: participant.name,
-            dob: participant.dateOfBirth,
-            eventName: eventDetail._id,
-            age: participant.age,
-            sessionName: (participant.sessionName || []).map(session => session.value),
-            ticketCategory,
-            country: eventDetail.countryDetail[0]._id,
-            TicketType: participant.TicketType._id, // Extract the correct value
-            isActive: true,
-            registrationCharge: participant.registrationCharge
-          };
-        });
-        const payload = {
-          couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
-          byParticipant: userId,
-          eventName: eventDetail._id, // Replace with actual event ID
-          country: eventDetail.countryDetail[0]._id, // Replace with actual country ID
-          participants: formattedParticipants,
-          afterDiscountTotal: grandTotal,
-          currency: eventDetail.countryDetail[0].CurrencyCode
-        };
-
-
-        const response = await ExentRegister(payload)
-        console.log("-----------------------------", response)
-        if (response.isOk) {
-          await handlesendMial(response.data[0].orderId)
-
-        }
-        else {
-          setIsLoading(false)
-          Toast.show({
-            type: "error",
-            text2: response.message || "Someting Went Wrong",
-            text1: response.status === 401 ? "Login Again Session Expired" : "",
-            position: "top",
-            visibilityTime: 3000,
-          });
-          if (response.status === 401) {
-            setTimeout(() => {
-              navigation.navigate("Auth");
-            }, 2000);
-          }
+  // Handle deep linking (e.g., for 3D Secure redirects)
+  const handleDeepLink = useCallback(
+    async (url) => {
+      if (url) {
+        console.log("Deep link received:", url);
+        const stripeHandled = await handleURLCallback(url);
+        if (stripeHandled) {
+          console.log("Stripe handled the deep link");
+        } else {
+          console.log("Non-Stripe URL received:", url);
         }
       }
-      else {
+    },
+    [handleURLCallback]
+  );
+
+  useEffect(() => {
+    const getInitialUrl = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      console.log("Initial URL:", initialUrl);
+      handleDeepLink(initialUrl);
+    };
+
+    getInitialUrl();
+
+    const urlListener = Linking.addEventListener("url", (event) => {
+      console.log("URL event detected:", event.url);
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      urlListener.remove();
+    };
+  }, [handleDeepLink]);
+
+  // Handle the complete payment process
+  const handleMakePayment = async () => {
+    console.log("Starting payment process...");
+    const tokenValid = await CheckAccessToken();
+    if (!tokenValid) {
+      console.log("Access token invalid – redirecting to login");
+      Toast.show({
+        type: "error",
+        text1: "Login Again Session Expired",
+        position: "top",
+        visibilityTime: 2000,
+      });
+      setTimeout(() => navigation.navigate("Auth"), 100);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      // Register the event and get the client secret for payment
+      const { clientSecret, orderId } = await handleRegister();
+      console.log("---------------", orderId);
+      if (clientSecret === "Free") {
+        console.log("Event is free – no payment required");
+        Toast.show({ type: "success", text1: "Registration successful!" });
+        setIsLoading(false);
+
+        await handleSendMail(orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+
+        // await updatePaymentStatus(clientSecret, "Free event", true);
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab for free event");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+        return;
+      }
+      if (!clientSecret) {
+        console.log("No client secret received");
+        await updatePaymentStatus(
+          clientSecret,
+          "Failed to create PaymentIntent",
+          false
+        );
+        Toast.show({ type: "error", text1: "Failed to create PaymentIntent" });
+        setIsLoading(false);
+        return;
+      }
+      console.log("Client secret received:", clientSecret);
+
+      // Initialize the Stripe PaymentSheet
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: eventDetail?.EventName || "HiIndia",
+        returnURL: "hiindiaapp://stripe-redirect",
+      });
+      if (initError) {
+        console.log("Error initializing PaymentSheet:", initError.message);
+        await updatePaymentStatus(clientSecret, initError.message, false);
+        Toast.show({
+          type: "error",
+          text1: "PaymentSheet init failed",
+          text2: initError.message,
+        });
+        setIsLoading(false);
+        return;
+      }
+      // Present the PaymentSheet to the user
+      const { error: paymentError } = await presentPaymentSheet();
+      if (paymentError) {
+        console.log("Error during payment:", paymentError.message);
+        await updatePaymentStatus(clientSecret, paymentError.message, false);
+        Toast.show({
+          type: "error",
+          text1: "Payment error",
+          text2: paymentError.message,
+        });
+        setIsLoading(false);
+        return;
+      }
+      console.log("Payment successful!");
+      Toast.show({ type: "success", text1: "Payment successful!" });
+      const updateRes = await updatePaymentStatus(
+        clientSecret,
+        "success",
+        true
+      );
+      console.log("Payment status updated:", updateRes);
+      if (updateRes.isOk) {
+        await handleSendMail(updateRes.orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error during payment process:", error);
+      Toast.show({
+        type: "error",
+        text1: "Payment error",
+        text2: error.message,
+      });
+      setIsLoading(false);
+    }
+  };
+
+  // Register the event and create a PaymentIntent if needed
+  const handleRegister = async () => {
+    try {
+      console.log("Registering event...");
+      const tokenValid = await CheckAccessToken();
+      if (!tokenValid) {
+        console.log("Token check failed during registration");
         Toast.show({
           type: "error",
           text1: "Login Again Session Expired",
           position: "top",
           visibilityTime: 2000,
         });
-        setTimeout(() => {
-          navigation.navigate("Auth");
-        }, 100);
+        setTimeout(() => navigation.navigate("Auth"), 100);
+        return;
+      }
+      const userId = await AsyncStorage.getItem("role");
+      const amountInCents = Math.round(grandTotal * 100);
+      setIsLoading(true);
+      // Format participants data from ticketList
+      const formattedParticipants = ticketList.map((participant) => {
+        console.log("Formatting participant:", participant.name);
+        return {
+          byParticipant: userId || null,
+          name: participant.name,
+          dob: participant.dateOfBirth,
+          eventName: eventDetail._id,
+          age: participant.age,
+          sessionName: (participant.sessionName || []).map(
+            (session) => session.value
+          ),
+          ticketCategory: "Participant",
+          country: eventDetail.countryDetail[0]._id,
+          TicketType: participant.TicketType,
+          isActive: true,
+          registrationCharge: participant.registrationCharge,
+        };
+      });
+      const payload = {
+        couponCode: appliedCoupon ? appliedCoupon.couponCode : "",
+        byParticipant: userId,
+        eventName: eventDetail._id,
+        country: eventDetail.countryDetail[0]._id,
+        participants: formattedParticipants,
+        afterDiscountTotal: grandTotal,
+        currency: eventDetail.countryDetail[0].CurrencyCode,
+        amountInCents: amountInCents || "usd",
+      };
+      console.log("Registration payload:", payload);
+      const response = await ExentRegister(payload);
+      console.log("Registration response:", response);
+      if (response.isOk) {
+        if (response.clientSecret) {
+          console.log(
+            "Got clientSecret from server:",
+            response.data[0].orderId
+          );
+          const data = {
+            clientSecret: response.clientSecret,
+            orderId: response.data[0].orderId,
+          };
+          return data;
+        } else if (eventDetail.IsPaid === false) {
+          console.log("Event is free; returning 'Free'");
+          return "Free";
+        }
+      } else {
+        setIsLoading(false);
+        Toast.show({
+          type: "error",
+          text1: response.status === 401 ? "Login Again Session Expired" : "",
+          text2: response.message || "Something Went Wrong",
+          position: "top",
+          visibilityTime: 3000,
+        });
+        if (response.status === 401) {
+          setTimeout(() => navigation.navigate("Auth"), 2000);
+        }
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error during registration:", error);
+      console.error("Error during event registration:", error);
       Toast.show({
         type: "error",
         text1: "Registration Error",
@@ -285,21 +484,20 @@ export default function PaymentScreen() {
     }
   };
 
-  const handlesendMial = async (orderId) => {
+  // Send email with the event ticket based on orderId
+  const handleSendMail = async (orderId) => {
     try {
-      const response = await sendEventTicketByOrderId(orderId)
-      console.log("-----------------------------", response)
+      console.log("Sending email for order ID:", orderId);
+      const response = await sendEventTicketByOrderId(orderId);
+      console.log("Email send response:", response);
       if (response.isOk || response.status === 200) {
-        setIsLoading(false)
+        setIsLoading(false);
         Toast.show({
           type: "success",
           text1: response.message,
           position: "top",
           visibilityTime: 2000,
         });
-        setTimeout(() => {
-          navigation.navigate("Tab");
-        }, 2000);
       } else {
         setIsLoading(false);
         Toast.show({
@@ -311,7 +509,7 @@ export default function PaymentScreen() {
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error during sending mail:", error);
+      console.error("Error sending mail:", error);
       Toast.show({
         type: "error",
         text1: "Mail Error",
@@ -325,15 +523,17 @@ export default function PaymentScreen() {
     <View style={styles.rootContainer}>
       <StatusBar style="auto" />
 
-      {/* TOP SECTION */}
+      {/* TOP SECTION: Event image with back button and updated header card */}
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back from PaymentScreen");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
-        {/* Use EventImage with skeleton loader for the top image */}
         <EventImage
           uri={
             eventDetail?.EventImage
@@ -343,43 +543,33 @@ export default function PaymentScreen() {
           style={styles.topImage}
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
-
+        {/* Updated header card: display only the event name with a Read More button */}
         <View style={styles.headerCard}>
-          <Text
-            style={styles.headerCardTitle}
-            numberOfLines={titleReadMore ? undefined : 2}
-          >
-            Register for {eventDetail?.EventName}
-          </Text>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation}
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
+              {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
-          </View>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(
-                eventDetail?.StartDate,
-                eventDetail?.EndDate
-              ) || "Date/Time not available"}
-            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
 
-      {/* WHITE SECTION */}
+      {/* WHITE SECTION: Registration details and payment options */}
       <View style={styles.whiteContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionTitle}>
-            Complete Event Registration
-          </Text>
-
-          {/* Payment Methods */}
+          <Text style={styles.sectionTitle}>Complete Event Registration</Text>
           {grandTotal > 0 && (
             <>
               <Text style={styles.paymentMethodTitle}>
@@ -414,64 +604,29 @@ export default function PaymentScreen() {
                     }
                   />
                 </TouchableOpacity>
-
-                {/* <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    selectedPaymentMethod === "PayPal" &&
-                      styles.paymentOptionSelected,
-                  ]}
-                  onPress={() => handlePaymentMethodChange("PayPal")}
-                >
-                  <View style={styles.paymentOptionRow}>
-                    <Ionicons
-                      name="logo-paypal"
-                      size={24}
-                      color="#003087"
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text style={styles.paymentOptionText}>PayPal</Text>
-                  </View>
-                  <Ionicons
-                    name={
-                      selectedPaymentMethod === "PayPal"
-                        ? "radio-button-on"
-                        : "radio-button-off"
-                    }
-                    size={24}
-                    color={
-                      selectedPaymentMethod === "PayPal" ? "#E3000F" : "#999"
-                    }
-                  />
-                </TouchableOpacity> */}
               </View>
             </>
           )}
-
-          {/* Tickets Booked */}
           {ticketList.length > 0 && (
             <>
               <Text style={styles.ticketsBookedTitle}>Tickets Booked</Text>
               {ticketList.map((reg, index) => (
-                <TicketItem
-                  key={index}
-                  registration={reg}
-                  onRemove={removeTicket}
-                  index={index}
-                />
+                <TicketItem key={index} registration={reg} />
               ))}
             </>
           )}
-
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* BOTTOM BAR */}
+        {/* BOTTOM BAR: Grand total and payment button */}
         <View style={styles.bottomBar}>
           <View style={styles.totalSection}>
-            <Text style={styles.grandTotalText}>
-              Grand Total: {eventDetail.countryDetail[0].Currency} {grandTotal}
-            </Text>
+            <View style={styles.totalSection}>
+              <Text style={styles.grandTotalLabel}>Grand Total</Text>
+              <Text style={styles.grandTotalText}>
+                {eventDetail.countryDetail[0].Currency} {grandTotal}
+              </Text>
+            </View>
           </View>
           <TouchableOpacity
             disabled={isLoading}
@@ -521,6 +676,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -550,16 +706,10 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 8,
   },
-  headerCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    marginLeft: 2,
-  },
-  headerCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 6,
+  readMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#E3000F",
   },
   whiteContainer: {
     flex: 1,
@@ -678,10 +828,6 @@ const styles = StyleSheet.create({
     color: "#222",
     marginBottom: 4,
   },
-  removeTicketButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
   priceTag: {
     paddingHorizontal: 7,
     paddingVertical: 8,
@@ -712,10 +858,17 @@ const styles = StyleSheet.create({
   totalSection: {
     flex: 1,
   },
+  grandTotalLabel: {
+    fontSize: 18,
+    fontWeight: "800",
+    fontStyle: "italic",
+    color: "#222",
+    marginBottom: 4,
+  },
   grandTotalText: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
+    fontWeight: "bold",
+    color: "#E3000F",
   },
   makePaymentButton: {
     flexDirection: "row",
@@ -737,3 +890,5 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 });
+
+export { PaymentScreen };

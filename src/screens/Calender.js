@@ -12,7 +12,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
-import { fetchEvents } from "../api/event_api"; // Using fetchEvents instead of listActiveEvents
+import { fetchCalendarEvents } from "../api/event_api"; 
 import { API_BASE_URL_UPLOADS } from "@env";
 
 export default function CalendarScreen({ navigation }) {
@@ -24,8 +24,9 @@ export default function CalendarScreen({ navigation }) {
     const fetchData = async () => {
       try {
         // Fetch events with pageNo=1, perPage=1000, no search query, category "All", filterDate "All"
-        const res = await fetchEvents("", "All", "All");
-        const eventsArray = res.data || [];
+        const res = await fetchCalendarEvents("", "All", "All","All");
+        console.log("===============",res[0])
+        const eventsArray = res[0].data || [];
         const groupedEvents = {};
 
         eventsArray.forEach((event) => {

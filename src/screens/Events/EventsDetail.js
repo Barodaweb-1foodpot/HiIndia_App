@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,59 +15,21 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatEventDateTime } from "../../helper/helper_Function"; // <-- Using formatEventDateTime
-import moment from "moment"; // (kept if you still need it elsewhere)
+import { formatEventDateTime } from "../../helper/helper_Function";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 
-const { width, height } = Dimensions.get("window");
+// Import custom SkeletonLoader component
+import SkeletonLoader from "../../components/SkeletonLoader";
 
-// Skeleton Loader Component for Images wrapped in React.memo
-const SkeletonLoader = React.memo(({ style }) => {
-  const [animation] = useState(new Animated.Value(0));
+const { width } = Dimensions.get("window");
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(animation, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: false, // Only transforms are fully supported by native driver
-      })
-    ).start();
-  }, [animation]);
-
-  const translateX = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-300, 300],
-  });
-
-  return (
-    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
-      <Animated.View
-        style={{
-          width: "100%",
-          height: "100%",
-          transform: [{ translateX }],
-        }}
-      >
-        <LinearGradient
-          colors={[
-            "rgba(255, 255, 255, 0)",
-            "rgba(255, 255, 255, 0.5)",
-            "rgba(255, 255, 255, 0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </Animated.View>
-    </View>
-  );
-});
-
-// Component for handling event images with a skeleton loader until loaded, wrapped in React.memo
+/*
+  EventImage Component
+  - Uses the custom SkeletonLoader to display a loading indicator.
+  - Wrapped with React.memo to avoid unnecessary re-renders.
+*/
 const EventImage = React.memo(({ uri, style, defaultSource }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -90,15 +52,42 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
         }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          setLoaded(true);
+          console.log("Image loaded:", uri);
+        }}
         onError={() => {
           setError(true);
           setLoaded(true);
+          console.error("Error loading image:", uri);
         }}
       />
     </View>
   );
 });
+
+/*
+  GalleryItem Component
+  - Extracted component for rendering gallery images.
+  - Memoized with React.memo.
+*/
+const GalleryItem = React.memo(({ image, shareGalleryImage }) => (
+  <View style={styles.galleryItem}>
+    <EventImage
+      uri={`${API_BASE_URL_UPLOADS}/${image}`}
+      style={styles.galleryImage}
+    />
+    <TouchableOpacity
+      style={styles.shareIcon}
+      onPress={() => {
+        console.log("Sharing gallery image:", image);
+        shareGalleryImage(image);
+      }}
+    >
+      <Ionicons name="share-social-outline" size={18} color="#FFF" />
+    </TouchableOpacity>
+  </View>
+));
 
 export default function EventsDetail({ navigation, route }) {
   const [readMore, setReadMore] = useState(false);
@@ -110,52 +99,50 @@ export default function EventsDetail({ navigation, route }) {
 
   const { eventDetail } = route.params || {};
 
-  useEffect(() => {
-    if (eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null") {
-      fetchFileSize(`${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`);
-    }
-  }, [eventDetail?.EventCatalogue]);
+  // Compute catalogueUrl only if available and valid
+  const catalogueUrl =
+    eventDetail?.EventCatalogue && eventDetail?.EventCatalogue !== "null"
+      ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventCatalogue}`
+      : null;
 
+  // Fetch file size when catalogueUrl is available
+  useEffect(() => {
+    if (catalogueUrl) {
+      console.log("Fetching file size for:", catalogueUrl);
+      fetchFileSize(catalogueUrl);
+    }
+  }, [catalogueUrl]);
+
+  // Function to fetch file size using HEAD request
   const fetchFileSize = async (url) => {
     try {
       const encodedUrl = encodeURI(url);
       const response = await fetch(encodedUrl, { method: "HEAD" });
-      if (!response.ok) {
-        return;
-      }
+      if (!response.ok) return;
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
-        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(
-          2
-        );
+        const sizeInMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(2);
+        console.log("Fetched file size:", sizeInMB, "MB");
         setFileSize(sizeInMB);
       } else {
-        console.warn("Content-Length header is missing.");
+        console.warn("Content-Length header is missing for:", url);
       }
     } catch (error) {
       console.error("Error fetching file size:", error);
     }
   };
 
-  // Download PDF file
-  const downloadPDF = async () => {
-    if (
-      !eventDetail?.EventCatalogue ||
-      eventDetail?.EventCatalogue === "null"
-    ) {
-      return;
-    }
+  // Download PDF with progress tracking, using useCallback
+  const downloadPDF = useCallback(async () => {
+    if (!catalogueUrl) return;
+    console.log("Starting PDF download from:", catalogueUrl);
 
     try {
       setDownloading(true);
-      const pdfUrl = `${API_BASE_URL_UPLOADS}/${eventDetail.EventCatalogue}`;
-      const encodedPdfUrl = encodeURI(pdfUrl);
-
-      // Local file path
+      const encodedPdfUrl = encodeURI(catalogueUrl);
       const fileName = eventDetail.EventCatalogue.split("/").pop();
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      // Download with progress tracking
       const downloadResumable = FileSystem.createDownloadResumable(
         encodedPdfUrl,
         fileUri,
@@ -165,52 +152,48 @@ export default function EventsDetail({ navigation, route }) {
             downloadProgressData.totalBytesWritten /
             downloadProgressData.totalBytesExpectedToWrite;
           setDownloadProgress(progress);
+          console.log("Download progress:", Math.round(progress * 100) + "%");
         }
       );
 
       const { uri } = await downloadResumable.downloadAsync();
+      console.log("Download completed, file saved at:", uri);
 
-      // Check if sharing is available on this device
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
+        console.log("Sharing file:", uri);
         await Sharing.shareAsync(uri);
       } else {
         alert("Sharing is not available on this device");
       }
-
-      setDownloading(false);
-      setDownloadProgress(0);
     } catch (error) {
       console.error("Error downloading PDF:", error);
+      alert("Failed to download the file. Please try again.");
+    } finally {
       setDownloading(false);
       setDownloadProgress(0);
-      alert("Failed to download the file. Please try again.");
     }
-  };
+  }, [catalogueUrl, eventDetail]);
 
-  // Preview PDF in browser
-  const previewPDF = async () => {
-    if (
-      !eventDetail?.EventCatalogue ||
-      eventDetail?.EventCatalogue === "null"
-    ) {
-      return;
-    }
+  // Preview PDF using WebBrowser
+  const previewPDF = useCallback(async () => {
+    if (!catalogueUrl) return;
+    console.log("Previewing PDF from:", catalogueUrl);
 
     try {
-      const pdfUrl = `${API_BASE_URL_UPLOADS}/${eventDetail.EventCatalogue}`;
-      const encodedPdfUrl = encodeURI(pdfUrl);
+      const encodedPdfUrl = encodeURI(catalogueUrl);
       await WebBrowser.openBrowserAsync(encodedPdfUrl);
+      console.log("PDF preview opened successfully");
     } catch (error) {
       console.error("Error previewing PDF:", error);
       alert("Failed to open the preview. Please try downloading instead.");
     }
-  };
+  }, [catalogueUrl]);
 
-  // Share the entire event details
-  const shareEvent = async () => {
+  // Share event details
+  const shareEvent = useCallback(async () => {
     try {
-      // Use formatEventDateTime for date/time
+      console.log("Sharing event:", eventDetail?.EventName);
       const eventDate = formatEventDateTime(
         eventDetail?.StartDate,
         eventDetail?.EndDate
@@ -227,24 +210,35 @@ export default function EventsDetail({ navigation, route }) {
     } catch (error) {
       console.error("Error sharing event", error);
     }
-  };
+  }, [eventDetail]);
 
-  // Share a gallery image only
-  const shareGalleryImage = async (galleryImage) => {
+  // Share a gallery image
+  const shareGalleryImage = useCallback(async (galleryImage) => {
     try {
+      console.log("Sharing gallery image:", galleryImage);
       const imageUrl = `${API_BASE_URL_UPLOADS}/${galleryImage}`;
       await Share.share({ message: imageUrl });
     } catch (error) {
       console.error("Error sharing gallery image", error);
     }
-  };
+  }, []);
 
-  const ticketsSold = eventDetail?.EventRegisterDetail?.length || 0;
-  const totalTickets = eventDetail?.NoOfParticipants || 0;
-  const percentageSold =
-    totalTickets > 0 ? (ticketsSold / totalTickets) * 100 : 0;
+  // Memoize percentage sold calculation
+  const percentageSold = useMemo(() => {
+    const ticketsSold = eventDetail?.EventRegisterDetail?.length || 0;
+    const totalTickets = eventDetail?.NoOfParticipants || 0;
+    return totalTickets > 0 ? (ticketsSold / totalTickets) * 100 : 0;
+  }, [eventDetail?.EventRegisterDetail, eventDetail?.NoOfParticipants]);
 
-  console.log("Tickets sold percentage:", percentageSold);
+  // Toggle "Read More" states using useCallback
+  const toggleReadMore = useCallback(() => {
+    setReadMore((prev) => !prev);
+  }, []);
+
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
 
   return (
     <View style={styles.rootContainer}>
@@ -255,7 +249,10 @@ export default function EventsDetail({ navigation, route }) {
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -274,7 +271,7 @@ export default function EventsDetail({ navigation, route }) {
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
 
-        {/* Floating Card */}
+        {/* Floating Card with ONLY Event Name now */}
         <View style={styles.headerCard}>
           <View>
             <Text
@@ -283,44 +280,13 @@ export default function EventsDetail({ navigation, route }) {
             >
               {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
-
             {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity
-                onPress={() => setTitleReadMore(!titleReadMore)}
-              >
+              <TouchableOpacity onPress={toggleTitleReadMore}>
                 <Text style={styles.readMoreText}>
                   {titleReadMore ? "Read Less" : "Read More"}
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
-          {/* Location row */}
-          <View style={styles.headerCardRow2}>
-            <Ionicons
-              name="location-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation || "Location Unavailable"}
-            </Text>
-          </View>
-
-          {/* Single row for date/time via formatEventDateTime */}
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(
-                eventDetail?.StartDate,
-                eventDetail?.EndDate
-              ) || "Date/Time not available"}
-            </Text>
           </View>
         </View>
       </View>
@@ -331,15 +297,13 @@ export default function EventsDetail({ navigation, route }) {
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Ticket Indicator */}
           {percentageSold >= 100 ? (
             <View style={styles.ticketIndicatorContainer}>
               <View
                 style={[
                   styles.ticketIndicatorBox,
-                  {
-                    backgroundColor: "#fdecea",
-                    borderColor: "#f5c6cb",
-                  },
+                  { backgroundColor: "#fdecea", borderColor: "#f5c6cb" },
                 ]}
               >
                 <FontAwesome
@@ -348,9 +312,7 @@ export default function EventsDetail({ navigation, route }) {
                   color="#721c24"
                   style={{ marginRight: 8 }}
                 />
-                <Text
-                  style={[styles.ticketIndicatorText, { color: "#721c24" }]}
-                >
+                <Text style={[styles.ticketIndicatorText, { color: "#721c24" }]}>
                   Registrations are full!
                 </Text>
               </View>
@@ -360,10 +322,7 @@ export default function EventsDetail({ navigation, route }) {
               <View
                 style={[
                   styles.ticketIndicatorBox,
-                  {
-                    backgroundColor: "#fff8e1",
-                    borderColor: "#ffecb3",
-                  },
+                  { backgroundColor: "#fff8e1", borderColor: "#ffecb3" },
                 ]}
               >
                 <FontAwesome
@@ -372,13 +331,11 @@ export default function EventsDetail({ navigation, route }) {
                   color="#856404"
                   style={{ marginRight: 8 }}
                 />
-                <Text
-                  style={[styles.ticketIndicatorText, { color: "#856404" }]}
-                >
+                <Text style={[styles.ticketIndicatorText, { color: "#856404" }]}>
                   Tickets filling fast!
                 </Text>
               </View>
-              {/* Progress bar with sold percentage */}
+              {/* Progress Bar */}
               <View style={styles.progressBarContainer2}>
                 <View style={styles.progressBarBackground2}>
                   <View
@@ -396,28 +353,78 @@ export default function EventsDetail({ navigation, route }) {
           ) : null}
 
           {/* Artist Info */}
-          {/* 
-              IMAGE + NAME on the same row, 
-              with details below 
-          */}
           <View style={styles.artistInfoContainer}>
             <View style={styles.artistNameRow}>
               <EventImage
                 uri={
-                  eventDetail?.EventImage
-                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.EventImage}`
+                  eventDetail?.artistImage
+                    ? `${API_BASE_URL_UPLOADS}/${eventDetail?.artistImage}`
                     : undefined
                 }
                 style={styles.artistImage}
                 defaultSource={require("../../../assets/placeholder.jpg")}
               />
-              <Text style={styles.artistName}>
-                {eventDetail?.artistName || "Artist Name Unavailable"}
+              <View style={styles.nameInfoColumn}>
+                <Text style={styles.artistName}>
+                  {eventDetail?.artistName || "Artist Name Unavailable"}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log(
+                      "Navigating to ArtistDetails for:",
+                      eventDetail.artistName
+                    );
+                    navigation.navigate("ArtistDetails", {
+                      artistName: eventDetail.artistName,
+                      artistImage: eventDetail.artistImage,
+                      artistDesc: eventDetail.artistDesc,
+                      eventName: eventDetail.EventName,
+                      eventDateTime: formatEventDateTime(
+                        eventDetail.StartDate,
+                        eventDetail.EndDate
+                      ),
+                      eventLocation: eventDetail.EventLocation,
+                    });
+                  }}
+                >
+                  <Text style={styles.viewArtistInfoText}>View artist info</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* 
+            NEW SECTION: Event Location & Date/Time 
+            Moved here from the floating card
+          */}
+          <View style={styles.eventDetailsRowContainer}>
+            {/* Location row */}
+            <View style={styles.headerCardRow2}>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color="#666666"
+                style={styles.headerCardIcon}
+              />
+              <Text style={styles.headerCardSubtitle}>
+                {eventDetail?.EventLocation || "Location Unavailable"}
               </Text>
             </View>
-            <Text style={styles.artistDetail}>
-              {eventDetail?.artistDesc || "No artist description available"}
-            </Text>
+            {/* Date/Time row */}
+            <View style={styles.headerCardRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color="#666666"
+                style={styles.headerCardIcon}
+              />
+              <Text style={styles.headerCardSubtitle}>
+                {formatEventDateTime(
+                  eventDetail?.StartDate,
+                  eventDetail?.EndDate
+                ) || "Date/Time not available"}
+              </Text>
+            </View>
           </View>
 
           {/* Description */}
@@ -434,8 +441,7 @@ export default function EventsDetail({ navigation, route }) {
                 </Text>
               )}
             </Text>
-
-            <TouchableOpacity onPress={() => setReadMore(!readMore)}>
+            <TouchableOpacity onPress={toggleReadMore}>
               <Text style={styles.readMoreText}>
                 {readMore ? "Read Less" : "Read More"}
               </Text>
@@ -446,11 +452,12 @@ export default function EventsDetail({ navigation, route }) {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Venue & Location</Text>
             <TouchableOpacity
-              onPress={() =>
+              onPress={() => {
+                console.log("Opening Maps for:", eventDetail?.googleMapLink);
                 Linking.openURL(
                   eventDetail?.googleMapLink || "https://maps.google.com"
-                )
-              }
+                );
+              }}
               style={styles.locationLink}
             >
               <Ionicons name="location-sharp" size={20} color="#E3000F" />
@@ -465,7 +472,10 @@ export default function EventsDetail({ navigation, route }) {
                 styles.tabButton,
                 selectedTab === "Event Catalogue" && styles.activeTab,
               ]}
-              onPress={() => setSelectedTab("Event Catalogue")}
+              onPress={() => {
+                console.log("Switching to Event Catalogue tab");
+                setSelectedTab("Event Catalogue");
+              }}
             >
               <Text
                 style={[
@@ -481,7 +491,10 @@ export default function EventsDetail({ navigation, route }) {
                 styles.tabButton,
                 selectedTab === "Gallery" && styles.activeTab,
               ]}
-              onPress={() => setSelectedTab("Gallery")}
+              onPress={() => {
+                console.log("Switching to Gallery tab");
+                setSelectedTab("Gallery");
+              }}
             >
               <Text
                 style={[
@@ -497,8 +510,7 @@ export default function EventsDetail({ navigation, route }) {
           {/* Tab Content */}
           {selectedTab === "Event Catalogue" && (
             <View style={styles.catalogueContainer}>
-              {eventDetail?.EventCatalogue &&
-              eventDetail?.EventCatalogue !== "null" ? (
+              {catalogueUrl ? (
                 <View style={styles.pdfCard}>
                   <View style={styles.pdfHeader}>
                     <Ionicons
@@ -512,25 +524,26 @@ export default function EventsDetail({ navigation, route }) {
                       <Text style={styles.pdfSize}>{fileSize} MB</Text>
                     </View>
                   </View>
-
                   <View style={styles.pdfActions}>
                     <TouchableOpacity
                       style={styles.pdfActionButton}
-                      onPress={previewPDF}
+                      onPress={() => {
+                        console.log("Preview PDF button pressed");
+                        previewPDF();
+                      }}
                     >
                       <Ionicons name="eye-outline" size={18} color="#E3000F" />
                       <Text style={styles.pdfActionText}>Preview</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.pdfActionButton}
-                      onPress={downloadPDF}
+                      onPress={() => {
+                        console.log("Download PDF button pressed");
+                        downloadPDF();
+                      }}
                       disabled={downloading}
                     >
-                      <Ionicons
-                        name="download-outline"
-                        size={18}
-                        color="#E3000F"
-                      />
+                      <Ionicons name="download-outline" size={18} color="#E3000F" />
                       <Text style={styles.pdfActionText}>
                         {downloading
                           ? `${Math.round(downloadProgress * 100)}%`
@@ -559,22 +572,11 @@ export default function EventsDetail({ navigation, route }) {
               {eventDetail?.GalleryImages &&
               eventDetail?.GalleryImages.length > 0 ? (
                 eventDetail.GalleryImages.map((image, index) => (
-                  <View key={index} style={styles.galleryItem}>
-                    <EventImage
-                      uri={`${API_BASE_URL_UPLOADS}/${image}`}
-                      style={styles.galleryImage}
-                    />
-                    <TouchableOpacity
-                      style={styles.shareIcon}
-                      onPress={() => shareGalleryImage(image)}
-                    >
-                      <Ionicons
-                        name="share-social-outline"
-                        size={18}
-                        color="#FFF"
-                      />
-                    </TouchableOpacity>
-                  </View>
+                  <GalleryItem
+                    key={index}
+                    image={image}
+                    shareGalleryImage={shareGalleryImage}
+                  />
                 ))
               ) : (
                 <View style={styles.noImagesContainer}>
@@ -592,10 +594,6 @@ export default function EventsDetail({ navigation, route }) {
         {eventDetail?.EventRegisterDetail?.length <
           eventDetail?.NoOfParticipants && (
           <View style={styles.bottomBar}>
-            {console.log(
-              "External link available?",
-              eventDetail.hasExternalLink
-            )}
             <Text
               style={[
                 styles.priceText,
@@ -622,10 +620,8 @@ export default function EventsDetail({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.buyButton}
                   onPress={() => {
-                    if (
-                      eventDetail.hasExternalLink &&
-                      eventDetail.externalLink
-                    ) {
+                    console.log("Buy Ticket button pressed");
+                    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
                       Linking.openURL(eventDetail.externalLink);
                     } else {
                       navigation.navigate("BuyTicket", {
@@ -649,32 +645,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  // Old container for the old warning messages
-  container: {
-    padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // Old warning box styles (now commented out usage above)
-  warningBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f694003d",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderColor: "orange",
-    borderWidth: 1,
-    color: "orange",
-  },
-  warningText: {
-    color: "orange",
-    fontWeight: "bold",
-    fontSize: 16,
-    marginLeft: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -692,6 +662,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -705,6 +676,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -714,11 +686,11 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: 25,
+    bottom: 15,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     width: "85%",
     shadowColor: "#000",
@@ -755,7 +727,7 @@ const styles = StyleSheet.create({
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    marginTop: -80,
+    marginTop: -65,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -813,6 +785,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  nameInfoColumn: {
+    flexDirection: "column",
+  },
   artistImage: {
     width: 48,
     height: 48,
@@ -824,20 +799,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins-Bold",
     color: "#000000",
+    marginBottom: 4,
   },
-  artistDetail: {
+  viewArtistInfoText: {
     fontSize: 12,
     fontFamily: "Poppins-Regular",
-    color: "#666666",
-    textAlign: "justify",
-    marginTop: 6,
+    color: "#E3000F",
+  },
+  eventDetailsRowContainer: {
+    marginBottom: 20,
   },
   sectionContainer: {
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: "Poppins-SemiBold",
+    fontFamily: "Poppins-Medium",
     color: "#000000",
     marginBottom: 8,
   },
@@ -852,7 +829,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins-Medium",
     color: "#E3000F",
-    marginTop: 8,
+    marginTop: 4,
   },
   locationLink: {
     flexDirection: "row",
@@ -899,10 +876,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EEEEEE",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 1,
+    elevation: Platform.OS === "android" ? 0 : 6,
   },
   pdfHeader: {
     flexDirection: "row",

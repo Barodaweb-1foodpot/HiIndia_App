@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
@@ -89,10 +89,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "90%", 
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 4,
+    elevation: Platform.OS === "android" ? 1 : 6,
   },
   tabButton: {
     alignItems: "center",

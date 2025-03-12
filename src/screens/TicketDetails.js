@@ -77,7 +77,9 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => setLoaded(true)}
@@ -146,59 +148,56 @@ export default function TicketDetailsScreen({ route, navigation }) {
   };
 
   // Share all tickets info
+
   const handleHeaderShare = async () => {
     if (!eventDetails) return;
+
     const shareUrlBase = "https://participanthiindia.barodaweb.org/ticket/";
     const ticketsInfo = ticketDetails
       .map(
         (ticket) =>
-          `Attendee: ${ticket.name || "Guest"} - Ticket Type: ${
+          `🎟️ *Attendee:* ${ticket.name || "Guest"}\n📄 *Ticket Type:* ${
             ticket.TicketType?.TicketType || ticket.type || "Standard"
-          } (View: ${shareUrlBase}${ticket._id})`
+          }\n🔗 *View Ticket:* ${shareUrlBase}${ticket._id}\n`
       )
       .join("\n");
 
     const shareMessage = `
-Event: ${eventDetails.EventName}
-Date: ${formatEventDateTime(
-      eventDetails.StartDate,
-      eventDetails.EndDate
-    )}
+📅 *Event:* ${eventDetails.EventName}
+🕒 *Date:* ${formatEventDateTime(eventDetails.StartDate, eventDetails.EndDate)}
 
-Tickets:
+🎫 *Tickets:*
 ${ticketsInfo}
-    `;
+  `;
 
     try {
       await Share.share({
-        message: shareMessage,
-        title: `Tickets for ${eventDetails.EventName}`,
+        message: shareMessage.trim(),
+        title: `🎟️ Tickets for ${eventDetails.EventName}`,
       });
     } catch (error) {
       console.error("Error sharing tickets:", error);
     }
   };
 
-  // Share a single ticket's info
   const shareTicketDetails = async (ticket) => {
     if (!ticket) return;
+
     const shareUrl = `https://participanthiindia.barodaweb.org/ticket/${ticket._id}`;
     const shareMessage = `
-Attendee: ${ticket.name || "Guest"}
-Ticket Type: ${ticket.TicketType?.TicketType || ticket.type || "Standard"}
+🎟️ *Attendee:* ${ticket.name || "Guest"}
+📄 *Ticket Type:* ${ticket.TicketType?.TicketType || ticket.type || "Standard"}
 
-Event: ${eventDetails.EventName}
-Date: ${formatEventDateTime(
-      eventDetails.StartDate,
-      eventDetails.EndDate
-    )}
+📅 *Event:* ${eventDetails.EventName}
+🕒 *Date:* ${formatEventDateTime(eventDetails.StartDate, eventDetails.EndDate)}
 
-View Ticket: ${shareUrl}
-    `;
+🔗 *View Ticket:* ${shareUrl}
+  `;
+
     try {
       await Share.share({
-        message: shareMessage,
-        title: `Ticket for ${eventDetails.EventName}`,
+        message: shareMessage.trim(),
+        title: `🎫 Ticket for ${eventDetails.EventName}`,
       });
     } catch (error) {
       console.error("Error sharing ticket:", error);
@@ -270,65 +269,6 @@ View Ticket: ${shareUrl}
             </View>
           </View>
 
-          {/* Tickets List */}
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { marginBottom: 24 }]}>
-              Your Tickets
-            </Text>
-            {ticketDetails.length === 0 ? (
-              <View style={styles.noTicketsContainer}>
-                <Ionicons name="ticket-outline" size={48} color="#CCCCCC" />
-                <Text style={styles.noTicketsText}>No tickets found</Text>
-              </View>
-            ) : (
-              ticketDetails.map((ticket, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.ticketCardContainer}
-                  onPress={() => toggleQrModal(ticket)}
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={["#E3000F", "#B0000C"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.ticketGradient}
-                  >
-                    <View style={styles.ticketHeader}>
-                      <Text style={styles.ticketName}>
-                        {ticket.name || "Guest"}
-                      </Text>
-                      <View style={styles.ticketTypeBadge}>
-                        <Text style={styles.ticketTypeText}>
-                          {ticket.TicketType?.TicketType ||
-                            ticket.type ||
-                            "Standard"}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.ticketDivider} />
-                    <View style={styles.ticketBottom}>
-                      <View style={styles.ticketQrContainer}>
-                        <View style={styles.qrCodeWrapper}>
-                          <QRCode
-                            value={`${API_BASE_URL_UPLOADS}/uploads/QR/${ticket._id}`}
-                            size={42}
-                            color="#000"
-                            backgroundColor="#FFF"
-                          />
-                        </View>
-                        <Text style={styles.ticketQrText}>
-                          Tap to view QR code
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="#FFF" />
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-
           {/* Payment Summary Section */}
           <View style={styles.sectionContainer}>
             <View style={styles.paymentSummaryHeader}>
@@ -360,7 +300,9 @@ View Ticket: ${shareUrl}
                         >
                           <Text style={styles.purplePriceText}>
                             {ticket.countryCurrency || "$"}{" "}
-                            {Number(ticket.price || ticket.total || 0).toFixed(2)}
+                            {Number(ticket.price || ticket.total || 0).toFixed(
+                              2
+                            )}
                           </Text>
                         </LinearGradient>
                         <Text style={styles.purplePriceType}>
@@ -420,7 +362,11 @@ View Ticket: ${shareUrl}
                     {paymentMethod && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons name="card-outline" size={18} color="#FFF" />
+                          <Ionicons
+                            name="card-outline"
+                            size={18}
+                            color="#FFF"
+                          />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
@@ -435,7 +381,11 @@ View Ticket: ${shareUrl}
                     {purchaseDate && (
                       <View style={styles.paymentMetaItem}>
                         <View style={styles.paymentMetaIcon}>
-                          <Ionicons name="time-outline" size={18} color="#FFF" />
+                          <Ionicons
+                            name="time-outline"
+                            size={18}
+                            color="#FFF"
+                          />
                         </View>
                         <View>
                           <Text style={styles.paymentMetaTitle}>
@@ -457,6 +407,64 @@ View Ticket: ${shareUrl}
               </View>
             )}
           </View>
+          {/* Tickets List */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { marginBottom: 24 }]}>
+              Your Tickets
+            </Text>
+            {ticketDetails.length === 0 ? (
+              <View style={styles.noTicketsContainer}>
+                <Ionicons name="ticket-outline" size={48} color="#CCCCCC" />
+                <Text style={styles.noTicketsText}>No tickets found</Text>
+              </View>
+            ) : (
+              ticketDetails.map((ticket, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.ticketCardContainer}
+                  onPress={() => toggleQrModal(ticket)}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={["#E3000F", "#B0000C"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ticketGradient}
+                  >
+                    <View style={styles.ticketHeader}>
+                      <Text style={styles.ticketName}>
+                        {ticket.name || "Guest"}
+                      </Text>
+                      <View style={styles.ticketTypeBadge}>
+                        <Text style={styles.ticketTypeText}>
+                          {ticket.TicketType?.TicketType ||
+                            ticket.type ||
+                            "Standard"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.ticketDivider} />
+                    <View style={styles.ticketBottom}>
+                      <View style={styles.ticketQrContainer}>
+                        <View style={styles.qrCodeWrapper}>
+                          <QRCode
+                            value={`${API_BASE_URL_UPLOADS}/uploads/QR/${ticket._id}`}
+                            size={42}
+                            color="#000"
+                            backgroundColor="#FFF"
+                          />
+                        </View>
+                        <Text style={styles.ticketQrText}>
+                          Tap to view QR code
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#FFF" />
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
         </ScrollView>
       </View>
 
@@ -468,7 +476,10 @@ View Ticket: ${shareUrl}
         onRequestClose={() => toggleQrModal()}
       >
         <BlurView intensity={80} style={styles.modalBlurContainer}>
-          <Pressable style={styles.modalBackdrop} onPress={() => toggleQrModal()} />
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => toggleQrModal()}
+          />
           <View style={styles.modalContent}>
             <LinearGradient
               colors={["#E3000F", "#B0000C"]}
@@ -513,7 +524,7 @@ View Ticket: ${shareUrl}
                     {activeTicket?.name || "Guest"}
                   </Text>
                 </View>
-                <View style={styles.modalInfoDivider} />
+                {/* <View style={styles.modalInfoDivider} />
                 <View style={styles.modalInfoItem}>
                   <Ionicons name="calendar-outline" size={18} color="#666" />
                   <Text style={styles.modalInfoText}>
@@ -522,7 +533,7 @@ View Ticket: ${shareUrl}
                       eventDetails.EndDate
                     )}
                   </Text>
-                </View>
+                </View> */}
               </View>
               <Text style={styles.modalInstruction}>
                 Show this QR code to event staff for entry
@@ -756,7 +767,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   purplePriceBox: {
-    width: 70,
+    width: 80,
     borderRadius: 8,
     alignItems: "center",
     paddingVertical: 5,
