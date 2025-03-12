@@ -15,55 +15,21 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { BlurView } from "expo-blur";
-import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
-import { API_BASE_URL_UPLOADS } from "@env";
-import { formatEventDateTime } from "../helper/helper_Function";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
-const SkeletonLoader = ({ style }) => {
-  const [animation] = useState(new Animated.Value(0));
+import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
+import { API_BASE_URL_UPLOADS } from "@env";
+import { formatEventDateTime } from "../helper/helper_Function";
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(animation, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [animation]);
+// Import custom components
+import Header from "../components/Header";
+import SkeletonLoader from "../components/SkeletonLoader";
+import BlurWrapper from "../components/BlurWrapper";
 
-  const translateX = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-300, 300],
-  });
-
-  return (
-    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
-      <Animated.View
-        style={{
-          width: "100%",
-          height: "100%",
-          transform: [{ translateX }],
-        }}
-      >
-        <LinearGradient
-          colors={[
-            "rgba(255, 255, 255, 0)",
-            "rgba(255, 255, 255, 0.5)",
-            "rgba(255, 255, 255, 0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </Animated.View>
-    </View>
-  );
-};
-
+/**
+ * EventImage - Displays an image with a skeleton loader while loading
+ */
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -72,9 +38,7 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={
-          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
-        }
+        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => {
@@ -91,55 +55,9 @@ const EventImage = ({ uri, style }) => {
   );
 };
 
-const BlurWrapper = ({ style, children }) => {
-  if (Platform.OS === "android") {
-    return (
-      <View style={[style, { backgroundColor: "rgba(0,0,0,0.7)" }]}>
-        {children}
-      </View>
-    );
-  }
-  return (
-    <BlurView intensity={50} tint="dark" style={style}>
-      {children}
-    </BlurView>
-  );
-};
-
-const Header = React.memo(({ navigation }) => {
-  const handleNotificationPress = useCallback(() => {
-    console.log("Navigating to Notification screen");
-    navigation.navigate("App", { screen: "Notification" });
-  }, [navigation]);
-
-  const handleCalenderPress = useCallback(() => {
-    console.log("Navigating to Calendar screen");
-    navigation.navigate("App", { screen: "Calender" });
-  }, [navigation]);
-
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerContent}>
-        <Image source={require("../../assets/logo.png")} style={styles.logo} />
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.iconCircle}
-            onPress={handleNotificationPress}
-          >
-            <Ionicons name="notifications-outline" size={20} color="#000" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconCircle}
-            onPress={handleCalenderPress}
-          >
-            <Ionicons name="calendar-outline" size={20} color="#000" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-});
-
+/**
+ * SearchBar - Renders a search input if visible with a clear (cross) button
+ */
 const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
   visible ? (
     <View style={styles.searchWrapper}>
@@ -151,19 +69,21 @@ const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
           value={searchText}
           onChangeText={setSearchText}
         />
+        {searchText !== "" && (
+          <TouchableOpacity onPress={() => setSearchText("")}>
+            <Ionicons name="close-circle" size={24} color="#000" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   ) : null
 );
 
+/**
+ * Dropdown - Category dropdown filter
+ */
 const Dropdown = React.memo(
-  ({
-    dropdownOpen,
-    selectedCategory,
-    category,
-    onToggle,
-    onSelectCategory,
-  }) => (
+  ({ dropdownOpen, selectedCategory, category, onToggle, onSelectCategory }) => (
     <View style={styles.dropdownWrapper}>
       <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
         <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
@@ -199,84 +119,90 @@ const Dropdown = React.memo(
   )
 );
 
-const CategoryCard = React.memo(({ item, navigation }) => (
-  <TouchableOpacity
-    onPress={() =>
-      navigation.navigate("App", {
-        screen: "EventsDetail",
-        params: { eventDetail: item },
-      })
-    }
-    style={{ marginBottom: 16 }}
-  >
-    <View style={styles.categoryCard}>
-      <EventImage
-        uri={
-          item.EventImage
-            ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-            : undefined
-        }
-        style={styles.categoryCardImage}
-      />
-      <View style={styles.categoryCardContent}>
-        <Text style={styles.categoryCardTitle} numberOfLines={1}>
-          {item.EventName}
-        </Text>
-        <Text style={styles.categoryCardDate}>
-          {formatEventDateTime(item.StartDate, item.EndDate)}
-        </Text>
-        <View style={styles.categoryLocationContainer}>
-          <Ionicons name="location-outline" size={12} color="#666" />
-          <Text style={styles.categoryLocationText} numberOfLines={2}>
-            {item.EventLocation}
-          </Text>
-        </View>
-        <View style={styles.dflex2}>
-          {item.EventCategoryDetail?.map((data, index) => (
-            <View style={styles.categoryPill} key={index}>
-              <Text style={styles.categoryText}>{data.category}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  </TouchableOpacity>
-));
+/**
+ * CategoryCard - Displays a single event card (from the artistGroups data)
+ * Now shows only the first 2 categories and, if more exist, shows a "+X" pill.
+ */
+const CategoryCard = React.memo(({ item, navigation }) => {
+  const MAX_CATEGORIES = 2;
+  const categories = item.EventCategoryDetail || [];
+  const displayedCategories = categories.slice(0, MAX_CATEGORIES);
+  const extraCount = categories.length - displayedCategories.length;
 
-const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
-  <View style={styles.eventCard}>
-    <EventImage
-      uri={
-        item.EventImage
-          ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
-          : undefined
+  return (
+    <TouchableOpacity
+      onPress={() =>
+        navigation.navigate("App", {
+          screen: "EventsDetail",
+          params: { eventDetail: item },
+        })
       }
-      style={styles.eventImage}
-    />
-    <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
-      <Ionicons name="share-social-outline" size={20} color="#000" />
-    </TouchableOpacity>
-    <BlurWrapper style={styles.eventContent}>
-      <View style={styles.eventDetailsColumn}>
-        <Text style={styles.eventTitle} numberOfLines={1}>
-          {item.EventName}
-        </Text>
-        <View style={styles.eventDetail}>
-          <Ionicons name="location-outline" size={14} color="#fff" />
-          <Text style={styles.eventDetailText} numberOfLines={2}>
-            {item.EventLocation}
+      style={{ marginBottom: 16 }}
+    >
+      <View style={styles.categoryCard}>
+        <EventImage
+          uri={
+            item.EventImage
+              ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+              : undefined
+          }
+          style={styles.categoryCardImage}
+        />
+        <View style={styles.categoryCardContent}>
+          <Text style={styles.categoryCardTitle} numberOfLines={1}>
+            {item.EventName}
           </Text>
-        </View>
-        <View style={styles.eventDetail}>
-          <Ionicons name="calendar-outline" size={14} color="#fff" />
-          <Text style={styles.eventDetailText}>
+          <Text style={styles.categoryCardDate}>
             {formatEventDateTime(item.StartDate, item.EndDate)}
           </Text>
+          <View style={styles.categoryLocationContainer}>
+            <Ionicons name="location-outline" size={12} color="#666" />
+            <Text style={styles.categoryLocationText} numberOfLines={2}>
+              {item.EventLocation}
+            </Text>
+          </View>
+          <View style={styles.dflex2}>
+            {displayedCategories.map((data, index) => (
+              <View style={styles.categoryPill} key={index}>
+                <Text style={styles.categoryText}>{data.category}</Text>
+              </View>
+            ))}
+            {extraCount > 0 && (
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryText}>+{extraCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
-      <View style={styles.registerContainer}>
+    </TouchableOpacity>
+  );
+});
+
+/**
+ * OtherEventCard - Displays a single event card (from the allEvent data)
+ * with the same style as HomeScreen cards.
+ */
+const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
+  const eventImageUri = item.EventImage
+    ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
+    : undefined;
+  const eventDate = formatEventDateTime(item.StartDate, item.EndDate);
+  return (
+    <View style={styles.eventCard}>
+      {item.IsPaid ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Paid</Text>
+        </View>
+      ) : (
+        <View style={[styles.badge, styles.freeBadge]}>
+          <Text style={styles.badgeText}>Free</Text>
+        </View>
+      )}
+      <EventImage uri={eventImageUri} style={styles.eventImage} />
+      <View style={styles.topRightIcons}>
         <TouchableOpacity
-          style={styles.registerButton}
+          style={styles.infoButton}
           onPress={() =>
             navigation.navigate("App", {
               screen: "EventsDetail",
@@ -284,12 +210,45 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => (
             })
           }
         >
-          <Text style={styles.registerText}>Register</Text>
+          <Ionicons name="information-circle-outline" size={20} color="#000" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
+          <Ionicons name="share-social-outline" size={20} color="#000" />
         </TouchableOpacity>
       </View>
-    </BlurWrapper>
-  </View>
-));
+      <BlurWrapper style={styles.eventContent}>
+        <View style={styles.eventDetailsColumn}>
+          <Text style={styles.eventTitle} numberOfLines={1}>
+            {item.EventName}
+          </Text>
+          <View style={styles.eventDetail}>
+            <Ionicons name="location-outline" size={14} color="#fff" />
+            <Text style={styles.eventDetailText} numberOfLines={2}>
+              {item.EventLocation}
+            </Text>
+          </View>
+          <View style={styles.eventDetail}>
+            <Ionicons name="calendar-outline" size={14} color="#fff" />
+            <Text style={styles.eventDetailText}>{eventDate}</Text>
+          </View>
+        </View>
+        <View style={styles.registerContainer}>
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={() =>
+              navigation.navigate("App", {
+                screen: "EventsDetail",
+                params: { eventDetail: item },
+              })
+            }
+          >
+            <Text style={styles.registerText}>Book Now</Text>
+          </TouchableOpacity>
+        </View>
+      </BlurWrapper>
+    </View>
+  );
+});
 
 export default function EventsScreen({ navigation }) {
   const [searchVisible, setSearchVisible] = useState(false);
@@ -301,8 +260,7 @@ export default function EventsScreen({ navigation }) {
   const [catId, setCatId] = useState("");
   const [firstTime, setFirstTime] = useState(true);
   const [allEvent, setAllEvent] = useState([]);
-
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
@@ -332,15 +290,28 @@ export default function EventsScreen({ navigation }) {
 
       if (Array.isArray(res) && res.length > 0 && res[0].data) {
         const groups = res[0].data;
+        // Sort each group's events by StartDate
+        const sortedGroups = groups.map((group) => {
+          const sortedEvents = [...group.data].sort(
+            (a, b) => new Date(a.StartDate) - new Date(b.StartDate)
+          );
+          return { ...group, data: sortedEvents };
+        });
+        // Sort groups by the earliest event date in each group
+        sortedGroups.sort((a, b) => {
+          const earliestA = a.data[0] ? new Date(a.data[0].StartDate).getTime() : Infinity;
+          const earliestB = b.data[0] ? new Date(b.data[0].StartDate).getTime() : Infinity;
+          return earliestA - earliestB;
+        });
         if (firstTime) {
           let flattened = [];
-          groups.forEach((g) => {
+          sortedGroups.forEach((g) => {
             flattened.push(...g.data);
           });
           setAllEvent(flattened);
           setFirstTime(false);
         }
-        setArtistGroups(groups);
+        setArtistGroups(sortedGroups);
       } else {
         setArtistGroups([]);
       }
@@ -397,24 +368,20 @@ export default function EventsScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-        animated
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      {/* Header Section (imported) */}
+      <Header
+        onNotificationPress={() => {
+          console.log("Navigating to Notification screen");
+          navigation.navigate("App", { screen: "Notification" });
+        }}
+        onCalendarPress={() => {
+          console.log("Navigating to Calendar screen");
+          navigation.navigate("App", { screen: "Calender" });
+        }}
       />
-      {/* Header Section */}
-      <Header navigation={navigation} />
 
       <View style={styles.whiteSection}>
         {/* Title and Search Icon */}
@@ -430,12 +397,8 @@ export default function EventsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Search Bar */}
-        <SearchBar
-          visible={searchVisible}
-          searchText={searchText}
-          setSearchText={setSearchText}
-        />
+        {/* Search Bar with clear button */}
+        <SearchBar visible={searchVisible} searchText={searchText} setSearchText={setSearchText} />
 
         {/* Dropdown for Category Filtering */}
         <Dropdown
@@ -448,24 +411,20 @@ export default function EventsScreen({ navigation }) {
 
         {/* Main Events List with Pull-to-Refresh */}
         <ScrollView
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}
         >
-          {artistGroups.length > 0 ? (
+          {loading && !refreshing ? (
+            <ActivityIndicator size="large" color="#000" style={{ marginVertical: 20 }} />
+          ) : artistGroups.length > 0 ? (
             artistGroups.map((group, groupIndex) => (
               <View key={groupIndex} style={{ marginBottom: 24 }}>
                 <Text style={styles.artistName}>
                   {group.artistName || "Unknown Artist"}
                 </Text>
                 {group.data.map((item) => (
-                  <CategoryCard
-                    key={item._id}
-                    item={item}
-                    navigation={navigation}
-                  />
+                  <CategoryCard key={item._id} item={item} navigation={navigation} />
                 ))}
               </View>
             ))
@@ -493,40 +452,16 @@ export default function EventsScreen({ navigation }) {
   );
 }
 
+// ------------------- STYLES -------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
   },
-
-  header: {
-    height: "15%",
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    justifyContent: "flex-end",
-    paddingBottom: 16,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logo: {
-    width: 160,
-    height: 50,
-    resizeMode: "contain",
-  },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
+  loaderContainer: {
+    flex: 1,
     justifyContent: "center",
+    alignItems: "center",
   },
   // White section container
   whiteSection: {
@@ -548,10 +483,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000",
   },
+  // Search
   searchWrapper: {
     marginBottom: 16,
   },
-
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -570,6 +505,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000",
   },
+  // Dropdown
   dropdownWrapper: {
     marginBottom: 16,
   },
@@ -607,6 +543,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#ccc",
   },
+  // Scroll
   scrollContainer: {
     paddingBottom: 120,
   },
@@ -616,7 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginVertical: 20,
   },
-
+  // Artist grouping
   artistName: {
     fontSize: 20,
     fontWeight: "700",
@@ -625,17 +562,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginLeft: 4,
   },
-
+  // CategoryCard
   categoryCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 16,
-    elevation: 4,
+    elevation: Platform.OS === "android" ? 0 : 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    borderWidth: 1,
+    shadowOpacity: 0.4,
+    shadowRadius: 1,
+    borderWidth: 0.5,
     borderColor: "#f0f0f0",
     overflow: "hidden",
     width: "100%",
@@ -675,7 +612,6 @@ const styles = StyleSheet.create({
   dflex2: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
   },
   categoryPill: {
     backgroundColor: "#f5f5f5",
@@ -683,13 +619,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     alignSelf: "flex-start",
+    marginRight: 4,
   },
   categoryText: {
     fontSize: 10,
     fontWeight: "500",
     color: "#666",
   },
-
+  // OtherEventCard (HomeScreen style)
   eventCard: {
     borderRadius: 16,
     overflow: "hidden",
@@ -707,10 +644,46 @@ const styles = StyleSheet.create({
     height: "100%",
     resizeMode: "cover",
   },
-  shareButton: {
+  badge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "#E3000F",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  freeBadge: {
+    backgroundColor: "#28a745",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  topRightIcons: {
     position: "absolute",
     top: 12,
     right: 12,
+    flexDirection: "row",
+    zIndex: 2,
+  },
+  infoButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    marginRight: 4,
+  },
+  shareButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -777,11 +750,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
     marginVertical: 16,
-  },
-
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

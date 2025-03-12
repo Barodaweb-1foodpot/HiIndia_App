@@ -48,52 +48,52 @@ const LoginScreen = ({ navigation }) => {
     navigation.navigate("LoginPin");
   };
   
-  // const handleGoogleSignIn = async () => {
-  //   try {
-  //     await GoogleSignin.hasPlayServices();
+  const handleGoogleSignIn = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
 
-  //     const userInfo = await GoogleSignin.signIn();
-  //     console.log("Google Sign-In userInfo:", userInfo);
+      const userInfo = await GoogleSignin.signIn();
+      console.log("Google Sign-In userInfo:", userInfo);
 
-  //     if (userInfo?.type === "success") {
-  //       const idToken = userInfo?.data?.idToken;
-  //       if (!idToken) {
-  //         Toast.show({
-  //           type: "info",
-  //           text1: "Something went wrong. Try again later.",
-  //         });
-  //         return;
-  //       }
+      if (userInfo?.type === "success") {
+        const idToken = userInfo?.data?.idToken;
+        if (!idToken) {
+          Toast.show({
+            type: "info",
+            text1: "Something went wrong. Try again later.",
+          });
+          return;
+        }
 
-  //       //  idToken to backend to verify
-  //       const verificationResult = await verifyGoogleToken(idToken);
-  //       console.log("Google token verification result:", verificationResult);
+        //  idToken to backend to verify
+        const verificationResult = await verifyGoogleToken(idToken);
+        console.log("Google token verification result:", verificationResult);
 
-  //       if (verificationResult === true) {
-  //         navigation.navigate("Tab");
-  //       }
-  //     } else {
-  //       Toast.show({
-  //         type: "info",
-  //         text1: "Something went wrong. Try again later.",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-  //       Toast.show({
-  //         type: "error",
-  //         text1: "Google Play Services not available or outdated",
-  //       });
-  //     } else {
-  //       console.log("Error during Google Sign-In:", error);
-  //       Toast.show({
-  //         type: "error",
-  //         text1: "Google Sign-In Error",
-  //         text2: error.message,
-  //       });
-  //     }
-  //   }
-  // };
+        if (verificationResult === true) {
+          navigation.navigate("Tab");
+        }
+      } else {
+        Toast.show({
+          type: "info",
+          text1: "Something went wrong. Try again later.",
+        });
+      }
+    } catch (error) {
+      if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Toast.show({
+          type: "error",
+          text1: "Google Play Services not available or outdated",
+        });
+      } else {
+        console.log("Error during Google Sign-In:", error);
+        Toast.show({
+          type: "error",
+          text1: "Google Sign-In Error",
+          text2: error.message,
+        });
+      }
+    }
+  };
 
   return (
     <View style={styles.rootContainer}>

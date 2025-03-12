@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   Animated,
   Keyboard,
   TouchableWithoutFeedback,
-  SafeAreaView,
   StatusBar,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -26,25 +25,36 @@ import {
 } from "../../api/auth_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 
+// Import the provided SkeletonLoader component
+import SkeletonLoader from "../../components/SkeletonLoader";
+
+// CountryCodeDropdown component remains unchanged
 const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
   const [isOpen, setIsOpen] = useState(false);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
-  const toggleDropdown = () => {
+  const toggleDropdown = useCallback(() => {
     const toValue = isOpen ? 0 : 200;
     Animated.timing(animatedHeight, {
       toValue,
       duration: 300,
       useNativeDriver: false,
     }).start();
-    setIsOpen(!isOpen);
-  };
+    setIsOpen((prev) => !prev);
+  }, [isOpen, animatedHeight]);
 
   return (
     <View style={styles.dropdownContainer}>
-      <TouchableOpacity style={styles.countryCodeButton} onPress={toggleDropdown}>
+      <TouchableOpacity
+        style={styles.countryCodeButton}
+        onPress={toggleDropdown}
+      >
         <Text style={styles.countryCodeButtonText}>{selectedCode}</Text>
-        <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={16} color="#000" />
+        <Ionicons
+          name={isOpen ? "chevron-up" : "chevron-down"}
+          size={16}
+          color="#000"
+        />
       </TouchableOpacity>
       <Animated.View
         style={[
@@ -82,15 +92,58 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
   );
 };
 
+// ---------------------------
+// ProfileImage Component
+// ---------------------------
+// Moved outside of EditProfile and wrapped with React.memo.
+const ProfileImage = React.memo(({ source, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const onLoadHandler = useCallback(() => {
+    console.log("[ProfileImage] Image loaded successfully");
+    setLoaded(true);
+  }, []);
+
+  // For local images, mark as loaded immediately.
+  useEffect(() => {
+    if (!source.uri) {
+      setLoaded(true);
+    }
+  }, [source]);
+
+  return (
+    <View style={style}>
+      {source.uri && !loaded && (
+        <SkeletonLoader
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
+        />
+      )}
+      <Image
+        source={source}
+        style={[style, { opacity: loaded ? 1 : 0 }]}
+        resizeMode="cover"
+        onLoad={onLoadHandler}
+      />
+    </View>
+  );
+});
+
 export default function EditProfile({ navigation }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
-  const [profileImage, setProfileImage] = useState(require("../../../assets/placeholder.jpg"));
+  const [profileImage, setProfileImage] = useState(
+    require("../../../assets/placeholder.jpg")
+  );
   const [loading, setLoading] = useState(true);
   const [countries, setCountries] = useState([]);
+  const [errors, setErrors] = useState({});
 
+  // Load user data from API and AsyncStorage
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -101,9 +154,12 @@ export default function EditProfile({ navigation }) {
             setFirstName(res.firstName || "");
             setLastName(res.lastName || "");
             setPhoneNumber(res.contactNumber || "");
+            setEmail(res.emailId || "");
             setCountryCode(res.ParticipantCountryCode || "+91");
             if (res.profileImage && res.profileImage.trim() !== "") {
-              setProfileImage({ uri: `${API_BASE_URL_UPLOADS}/${res.profileImage}` });
+              setProfileImage({
+                uri: `${API_BASE_URL_UPLOADS}/${res.profileImage}`,
+              });
             }
           } else {
             Toast.show({
@@ -123,6 +179,7 @@ export default function EditProfile({ navigation }) {
     loadUserData();
   }, []);
 
+  // Load list of active countries
   useEffect(() => {
     const loadCountries = async () => {
       try {
@@ -135,9 +192,10 @@ export default function EditProfile({ navigation }) {
     loadCountries();
   }, []);
 
-  const handlePickImage = async () => {
+  const handlePickImage = useCallback(async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Toast.show({
           type: "error",
@@ -171,9 +229,38 @@ export default function EditProfile({ navigation }) {
         position: "bottom",
       });
     }
+  }, []);
+
+  // Validate required fields
+  const validateFields = () => {
+    const newErrors = {};
+    if (!firstName.trim()) newErrors.firstName = "Please fill this field";
+    if (!lastName.trim()) newErrors.lastName = "Please fill this field";
+    if (!phoneNumber.trim()) newErrors.phoneNumber = "Please fill this field";
+    if (!email.trim()) newErrors.email = "Please fill this field";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
+  // Before saving, validate that required fields are not empty
+  const handleSave = useCallback(async () => {
+    if (!validateFields()) {
+      // Get the first empty field to show in the toast
+      const emptyField = Object.keys(errors)[0];
+      if (emptyField) {
+        // Capitalize the field name and insert space if needed
+        const formattedField =
+          emptyField.charAt(0).toUpperCase() + emptyField.slice(1);
+        Toast.show({
+          type: "error",
+          text1: "Validation Error",
+          text2: `${formattedField} cannot be empty.`,
+          position: "bottom",
+        });
+      }
+      return;
+    }
     try {
       const participantId = await AsyncStorage.getItem("role");
       if (!participantId) return;
@@ -185,7 +272,7 @@ export default function EditProfile({ navigation }) {
       formData.append("contactNumber", phoneNumber);
       formData.append("ParticipantCountryCode", countryCode);
 
-      // Append the profile image if a new image is selected (local file)
+      // Append the profile image if a new local image is selected
       if (profileImage && profileImage.uri && !profileImage.uri.startsWith("http")) {
         const uriParts = profileImage.uri.split(".");
         const fileType = uriParts[uriParts.length - 1];
@@ -195,10 +282,9 @@ export default function EditProfile({ navigation }) {
           type: `image/${fileType}`,
         });
       }
-      console.log("kkkkkkkkkkk",formData)
-      // Call the new updateProfileByApp API helper
+      console.log("FormData payload:", formData);
       const response = await updateProfileByApp(participantId, formData);
-      console.log(response)
+      console.log("Update response:", response);
       if (response && response.success) {
         Toast.show({
           type: "success",
@@ -224,101 +310,148 @@ export default function EditProfile({ navigation }) {
         position: "bottom",
       });
     }
-  };
+  }, [firstName, lastName, phoneNumber, email, countryCode, profileImage, navigation, errors]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={styles.container}>
       <StatusBar style="auto" />
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile Info</Text>
+      </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-              <View style={styles.header}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => navigation.goBack()}
-                >
-                  <Ionicons name="chevron-back" size={18} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Edit Personal Info</Text>
-              </View>
-              <View style={styles.profileImageContainer}>
-                <TouchableOpacity onPress={handlePickImage}>
-                  <Image
-                    source={
-                      typeof profileImage === "string"
-                        ? { uri: profileImage }
-                        : profileImage
-                    }
-                    style={styles.profileImage}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cameraButton} onPress={handlePickImage}>
-                  <Ionicons name="camera" size={20} color="#000" />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.formContainer}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>First Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="Enter first name"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Last Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Enter last name"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Phone Number</Text>
-                  <View style={styles.phoneInputContainer}>
-                    <CountryCodeDropdown
-                      selectedCode={countryCode}
-                      onSelect={setCountryCode}
-                      countries={countries}
-                    />
-                    <TextInput
-                      style={styles.phoneInput}
-                      value={phoneNumber}
-                      onChangeText={setPhoneNumber}
-                      keyboardType="phone-pad"
-                      placeholder="Enter phone number"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.pinButton}
-                  onPress={() => navigation.navigate("ChangePin")}
-                >
-                  <View style={styles.pinButtonLeft}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#1F2937" />
-                    <Text style={styles.pinButtonText}>Change PIN</Text>
-                  </View>
-                  <Text style={styles.pinDots}>• • • • • •</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save</Text>
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            <View style={styles.profileImageContainer}>
+              <TouchableOpacity onPress={handlePickImage}>
+                <ProfileImage
+                  source={
+                    typeof profileImage === "string"
+                      ? { uri: profileImage }
+                      : profileImage
+                  }
+                  style={styles.profileImage}
+                />
               </TouchableOpacity>
-            </ScrollView>
-          </View>
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handlePickImage}
+              >
+                <Ionicons name="camera" size={20} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.formContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>First Name</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    errors.firstName && styles.errorInput,
+                  ]}
+                  value={firstName}
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    setErrors((prev) => ({ ...prev, firstName: "" }));
+                  }}
+                  placeholder="Enter first name"
+                  placeholderTextColor="#9CA3AF"
+                />
+                {errors.firstName && (
+                  <Text style={styles.errorText}>{errors.firstName}</Text>
+                )}
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Last Name</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    errors.lastName && styles.errorInput,
+                  ]}
+                  value={lastName}
+                  onChangeText={(text) => {
+                    setLastName(text);
+                    setErrors((prev) => ({ ...prev, lastName: "" }));
+                  }}
+                  placeholder="Enter last name"
+                  placeholderTextColor="#9CA3AF"
+                />
+                {errors.lastName && (
+                  <Text style={styles.errorText}>{errors.lastName}</Text>
+                )}
+              </View>
+              {/* Added Email Field (read-only) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: "#F3F4F6" }]}
+                  value={email}
+                  editable={false}
+                  selectTextOnFocus={false}
+                  placeholder="Email"
+                  placeholderTextColor="#9CA3AF"
+                />
+                {errors.email && (
+                  <Text style={styles.errorText}>{errors.email}</Text>
+                )}
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone Number</Text>
+                <View style={styles.phoneInputContainer}>
+                  <CountryCodeDropdown
+                    selectedCode={countryCode}
+                    onSelect={setCountryCode}
+                    countries={countries}
+                  />
+                  <TextInput
+                    style={[
+                      styles.phoneInput,
+                      errors.phoneNumber && styles.errorInput,
+                    ]}
+                    value={phoneNumber}
+                    onChangeText={(text) => {
+                      setPhoneNumber(text);
+                      setErrors((prev) => ({ ...prev, phoneNumber: "" }));
+                    }}
+                    keyboardType="phone-pad"
+                    placeholder="Enter phone number"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                {errors.phoneNumber && (
+                  <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+                )}
+              </View>
+              {/* <TouchableOpacity
+                style={styles.pinButton}
+                onPress={() => navigation.navigate("ChangePin")}
+              >
+                <View style={styles.pinButtonLeft}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#1F2937"
+                  />
+                  <Text style={styles.pinButtonText}>Change PIN</Text>
+                </View>
+                <Text style={styles.pinDots}>• • • • • •</Text>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity> */}
+            </View>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -326,16 +459,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-  },
-  scrollContent: {
-    paddingBottom: 200,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 65 : 25,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 25 : 25,
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   backButton: {
     width: 36,
@@ -352,6 +482,9 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginLeft: 8,
     fontFamily: "Poppins-Bold",
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   profileImageContainer: {
     alignItems: "center",
@@ -380,7 +513,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   formContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   inputGroup: {
     marginBottom: 24,
@@ -399,6 +532,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1F2937",
     fontFamily: "Poppins-Regular",
+  },
+  errorInput: {
+    borderColor: "#E3000F",
+  },
+  errorText: {
+    color: "#E3000F",
+    fontSize: 12,
+    marginTop: 4,
   },
   phoneInputContainer: {
     flexDirection: "row",
@@ -503,10 +644,8 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
   },
   saveButton: {
-    position: "absolute",
-    bottom: 32,
-    left: 20,
-    right: 20,
+    marginTop: 32,
+    marginHorizontal: 20,
     backgroundColor: "#E3000F",
     padding: 16,
     borderRadius: 20,
@@ -519,3 +658,5 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
   },
 });
+
+export { EditProfile };

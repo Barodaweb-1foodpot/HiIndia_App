@@ -524,7 +524,7 @@ ${ticketsInfo}
                     {activeTicket?.name || "Guest"}
                   </Text>
                 </View>
-                <View style={styles.modalInfoDivider} />
+                {/* <View style={styles.modalInfoDivider} />
                 <View style={styles.modalInfoItem}>
                   <Ionicons name="calendar-outline" size={18} color="#666" />
                   <Text style={styles.modalInfoText}>
@@ -533,7 +533,7 @@ ${ticketsInfo}
                       eventDetails.EndDate
                     )}
                   </Text>
-                </View>
+                </View> */}
               </View>
               <Text style={styles.modalInstruction}>
                 Show this QR code to event staff for entry
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   purplePriceBox: {
-    width: 70,
+    width: 80,
     borderRadius: 8,
     alignItems: "center",
     paddingVertical: 5,

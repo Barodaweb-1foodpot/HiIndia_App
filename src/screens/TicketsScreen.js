@@ -12,60 +12,24 @@ import {
   Modal,
   Share,
   Pressable,
+  Platform,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import QRCode from "react-native-qrcode-svg";
+import { useFocusEffect } from "@react-navigation/native";
+
 import { getTickets } from "../api/ticket_api";
 import { formatEventDateTime } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
-import { useFocusEffect } from "@react-navigation/native";
-import QRCode from "react-native-qrcode-svg";
-import { BlurView } from "expo-blur";
 
-// --- Skeleton Loader Component ---
-const SkeletonLoader = ({ style }) => {
-  const [animation] = useState(new Animated.Value(0));
+// Import reusable components
+import Header from "../components/Header";
+import SkeletonLoader from "../components/SkeletonLoader";
+import BlurWrapper from "../components/BlurWrapper";
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(animation, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [animation]);
-
-  const translateX = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-300, 300],
-  });
-
-  return (
-    <View style={[style, { backgroundColor: "#E0E0E0", overflow: "hidden" }]}>
-      <Animated.View
-        style={{
-          width: "100%",
-          height: "100%",
-          transform: [{ translateX }],
-        }}
-      >
-        <LinearGradient
-          colors={[
-            "rgba(255, 255, 255, 0)",
-            "rgba(255, 255, 255, 0.5)",
-            "rgba(255, 255, 255, 0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </Animated.View>
-    </View>
-  );
-};
-
+// --- TicketImage Component ---
 const TicketImage = memo(({ source, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -89,11 +53,12 @@ const TicketImage = memo(({ source, style }) => {
   );
 });
 
+// --- TicketScreen Component ---
 export default function TicketScreen({ navigation }) {
-  // const [activeTab, setActiveTab] = useState("Upcoming");
   const [expandedOrders, setExpandedOrders] = useState({});
   const [tickets, setTickets] = useState([]);
-  const [animation] = useState(new Animated.Value(0));
+  // Start animation at 1 so it's in the "expanded" state by default.
+  const [animation] = useState(new Animated.Value(1));
   const [readMoreMap, setReadMoreMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,12 +73,7 @@ export default function TicketScreen({ navigation }) {
     }, [])
   );
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("blur", () => {
-      setExpandedOrders({});
-    });
-    return unsubscribe;
-  }, [navigation]);
+  // Removed the "blur" listener that reset expandedOrders to {}.
 
   useEffect(() => {
     fetchTickets();
@@ -134,14 +94,10 @@ export default function TicketScreen({ navigation }) {
           isActive: order.isActive,
           countryCurrency: order.event?.countryDetail?.Currency || "$",
           title: order.event?.EventName || "Untitled Event",
-          date: formatEventDateTime(
-            order.event?.StartDate,
-            order.event?.EndDate
-          ),
-          // Added eventStart and eventEnd for QR modal info
+          date: formatEventDateTime(order.event?.StartDate, order.event?.EndDate),
           eventStart: order.event?.StartDate,
           eventEnd: order.event?.EndDate,
-          endDate: order.event?.EndDate, // used for filtering (currently not used)
+          endDate: order.event?.EndDate,
           image: order.event?.EventImage
             ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
             : require("../../assets/placeholder.jpg"),
@@ -158,9 +114,22 @@ export default function TicketScreen({ navigation }) {
           totalRate: order.subTotal,
           total: order.totalRate,
           coupon: order.couponDiscount || 0,
+          // For potential use in ticket display
+          EventCategoryDetail: order.event?.EventCategoryDetail || [],
+          EventLocation: order.event?.EventLocation || "",
+          StartDate: order.event?.StartDate,
+          EndDate: order.event?.EndDate,
         }));
         console.log("Transformed Tickets:", transformedTickets);
+
         setTickets(transformedTickets);
+
+        // Make each ticket expanded by default:
+        const initialExpanded = {};
+        transformedTickets.forEach((ticket) => {
+          initialExpanded[ticket.id] = true; // open by default
+        });
+        setExpandedOrders(initialExpanded);
       } else {
         setTickets([]);
       }
@@ -202,6 +171,19 @@ export default function TicketScreen({ navigation }) {
     } catch (error) {
       console.error("Error fetching ticket details:", error);
       alert("Error fetching ticket details.");
+    }
+  };
+
+  const handleViewInvoice = (ticket) => {
+    try {
+      // Navigate to the Invoice screen with the ticket/order ID
+      navigation.navigate("App", {
+        screen: "Invoice",
+        params: { orderId: ticket.id },
+      });
+    } catch (error) {
+      console.error("Error navigating to invoice:", error);
+      alert("Error viewing invoice.");
     }
   };
 
@@ -272,16 +254,7 @@ ${ticketsInfo}
     setQrModalVisible(true);
   };
 
-  // Original filtering code commented out below:
-  // const now = new Date();
-  // const displayedTickets = tickets.filter((ticket) => {
-  //   if (ticket.endDate) {
-  //     const eventEnd = new Date(ticket.endDate);
-  //     return activeTab === "Past" ? eventEnd < now : eventEnd >= now;
-  //   }
-  //   return activeTab === "Upcoming";
-  // });
-  const displayedTickets = tickets; // Show all tickets
+  const displayedTickets = tickets;
 
   const renderTicket = ({ item: ticket }) => (
     <Animated.View
@@ -299,10 +272,7 @@ ${ticketsInfo}
         },
       ]}
     >
-      <LinearGradient
-        colors={["#FFFFFF", "#F8F9FA"]}
-        style={styles.cardGradient}
-      >
+      <LinearGradient colors={["#FFFFFF", "#F8F9FA"]} style={styles.cardGradient}>
         {/* Ticket Header */}
         <View style={styles.ticketHeader}>
           <View style={styles.imageContainer}>
@@ -311,10 +281,7 @@ ${ticketsInfo}
           <View style={styles.eventInfo}>
             <View style={styles.titleContainer}>
               <View style={styles.ticketIconContainer}>
-                <LinearGradient
-                  colors={["#FF1A1A", "#E3000F"]}
-                  style={styles.ticketIconBg}
-                >
+                <LinearGradient colors={["#FF1A1A", "#E3000F"]} style={styles.ticketIconBg}>
                   <Ionicons name="ticket" size={16} color="#FFF" />
                 </LinearGradient>
               </View>
@@ -344,28 +311,15 @@ ${ticketsInfo}
               </View>
             </View>
             <Text style={styles.eventDate}>{ticket.date}</Text>
-            <Text style={styles.ticketCount}>
-              {ticket.tickets.length} Ticket's
-            </Text>
+            <Text style={styles.ticketCount}>{ticket.tickets.length} Ticket's</Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.floatingButtonShare}
-            onPress={() => shareOrderDetails(ticket)}
-          >
-            <MaterialCommunityIcons
-              name="share-variant"
-              size={20}
-              color="#000"
-            />
+          <TouchableOpacity style={styles.floatingButtonShare} onPress={() => shareOrderDetails(ticket)}>
+            <MaterialCommunityIcons name="share-variant" size={20} color="#000" />
           </TouchableOpacity>
         </View>
 
         {/* View Details Button */}
-        <TouchableOpacity
-          style={styles.floatingButtonRight}
-          onPress={() => handleViewTicket(ticket)}
-        >
+        <TouchableOpacity style={styles.floatingButtonRight} onPress={() => handleViewTicket(ticket)}>
           <Ionicons name="eye-outline" size={18} color="#fff" />
         </TouchableOpacity>
 
@@ -377,36 +331,6 @@ ${ticketsInfo}
           ]}
           onPress={() => toggleOrderDetails(ticket.id)}
         >
-          {/* 
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
-              onPress={() => setActiveTab("Upcoming")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "Upcoming" && styles.activeTabText,
-                ]}
-              >
-                Upcoming
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === "Past" && styles.activeTab]}
-              onPress={() => setActiveTab("Past")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "Past" && styles.activeTabText,
-                ]}
-              >
-                Past
-              </Text>
-            </TouchableOpacity>
-          </View>
-          */}
           {!expandedOrders[ticket.id] ? (
             <View style={styles.viewDetailsRow}>
               <Text style={styles.viewDetailsText}>View Order Details</Text>
@@ -414,8 +338,16 @@ ${ticketsInfo}
             </View>
           ) : (
             <View style={styles.orderDetails}>
-              {/* Ticket Cards */}
-              <Text style={styles.yourTicketsText}>Your Tickets</Text>
+              <View style={styles.yourTicketsHeader}>
+                <Text style={styles.yourTicketsText}>Your Tickets</Text>
+                <TouchableOpacity
+                  style={styles.invoiceButton}
+                  onPress={() => handleViewInvoice(ticket)}
+                >
+                  <Text style={styles.invoiceButtonText}>Invoice</Text>
+                  <Ionicons name="receipt-outline" size={16} color="#E3000F" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
               {ticket.tickets.map((t, index) => (
                 <TouchableOpacity
                   key={index}
@@ -439,7 +371,6 @@ ${ticketsInfo}
                             {t.TicketType?.TicketType || t.type || "Standard"}
                           </Text>
                         </View>
-
                         <TouchableOpacity
                           onPress={() =>
                             shareTicketDetails(t, {
@@ -450,11 +381,7 @@ ${ticketsInfo}
                           }
                           style={styles.ticketShareButton}
                         >
-                          <MaterialCommunityIcons
-                            name="share-variant"
-                            size={18}
-                            color="#FFF"
-                          />
+                          <MaterialCommunityIcons name="share-variant" size={18} color="#FFF" />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -483,8 +410,6 @@ ${ticketsInfo}
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
-
-              {/* Hide Order Details Button */}
               <View style={styles.hideDetailsButtonRow}>
                 <TouchableOpacity
                   style={styles.hideDetailsButton}
@@ -508,73 +433,14 @@ ${ticketsInfo}
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-        animated
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <Header
+        onNotificationPress={() => navigation.navigate("App", { screen: "Notification" })}
+        onCalendarPress={() => navigation.navigate("App", { screen: "Calender" })}
       />
-      {/* Black Header Gradient */}
-      <LinearGradient colors={["#000000", "#1A1A1A"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <Image
-            source={require("../../assets/logo.png")}
-            style={styles.logo}
-          />
-          <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={styles.iconCircle}
-              onPress={() =>
-                navigation.navigate("App", { screen: "Notification" })
-              }
-            >
-              <Ionicons name="notifications-outline" size={20} color="#000" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconCircle}
-              onPress={() => navigation.navigate("App", { screen: "Calender" })}
-            >
-              <Ionicons name="calendar-outline" size={20} color="#000" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
 
-      {/* White Section */}
       <View style={styles.whiteSection}>
-        <Text style={styles.title}>Ticket</Text>
-
-        {/*
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "Upcoming" && styles.activeTab]}
-            onPress={() => setActiveTab("Upcoming")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Upcoming" && styles.activeTabText,
-              ]}
-            >
-              Upcoming
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "Past" && styles.activeTab]}
-            onPress={() => setActiveTab("Past")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Past" && styles.activeTabText,
-              ]}
-            >
-              Past
-            </Text>
-          </TouchableOpacity>
-        </View>
-        */}
-        {/* Loader or Tickets List */}
+        <Text style={styles.title}>Tickets</Text>
         {loading && !refreshing ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#000" />
@@ -587,25 +453,19 @@ ${ticketsInfo}
             refreshing={refreshing}
             onRefresh={() => fetchTickets(true)}
             renderItem={renderTicket}
-            ListEmptyComponent={
-              <Text style={styles.noTicketsText}>No tickets found</Text>
-            }
+            ListEmptyComponent={<Text style={styles.noTicketsText}>No tickets found</Text>}
           />
         )}
       </View>
 
-      {/* QR Modal */}
       <Modal
         animationType="fade"
         transparent
         visible={qrModalVisible}
         onRequestClose={() => setQrModalVisible(false)}
       >
-        <BlurView intensity={80} style={styles.modalBlurContainer}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setQrModalVisible(false)}
-          />
+        <BlurWrapper style={styles.modalBlurContainer}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setQrModalVisible(false)} />
           <View style={styles.modalContent}>
             <LinearGradient
               colors={["#E3000F", "#B0000C"]}
@@ -616,8 +476,7 @@ ${ticketsInfo}
               <Text style={styles.modalTitle}>
                 {selectedTicket?.TicketType?.TicketType ||
                   selectedTicket?.type ||
-                  "Standard"}{" "}
-                Ticket
+                  "Standard"} Ticket
               </Text>
               <Text style={styles.modalTicketId}>
                 ID: {selectedTicket?.ticketId}
@@ -643,18 +502,6 @@ ${ticketsInfo}
                     {selectedTicket?.name || "Guest"}
                   </Text>
                 </View>
-                {/*
-                <View style={styles.modalInfoDivider} />
-                <View style={styles.modalInfoItem}>
-                  <Ionicons name="calendar-outline" size={18} color="#666" />
-                  <Text style={styles.modalInfoText}>
-                    {formatEventDateTime(
-                      selectedTicket?.eventDetails?.StartDate,
-                      selectedTicket?.eventDetails?.EndDate
-                    )}
-                  </Text>
-                </View>
-                */}
               </View>
               <Text style={styles.modalInstruction}>
                 Show this QR code to the event staff for entry
@@ -667,7 +514,7 @@ ${ticketsInfo}
               </TouchableOpacity>
             </View>
           </View>
-        </BlurView>
+        </BlurWrapper>
       </Modal>
     </View>
   );
@@ -678,38 +525,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  header: {
-    height: "15%",
-    paddingHorizontal: 16,
-    justifyContent: "flex-end",
-    paddingBottom: 16,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logo: {
-    width: 160,
-    height: 50,
-    resizeMode: "contain",
-  },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
+  loaderContainer: {
+    flex: 1,
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignItems: "center",
+    paddingVertical: 20,
   },
   whiteSection: {
     flex: 1,
@@ -717,7 +537,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 16,
-    paddingTop:20,
+    paddingTop: 20,
   },
   title: {
     fontSize: 28,
@@ -726,51 +546,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     letterSpacing: 0.5,
   },
-  tabsContainer: {
-   
-    // flexDirection: "row",
-    // borderBottomWidth: 1,
-    // borderBottomColor: "#E5E7EB",
-    // marginBottom: 16,
-  },
-  tab: {
-
-    // paddingBottom: 8,
-    // marginRight: 24,
-  },
-  activeTab: {
-    // Unused: Active tab style
-    // borderBottomWidth: 2,
-    // borderBottomColor: "rgba(0, 0, 0, 1)",
-  },
-  tabText: {
-    fontSize: 16,
-    color: "#6B7280",
-  },
-  activeTabText: {
-    color: "rgba(0, 0, 0, 1)",
-    fontWeight: "600",
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 20,
-  },
-  noTicketsText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-    color: "#666",
+  eventImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   ticketCard: {
-    marginBottom: 16,
+    marginBottom: 30,
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 4,
+    elevation: Platform.OS === "android" ? 0 : 6,
   },
   cardGradient: {
     borderRadius: 16,
@@ -792,10 +580,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  eventImage: {
-    width: "100%",
-    height: "100%",
   },
   eventInfo: {
     flex: 1,
@@ -885,17 +669,42 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     fontSize: 14,
     fontWeight: "600",
-    fontFamily: "Poppins-Medium",
   },
   orderDetails: {
     paddingTop: 2,
+  },
+  yourTicketsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    marginTop: 8,
   },
   yourTicketsText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
-    marginBottom: 16,
-    marginTop: 8,
+  },
+  invoiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E3000F",
+    shadowColor: "rgba(227, 0, 15, 0.3)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  invoiceButtonText: {
+    color: "#E3000F",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   ticketCardContainer: {
     marginBottom: 16,
@@ -989,7 +798,6 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     fontSize: 14,
     marginRight: 2,
-    fontFamily: "Poppins-Medium",
   },
   modalBlurContainer: {
     flex: 1,
@@ -1078,11 +886,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginLeft: 8,
   },
-  modalInfoDivider: {
-    height: 24,
-    width: 1,
-    backgroundColor: "#E0E0E0",
-  },
   modalInstruction: {
     fontSize: 14,
     color: "#666",
@@ -1100,6 +903,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
+  noTicketsText: {
+    textAlign: "center",
+    color: "#777",
+    marginTop: 50,
+    fontSize: 16,
+  },
 });
-
-export { TicketScreen };

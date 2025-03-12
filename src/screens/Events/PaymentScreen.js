@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -47,6 +47,7 @@ const SkeletonLoader = React.memo(({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
   useEffect(() => {
+    console.log("SkeletonLoader: starting animation loop");
     const animationLoop = Animated.loop(
       Animated.timing(animation, {
         toValue: 1,
@@ -56,6 +57,7 @@ const SkeletonLoader = React.memo(({ style }) => {
     );
     animationLoop.start();
     return () => {
+      console.log("SkeletonLoader: stopping animation loop");
       animationLoop.stop();
     };
   }, [animation]);
@@ -110,6 +112,7 @@ const EventImage = React.memo(({ uri, style, defaultSource }) => {
 
   return (
     <View style={style}>
+      {/* Show skeleton loader while image is loading */}
       {!loaded && (
         <SkeletonLoader
           style={[
@@ -191,6 +194,7 @@ const TicketItem = ({ registration }) => {
 /*
   PaymentScreen Component:
   Manages the event registration and payment flow using Stripe’s PaymentSheet.
+  Updated header card now displays only the event name with a "Read More" button if the name is long.
 */
 export default function PaymentScreen() {
   const navigation = useNavigation();
@@ -206,6 +210,7 @@ export default function PaymentScreen() {
   const { initPaymentSheet, presentPaymentSheet, handleURLCallback } =
     useStripe();
 
+  // State for toggling Read More in the header card
   const [titleReadMore, setTitleReadMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -218,7 +223,7 @@ export default function PaymentScreen() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("Stripe");
   const [payment_id, setPayment_id] = useState("");
 
-  // Recalculate total (if needed) using reduce; here used for logging
+  // Debug: Log recalculated total from ticketList
   const recalcTotal = () => {
     const newTotal = ticketList.reduce(
       (sum, t) => sum + (t.ticketPrice || 0),
@@ -236,6 +241,12 @@ export default function PaymentScreen() {
     console.log("Changing payment method to:", method);
     setSelectedPaymentMethod(method);
   };
+
+  // Toggle the Read More state for the header card
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
 
   // Handle deep linking (e.g., for 3D Secure redirects)
   const handleDeepLink = useCallback(
@@ -290,17 +301,25 @@ export default function PaymentScreen() {
     try {
       setIsLoading(true);
       // Register the event and get the client secret for payment
-      const clientSecret = await handleRegister();
+      const { clientSecret, orderId } = await handleRegister();
+      console.log("---------------", orderId);
       if (clientSecret === "Free") {
         console.log("Event is free – no payment required");
         Toast.show({ type: "success", text1: "Registration successful!" });
         setIsLoading(false);
-        await updatePaymentStatus(
-          clientSecret,
-          "Free event",
-          true
-        );
-        setTimeout(() => navigation.navigate("Tab"), 2000);
+
+        await handleSendMail(orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+
+        // await updatePaymentStatus(clientSecret, "Free event", true);
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab for free event");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
         return;
       }
       if (!clientSecret) {
@@ -354,7 +373,14 @@ export default function PaymentScreen() {
         true
       );
       console.log("Payment status updated:", updateRes);
-      if (updateRes.isOk) await handleSendMail(updateRes.orderId);
+      if (updateRes.isOk) {
+        await handleSendMail(updateRes.orderId);
+        // Redirect to Tickets tab after a short delay
+        setTimeout(() => {
+          console.log("Redirecting to Tickets tab after payment");
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 2000);
+      }
       setIsLoading(false);
     } catch (error) {
       console.error("Error during payment process:", error);
@@ -420,8 +446,17 @@ export default function PaymentScreen() {
       console.log("Registration response:", response);
       if (response.isOk) {
         if (response.clientSecret) {
-          return response.clientSecret;
+          console.log(
+            "Got clientSecret from server:",
+            response.data[0].orderId
+          );
+          const data = {
+            clientSecret: response.clientSecret,
+            orderId: response.data[0].orderId,
+          };
+          return data;
         } else if (eventDetail.IsPaid === false) {
+          console.log("Event is free; returning 'Free'");
           return "Free";
         }
       } else {
@@ -463,7 +498,6 @@ export default function PaymentScreen() {
           position: "top",
           visibilityTime: 2000,
         });
-        setTimeout(() => navigation.navigate("Tab"), 2000);
       } else {
         setIsLoading(false);
         Toast.show({
@@ -489,11 +523,14 @@ export default function PaymentScreen() {
     <View style={styles.rootContainer}>
       <StatusBar style="auto" />
 
-      {/* TOP SECTION: Event image with back button and header card */}
+      {/* TOP SECTION: Event image with back button and updated header card */}
       <View style={styles.topSection}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back from PaymentScreen");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
@@ -506,27 +543,22 @@ export default function PaymentScreen() {
           style={styles.topImage}
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
+        {/* Updated header card: display only the event name with a Read More button */}
         <View style={styles.headerCard}>
-          <Text
-            style={styles.headerCardTitle}
-            numberOfLines={titleReadMore ? undefined : 2}
-          >
-            Register for {eventDetail?.EventName}
-          </Text>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation}
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
+              {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
-          </View>
-          <View style={styles.headerCardRow}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
-            <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(
-                eventDetail?.StartDate,
-                eventDetail?.EndDate
-              ) || "Date/Time not available"}
-            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -644,6 +676,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -673,16 +706,10 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 8,
   },
-  headerCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    marginLeft: 2,
-  },
-  headerCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 6,
+  readMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#E3000F",
   },
   whiteContainer: {
     flex: 1,
@@ -839,11 +866,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   grandTotalText: {
-    fontSize:16,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#E3000F",
   },
-  
   makePaymentButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -864,3 +890,5 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 });
+
+export { PaymentScreen };
