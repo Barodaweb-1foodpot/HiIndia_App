@@ -427,6 +427,7 @@ const styles = StyleSheet.create({
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    zIndex: 0,
   },
   topSection: {
     backgroundColor: "#000000",
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 10,
+    zIndex: 1111,
   },
   headerCardTitle: {
     fontSize: 22,
