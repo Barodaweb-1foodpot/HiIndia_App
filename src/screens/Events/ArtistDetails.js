@@ -15,11 +15,14 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { Ionicons } from "@expo/vector-icons";
 import { SharedElement } from "react-navigation-shared-element";
+import { LinearGradient } from "expo-linear-gradient";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import BlurWrapper from "../../components/BlurWrapper";
+import HTML from "react-native-render-html"; // Import HTML renderer
 
 const { width } = Dimensions.get("window");
-const HEADER_HEIGHT = Platform.OS === "ios" ? 110 : 100; 
+const HEADER_HEIGHT = Platform.OS === "ios" ? 110 : 100;
+
 const ArtistDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -69,16 +72,26 @@ const ArtistDetails = () => {
     }
   };
 
-  // const toggleFavorite = () => {
-  //   setIsFavorite(!isFavorite);
-  // };
-
   // Animation values for content
   const opacity = scrollY.interpolate({
     inputRange: [0, 50],
     outputRange: [1, 0.9],
     extrapolate: "clamp",
   });
+
+  // HTML rendering configuration
+  const htmlConfig = {
+    tagsStyles: {
+      p: {
+        fontSize: 16,
+        lineHeight: 24,
+        color: "#4B5563",
+      },
+      strong: {
+        fontWeight: "700",
+      },
+    },
+  };
 
   return (
     <View style={styles.container}>
@@ -90,11 +103,8 @@ const ArtistDetails = () => {
       />
 
       {/* Fixed Header with Blur - Now fades in on scroll */}
-      <Animated.View 
-        style={[
-          styles.headerContainer, 
-          { opacity: headerOpacity }
-        ]}
+      <Animated.View
+        style={[styles.headerContainer, { opacity: headerOpacity }]}
       >
         <BlurWrapper style={styles.header}>
           <TouchableOpacity
@@ -103,30 +113,28 @@ const ArtistDetails = () => {
           >
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
-          <Animated.Text 
+
+          <Animated.Text
             style={[styles.headerTitle, { opacity: headerTitleOpacity }]}
             numberOfLines={1}
           >
             {artistName || "Artist Profile"}
           </Animated.Text>
-          
+
           <View style={styles.headerActions}>
-            {/* <TouchableOpacity 
+            {/* Example: Favorite button commented out
+            <TouchableOpacity 
               style={styles.headerButton} 
-              onPress={toggleFavorite}
+              onPress={() => setIsFavorite(!isFavorite)}
             >
               <Ionicons 
                 name={isFavorite ? "heart" : "heart-outline"} 
                 size={24} 
                 color={isFavorite ? "#FF4D6D" : "#FFFFFF"} 
               />
-            </TouchableOpacity> */}
-            
-            <TouchableOpacity 
-              style={styles.headerButton} 
-              onPress={handleShare}
-            >
+            </TouchableOpacity> 
+            */}
+            <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -134,14 +142,16 @@ const ArtistDetails = () => {
       </Animated.View>
 
       {/* Floating back button for when header is transparent */}
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.floatingBackButton, 
-          { opacity: scrollY.interpolate({
-            inputRange: [0, 100],
-            outputRange: [1, 0],
-            extrapolate: "clamp",
-          })}
+          styles.floatingBackButton,
+          {
+            opacity: scrollY.interpolate({
+              inputRange: [0, 100],
+              outputRange: [1, 0],
+              extrapolate: "clamp",
+            }),
+          },
         ]}
       >
         <TouchableOpacity
@@ -165,21 +175,26 @@ const ArtistDetails = () => {
         {/* Add padding to the top to account for the status bar */}
         <View style={{ height: Platform.OS === "ios" ? 10 : 0 }} />
 
-        {/* Profile Area with Cover Image and Profile Photo */}
+        {/* Profile Area with Cover Gradient and Profile Photo */}
         <View style={styles.coverContainer}>
           {isLoading ? (
             <SkeletonLoader style={styles.coverImage} />
           ) : (
             <View style={styles.coverImageContainer}>
-              <Image
-                source={require("../../../assets/gradient.jpg")}
+              <LinearGradient
+                colors={[
+                  "#0F1F38", // Deep Blue
+                  "#0D1C3C", // Dark Navy Blue
+                  "#092845", // Teal Blue
+                  "#11233F", // Midnight Blue
+                  "#2E1D39", // Dark Purple
+                ]}
                 style={styles.coverImage}
-                blurRadius={3}
               />
               <BlurWrapper style={styles.coverOverlay} />
             </View>
           )}
-          
+
           <View style={styles.profileContainer}>
             {isLoading ? (
               <SkeletonLoader style={styles.artistImagePlaceholder} />
@@ -195,7 +210,7 @@ const ArtistDetails = () => {
                 />
               </SharedElement>
             )}
-            
+
             {isLoading ? (
               <View style={{ alignItems: "center" }}>
                 <SkeletonLoader style={styles.namePlaceholder} />
@@ -219,51 +234,80 @@ const ArtistDetails = () => {
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>About</Text>
             </View>
-            
+
             {isLoading ? (
               <View>
                 <SkeletonLoader style={styles.descPlaceholder} />
                 <SkeletonLoader style={styles.descPlaceholder} />
-                <SkeletonLoader style={[styles.descPlaceholder, { width: '70%' }]} />
+                <SkeletonLoader
+                  style={[styles.descPlaceholder, { width: "70%" }]}
+                />
               </View>
             ) : (
-              <Text style={styles.artistDesc}>
-                {artistDesc || "No artist description available."}
-              </Text>
+              <View style={styles.descriptionContainer}>
+                {artistDesc ? (
+                  <HTML 
+                    source={{ html: artistDesc }} 
+                    contentWidth={width - 72} // Account for section padding and margins
+                    tagsStyles={htmlConfig.tagsStyles}
+                  />
+                ) : (
+                  <Text style={styles.artistDesc}>
+                    No artist description available.
+                  </Text>
+                )}
+              </View>
             )}
           </View>
-          
+
           {/* Upcoming Events Section */}
           {eventName && (
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Upcoming Event</Text>
+                <Text style={styles.sectionTitle}>Event</Text>
               </View>
-              
+
               {isLoading ? (
                 <View>
                   <SkeletonLoader style={styles.eventPlaceholder} />
-                  <SkeletonLoader style={[styles.eventPlaceholder, { width: '80%' }]} />
+                  <SkeletonLoader
+                    style={[styles.eventPlaceholder, { width: "80%" }]}
+                  />
                 </View>
               ) : (
                 <View style={styles.eventCard}>
                   <Text style={styles.eventName}>{eventName}</Text>
-                  
+
                   {eventDateTime && (
                     <View style={styles.eventDetail}>
-                      <Ionicons name="calendar-outline" size={18} color="#6B7280" />
-                      <Text style={styles.eventDetailText}>{eventDateTime}</Text>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color="#6B7280"
+                      />
+                      <Text style={styles.eventDetailText}>
+                        {eventDateTime}
+                      </Text>
                     </View>
                   )}
-                  
+
                   {eventLocation && (
                     <View style={styles.eventDetail}>
-                      <Ionicons name="location-outline" size={18} color="#6B7280" />
-                      <Text style={styles.eventDetailText}>{eventLocation}</Text>
+                      <Ionicons
+                        name="location-outline"
+                        size={18}
+                        color="#6B7280"
+                      />
+                      <Text style={styles.eventDetailText}>
+                        {eventLocation}
+                      </Text>
                     </View>
                   )}
-                  
-                  <TouchableOpacity style={styles.eventButton}>
+
+                  <TouchableOpacity
+                    style={styles.eventButton}
+                    onPress={() => navigation.goBack()}
+                  >
                     <Text style={styles.eventButtonText}>Get Tickets</Text>
                   </TouchableOpacity>
                 </View>
@@ -429,6 +473,9 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 8,
     borderRadius: 4,
+  },
+  descriptionContainer: {
+    width: "100%",
   },
   artistDesc: {
     fontSize: 16,
