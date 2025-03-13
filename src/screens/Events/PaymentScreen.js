@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 11,
+    zIndex: 1111,
   },
   headerCardTitle: {
     fontSize: 20,
@@ -717,6 +717,7 @@ const styles = StyleSheet.create({
     marginTop: -80,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    zIndex: 0,
   },
   scrollContent: {
     paddingTop: 90,
