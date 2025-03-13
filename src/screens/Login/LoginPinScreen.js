@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 40,
+    zIndex: 0,
   },
   inputContainer: {
     marginBottom: 20,

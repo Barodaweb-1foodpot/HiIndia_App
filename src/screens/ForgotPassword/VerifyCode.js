@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 10,
+    zIndex: 1111,
   },
   headerCardTitle: {
     fontSize: 22,
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
+    zIndex: 0,
   },
   inputContainer: {
     marginTop: 40,
