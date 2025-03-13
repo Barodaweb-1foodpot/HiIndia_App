@@ -19,8 +19,7 @@ import SkeletonLoader from "../../components/SkeletonLoader";
 import BlurWrapper from "../../components/BlurWrapper";
 
 const { width } = Dimensions.get("window");
-const HEADER_HEIGHT = Platform.OS === "ios" ? 110 : 100; // Consistent header height
-
+const HEADER_HEIGHT = Platform.OS === "ios" ? 110 : 100; 
 const ArtistDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
