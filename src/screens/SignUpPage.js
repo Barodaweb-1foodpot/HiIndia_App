@@ -11,6 +11,7 @@ import {
   ScrollView,
   Platform,
   Animated,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
@@ -63,21 +64,19 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {countries.map((item) => {
-            return (
-              <TouchableOpacity
-                key={item._id}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  onSelect("+" + item.CountryCode);
-                  toggleDropdown();
-                }}
-              >
-                <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
-                <Text style={styles.countryNameText}>{item.CountryName}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {countries.map((item) => (
+            <TouchableOpacity
+              key={item._id}
+              style={styles.dropdownItem}
+              onPress={() => {
+                onSelect("+" + item.CountryCode);
+                toggleDropdown();
+              }}
+            >
+              <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+              <Text style={styles.countryNameText}>{item.CountryName}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       </Animated.View>
     </View>
@@ -88,14 +87,18 @@ const SignUpPage = ({ navigation }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
   const [countries, setCountries] = useState([]);
   const scrollViewRef = useRef(null);
-  const inputRefsSetPin = useRef([]);
-  const inputRefsConfirmPin = useRef([]);
+  // Create refs for each digit input in the two PIN fields
+  const inputRefsSetPin = useRef([...Array(6)].map(() => React.createRef()));
+  const inputRefsConfirmPin = useRef([...Array(6)].map(() => React.createRef()));
+  // State for modal visibility
+  const [modalVisible, setModalVisible] = useState(false);
+  // Ref to store Formik's handleSubmit function
+  const formSubmitRef = useRef(null);
 
   useEffect(() => {
     const loadCountries = async () => {
       try {
         const data = await fetchActiveCountries();
-
         setCountries(data);
       } catch (error) {
         console.error("Error loading countries:", error);
@@ -123,7 +126,7 @@ const SignUpPage = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-     <StatusBar style="auto" />
+      <StatusBar style="auto" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
@@ -165,16 +168,16 @@ const SignUpPage = ({ navigation }) => {
                   lastName: "",
                   phoneNumber: "",
                   email: "",
-                  setPin: "",
-                  confirmPin: "",
+                  setPin: "______", // 6-character placeholder (underscore) for 6-digit PIN
+                  confirmPin: "______",
                 }}
                 validationSchema={validationSchema}
                 onSubmit={async (values) => {
                   const payload = {
                     firstName: values.firstName,
                     lastName: values.lastName,
-                    emailId: values.email,
-                    password: values.setPin,
+                    emailId: values.email.toLowerCase(),
+                    password: values.setPin.replace(/_/g, ""), // remove underscores
                     contactNumber: values.phoneNumber,
                     ParticipantCountryCode: selectedCountryCode,
                     isMailVerified: false,
@@ -191,7 +194,6 @@ const SignUpPage = ({ navigation }) => {
                         text2: "Account created successfully.",
                         position: "bottom",
                       });
-
                       navigation.navigate("Login");
                     } else {
                       Toast.show({
@@ -214,195 +216,201 @@ const SignUpPage = ({ navigation }) => {
                   values,
                   errors,
                   touched,
-                }) => (
-                  <>
-                    {/* First Name */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>First Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="First Name"
-                        placeholderTextColor="#AAAAAA"
-                        onChangeText={handleChange("firstName")}
-                        onBlur={handleBlur("firstName")}
-                        value={values.firstName}
-                      />
-                      {touched.firstName && errors.firstName && (
-                        <Text style={styles.errorText}>{errors.firstName}</Text>
-                      )}
-
-                      {/* Last Name */}
-                      <Text style={styles.inputLabel}>Last Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Last Name"
-                        placeholderTextColor="#AAAAAA"
-                        onChangeText={handleChange("lastName")}
-                        onBlur={handleBlur("lastName")}
-                        value={values.lastName}
-                      />
-                      {touched.lastName && errors.lastName && (
-                        <Text style={styles.errorText}>{errors.lastName}</Text>
-                      )}
-
-                      {/* Phone Number + Country Code */}
-                      <Text style={styles.inputLabel}>Phone Number</Text>
-                      <View style={styles.phoneInputContainer}>
-                        <CountryCodeDropdown
-                          selectedCode={selectedCountryCode}
-                          onSelect={setSelectedCountryCode}
-                          countries={countries}
-                        />
+                  setFieldValue,
+                }) => {
+                  // Store Formik's handleSubmit in the ref for later use in the modal.
+                  formSubmitRef.current = handleSubmit;
+                  return (
+                    <>
+                      {/* First Name */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>First Name</Text>
                         <TextInput
-                          style={styles.phoneInput}
-                          placeholder="Phone Number"
+                          style={styles.input}
+                          placeholder="First Name"
                           placeholderTextColor="#AAAAAA"
-                          keyboardType="numeric"
-                          onChangeText={handleChange("phoneNumber")}
-                          onBlur={handleBlur("phoneNumber")}
-                          value={values.phoneNumber}
-                          maxLength={10}
+                          onChangeText={handleChange("firstName")}
+                          onBlur={handleBlur("firstName")}
+                          value={values.firstName}
                         />
-                      </View>
-                      {touched.phoneNumber && errors.phoneNumber && (
-                        <Text style={styles.errorText}>
-                          {errors.phoneNumber}
-                        </Text>
-                      )}
+                        {touched.firstName && errors.firstName && (
+                          <Text style={styles.errorText}>{errors.firstName}</Text>
+                        )}
 
-                      {/* Email */}
-                      <Text style={styles.inputLabel}>Email</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Email Address"
-                        placeholderTextColor="#AAAAAA"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        onChangeText={handleChange("email")}
-                        onBlur={handleBlur("email")}
-                        value={values.email}
-                      />
-                      {touched.email && errors.email && (
-                        <Text style={styles.errorText}>{errors.email}</Text>
-                      )}
+                        {/* Last Name */}
+                        <Text style={styles.inputLabel}>Last Name</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Last Name"
+                          placeholderTextColor="#AAAAAA"
+                          onChangeText={handleChange("lastName")}
+                          onBlur={handleBlur("lastName")}
+                          value={values.lastName}
+                        />
+                        {touched.lastName && errors.lastName && (
+                          <Text style={styles.errorText}>{errors.lastName}</Text>
+                        )}
 
-                      {/* Set PIN */}
-                      <Text style={styles.inputLabel}>Set PIN</Text>
-                      <View style={styles.pinContainer}>
-                        {[...Array(6)].map((_, index) => (
-                          <TextInput
-                            key={index}
-                            ref={(ref) =>
-                              (inputRefsSetPin.current[index] = ref)
-                            }
-                            style={[
-                              styles.pinInput,
-                              values.setPin[index] && styles.pinInputFilled,
-                            ]}
-                            keyboardType="numeric"
-                            maxLength={1}
-                            value={values.setPin[index]}
-                            onChangeText={(value) => {
-                              const newPin =
-                                values.setPin.substring(0, index) +
-                                value +
-                                values.setPin.substring(index + 1);
-                              handleChange("setPin")(newPin);
-                              if (value && index < 5) {
-                                inputRefsSetPin.current[index + 1].focus();
-                              }
-                            }}
-                            onKeyPress={(e) => {
-                              if (
-                                e.nativeEvent.key === "Backspace" &&
-                                index > 0
-                              ) {
-                                const newPin =
-                                  values.setPin.substring(0, index) +
-                                  " " +
-                                  values.setPin.substring(index + 1);
-                                handleChange("setPin")(newPin);
-                                inputRefsSetPin.current[index - 1].focus();
-                              }
-                            }}
-                            onBlur={() => {
-                              setFieldTouched("setPin", true);
-                              handleBlur("setPin");
-                            }}
-                            placeholder="-"
-                            placeholderTextColor="#999"
+                        {/* Phone Number + Country Code */}
+                        <Text style={styles.inputLabel}>Phone Number</Text>
+                        <View style={styles.phoneInputContainer}>
+                          <CountryCodeDropdown
+                            selectedCode={selectedCountryCode}
+                            onSelect={setSelectedCountryCode}
+                            countries={countries}
                           />
-                        ))}
-                      </View>
-                      {touched.setPin && errors.setPin && (
-                        <Text style={styles.errorText}>{errors.setPin}</Text>
-                      )}
-
-                      {/* Confirm PIN */}
-                      <Text style={styles.inputLabel}>Confirm PIN</Text>
-                      <View style={styles.pinContainer}>
-                        {[...Array(6)].map((_, index) => (
                           <TextInput
-                            key={index}
-                            ref={(ref) =>
-                              (inputRefsConfirmPin.current[index] = ref)
-                            }
-                            style={[
-                              styles.pinInput,
-                              values.confirmPin[index] && styles.pinInputFilled,
-                            ]}
+                            style={styles.phoneInput}
+                            placeholder="Phone Number"
+                            placeholderTextColor="#AAAAAA"
                             keyboardType="numeric"
-                            maxLength={1}
-                            value={values.confirmPin[index]}
-                            onChangeText={(value) => {
-                              const newPin =
-                                values.confirmPin.substring(0, index) +
-                                value +
-                                values.confirmPin.substring(index + 1);
-                              handleChange("confirmPin")(newPin);
-                              if (value && index < 5) {
-                                inputRefsConfirmPin.current[index + 1].focus();
-                              }
-                            }}
-                            onKeyPress={(e) => {
-                              if (
-                                e.nativeEvent.key === "Backspace" &&
-                                index > 0
-                              ) {
-                                const newPin =
-                                  values.confirmPin.substring(0, index) +
-                                  " " +
-                                  values.confirmPin.substring(index + 1);
-                                handleChange("confirmPin")(newPin);
-                                inputRefsConfirmPin.current[index - 1].focus();
-                              }
-                            }}
-                            onBlur={() => {
-                              setFieldTouched("confirmPin", true);
-                              handleBlur("confirmPin");
-                            }}
-                            placeholder="-"
-                            placeholderTextColor="#999"
+                            onChangeText={handleChange("phoneNumber")}
+                            onBlur={handleBlur("phoneNumber")}
+                            value={values.phoneNumber}
+                            maxLength={10}
                           />
-                        ))}
-                      </View>
-                      {touched.confirmPin && errors.confirmPin && (
-                        <Text style={styles.errorText}>
-                          {errors.confirmPin}
-                        </Text>
-                      )}
-                    </View>
+                        </View>
+                        {touched.phoneNumber && errors.phoneNumber && (
+                          <Text style={styles.errorText}>
+                            {errors.phoneNumber}
+                          </Text>
+                        )}
 
-                    {/* Submit Button */}
-                    <TouchableOpacity
-                      style={styles.continueButton}
-                      onPress={handleSubmit}
-                    >
-                      <Text style={styles.continueButtonText}>Continue</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+                        {/* Email */}
+                        <Text style={styles.inputLabel}>Email</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Email Address"
+                          placeholderTextColor="#AAAAAA"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          onChangeText={handleChange("email")}
+                          onBlur={handleBlur("email")}
+                          value={values.email}
+                        />
+                        {touched.email && errors.email && (
+                          <Text style={styles.errorText}>{errors.email}</Text>
+                        )}
+
+                        {/* Set PIN using 6 separate inputs */}
+                        <Text style={styles.inputLabel}>Set PIN</Text>
+                        <View style={styles.pinContainer}>
+                          {[...Array(6)].map((_, index) => (
+                            <TextInput
+                              key={`set-${index}`}
+                              ref={(ref) =>
+                                (inputRefsSetPin.current[index] = ref)
+                              }
+                              style={styles.pinInput}
+                              keyboardType="phone-pad"
+                              maxLength={1}
+                              value={
+                                values.setPin[index] === "_" ? "" : values.setPin[index]
+                              }
+                              onChangeText={(digit) => {
+                                let newPin = values.setPin.split("");
+                                newPin[index] = digit || "_";
+                                const joined = newPin.join("");
+                                setFieldValue("setPin", joined);
+                                if (digit && index < 5) {
+                                  inputRefsSetPin.current[index + 1].focus();
+                                }
+                              }}
+                              onKeyPress={(e) => {
+                                if (
+                                  e.nativeEvent.key === "Backspace" &&
+                                  values.setPin[index] === "_" &&
+                                  index > 0
+                                ) {
+                                  inputRefsSetPin.current[index - 1].focus();
+                                }
+                              }}
+                            />
+                          ))}
+                        </View>
+                        {touched.setPin && errors.setPin && (
+                          <Text style={styles.errorText}>{errors.setPin}</Text>
+                        )}
+
+                        {/* Confirm PIN using 6 separate inputs */}
+                        <Text style={styles.inputLabel}>Confirm PIN</Text>
+                        <View style={styles.pinContainer}>
+                          {[...Array(6)].map((_, index) => (
+                            <TextInput
+                              key={`confirm-${index}`}
+                              ref={(ref) =>
+                                (inputRefsConfirmPin.current[index] = ref)
+                              }
+                              style={styles.pinInput}
+                              keyboardType="phone-pad"
+                              maxLength={1}
+                              value={
+                                values.confirmPin[index] === "_" ? "" : values.confirmPin[index]
+                              }
+                              onChangeText={(digit) => {
+                                let newPin = values.confirmPin.split("");
+                                newPin[index] = digit || "_";
+                                const joined = newPin.join("");
+                                setFieldValue("confirmPin", joined);
+                                if (digit && index < 5) {
+                                  inputRefsConfirmPin.current[index + 1].focus();
+                                }
+                              }}
+                              onKeyPress={(e) => {
+                                if (
+                                  e.nativeEvent.key === "Backspace" &&
+                                  values.confirmPin[index] === "_" &&
+                                  index > 0
+                                ) {
+                                  inputRefsConfirmPin.current[index - 1].focus();
+                                }
+                              }}
+                            />
+                          ))}
+                        </View>
+                        {touched.confirmPin && errors.confirmPin && (
+                          <Text style={styles.errorText}>
+                            {errors.confirmPin}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Continue Button that triggers a Modal */}
+                      <TouchableOpacity
+                        style={styles.continueButton}
+                        onPress={() => setModalVisible(true)}
+                      >
+                        <Text style={styles.continueButtonText}>Continue</Text>
+                      </TouchableOpacity>
+                    </>
+                  );
+                }}
               </Formik>
+              {/* Modal for Email Verification */}
+              <Modal
+                visible={modalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setModalVisible(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalText}>
+                      Please check your mail to verify the account
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.modalButton}
+                      onPress={() => {
+                        setModalVisible(false);
+                        // Trigger Formik submission via the stored ref
+                        formSubmitRef.current && formSubmitRef.current();
+                      }}
+                    >
+                      <Text style={styles.modalButtonText}>Ok</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
             </ScrollView>
           </View>
         </View>
@@ -585,21 +593,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pinInput: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
+    borderColor: "#ccc",
+    borderRadius: 10,
     textAlign: "center",
-    textAlignVertical: "center",
     fontSize: 18,
-    fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFFFFF",
-    color: "#000000",
-  },
-  pinInputFilled: {
-    borderColor: "#000000",
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "#f5f5f5",
   },
   errorText: {
     marginTop: 4,
@@ -616,6 +617,36 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   continueButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    marginHorizontal: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalText: {
+    fontSize: 16,
+    fontFamily: "Poppins-Regular",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#000000",
+  },
+  modalButton: {
+    backgroundColor: "#E3000F",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+  },
+  modalButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",

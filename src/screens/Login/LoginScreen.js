@@ -43,11 +43,12 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async (values) => {
-    console.log("Attempting login with email:", values.email);
-    setLoginEmail(values.email);
+    const lowerCaseEmail = values.email.toLowerCase();
+    console.log("Attempting login with email:", lowerCaseEmail);
+    setLoginEmail(lowerCaseEmail);
     navigation.navigate("LoginPin");
   };
-  
+
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();

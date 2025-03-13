@@ -18,43 +18,34 @@ import { useAuthContext } from "../../context/AuthContext";
 import { handleLogin } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
-/**
- * LoginPinScreen Component
- *
- * This screen allows users to enter their 6-digit security PIN.
- * It handles input focus management, toggling of PIN visibility,
- * form submission (calling the login API), and navigation to the Tab screen.
- *
- * Console logs have been added to help trace user interactions and debugging.
- */
 const LoginPinScreen = ({ navigation }) => {
   const { loginEmail } = useAuthContext();
-  const inputRefs = useRef([]);
+  // Create refs for each of the 6 PIN input boxes
+  const inputRefs = useRef([...Array(6)].map(() => React.createRef()));
   const [isPinVisible, setIsPinVisible] = useState(false);
 
-  // Dismiss the keyboard when the user taps outside the input fields.
   const dismissKeyboard = () => {
     Keyboard.dismiss();
     console.log("Keyboard dismissed");
   };
 
-  // Toggle the visibility of the PIN (for secure text entry).
   const togglePinVisibility = () => {
     setIsPinVisible(!isPinVisible);
     console.log("PIN visibility toggled. Now visible:", !isPinVisible);
   };
 
-  // Validation schema to ensure the PIN is exactly 6 digits.
+  // Validation expects a 6-digit PIN
   const validationSchema = Yup.object().shape({
     pin: Yup.string()
       .required("PIN is required")
       .matches(/^\d{6}$/, "PIN must be exactly 6 digits"),
   });
 
-  // Handle the PIN submission and call the login API.
-  const handleSubmit2 = async (values) => {
-    console.log("Submitting PIN for login:", values.pin);
-    const temp = { email: loginEmail, password: values.pin };
+  // When the form is submitted, remove any underscores and call the login API.
+  const handleSubmitPin = async (values, { setFieldValue, setFieldTouched, handleBlur }) => {
+    const finalPin = values.pin.replace(/_/g, "");
+    console.log("Submitting PIN for login:", finalPin);
+    const temp = { email: loginEmail, password: finalPin };
     const res = await handleLogin(temp);
     if (res.isOk) {
       console.log("Login successful:", res);
@@ -90,7 +81,7 @@ const LoginPinScreen = ({ navigation }) => {
       <KeyboardAvoidingView style={styles.container}>
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.inner}>
-            {/* Top Section: Back button, Logo, and Header Card */}
+            {/* Top Section */}
             <View style={styles.topSection}>
               <TouchableOpacity
                 style={styles.backButton}
@@ -107,9 +98,7 @@ const LoginPinScreen = ({ navigation }) => {
                 resizeMode="contain"
               />
               <View style={styles.headerCard}>
-                <Text style={styles.headerCardTitle}>
-                  Log in to your account
-                </Text>
+                <Text style={styles.headerCardTitle}>Log in to your account</Text>
                 <Text style={styles.headerCardSubtitle}>
                   Enter your PIN to proceed
                 </Text>
@@ -119,9 +108,9 @@ const LoginPinScreen = ({ navigation }) => {
             {/* White Container: Formik form for PIN input */}
             <View style={styles.whiteContainer}>
               <Formik
-                initialValues={{ pin: "" }}
+                initialValues={{ pin: "______" }}
                 validationSchema={validationSchema}
-                onSubmit={handleSubmit2}
+                onSubmit={handleSubmitPin}
               >
                 {({
                   handleChange,
@@ -130,6 +119,7 @@ const LoginPinScreen = ({ navigation }) => {
                   values,
                   errors,
                   touched,
+                  setFieldValue,
                   setFieldTouched,
                 }) => (
                   <>
@@ -141,43 +131,29 @@ const LoginPinScreen = ({ navigation }) => {
                       <View style={styles.pinContainer}>
                         {[...Array(6)].map((_, index) => (
                           <TextInput
-                            key={index}
+                            key={`pin-${index}`}
                             ref={(ref) => (inputRefs.current[index] = ref)}
-                            style={[
-                              styles.pinInput,
-                              values.pin[index] && styles.pinInputFilled,
-                            ]}
+                            style={styles.pinInput}
                             keyboardType="phone-pad"
                             maxLength={1}
-                            value={values.pin[index]}
-                            onChangeText={(value) => {
-                              const newPin =
-                                values.pin.substring(0, index) +
-                                value +
-                                values.pin.substring(index + 1);
-                              handleChange("pin")(newPin);
-                              console.log(
-                                `Updated PIN at index ${index}:`,
-                                newPin
-                              );
-                              if (value && index < 5) {
+                            value={
+                              values.pin[index] === "_" ? "" : values.pin[index]
+                            }
+                            onChangeText={(digit) => {
+                              let newPin = values.pin.split("");
+                              newPin[index] = digit || "_";
+                              const joined = newPin.join("");
+                              setFieldValue("pin", joined);
+                              if (digit && index < 5) {
                                 inputRefs.current[index + 1].focus();
                               }
                             }}
                             onKeyPress={(e) => {
                               if (
                                 e.nativeEvent.key === "Backspace" &&
+                                values.pin[index] === "_" &&
                                 index > 0
                               ) {
-                                const newPin =
-                                  values.pin.substring(0, index) +
-                                  " " +
-                                  values.pin.substring(index + 1);
-                                handleChange("pin")(newPin);
-                                console.log(
-                                  `Backspace pressed at index ${index}. New PIN:`,
-                                  newPin
-                                );
                                 inputRefs.current[index - 1].focus();
                               }
                             }}
@@ -187,7 +163,6 @@ const LoginPinScreen = ({ navigation }) => {
                               console.log(`Input at index ${index} blurred`);
                             }}
                             secureTextEntry={!isPinVisible}
-                            // Removed the placeholder property as requested.
                           />
                         ))}
                       </View>
@@ -210,9 +185,7 @@ const LoginPinScreen = ({ navigation }) => {
                           style={styles.eyeIcon}
                         >
                           <Ionicons
-                            name={
-                              isPinVisible ? "eye-off-outline" : "eye-outline"
-                            }
+                            name={isPinVisible ? "eye-off-outline" : "eye-outline"}
                             size={20}
                             color="#666666"
                           />
@@ -226,7 +199,7 @@ const LoginPinScreen = ({ navigation }) => {
                       style={styles.loginButton}
                       onPress={() => {
                         setFieldTouched("pin", true);
-                        if (values.pin.length === 6) {
+                        if (values.pin.replace(/_/g, "").length === 6) {
                           console.log("PIN complete, submitting form");
                           handleSubmit();
                         } else {
@@ -335,23 +308,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
+  // Updated PIN input style (same as SignUpPage)
   pinInput: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
+    borderColor: "#ccc",
+    borderRadius: 10,
     textAlign: "center",
-    textAlignVertical: "center",
     fontSize: 18,
-    fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFFFFF",
-    includeFontPadding: false,
-    lineHeight: 28,
-  },
-  pinInputFilled: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#000000",
+    backgroundColor: "#f5f5f5",
   },
   forgotPinRow: {
     flexDirection: "row",
