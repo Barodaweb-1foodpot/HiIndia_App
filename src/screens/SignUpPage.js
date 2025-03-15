@@ -12,6 +12,7 @@ import {
   Platform,
   Animated,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
@@ -86,6 +87,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
 const SignUpPage = ({ navigation }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
   const [countries, setCountries] = useState([]);
+  const [isLoading, setIsLoading] = useState(false); // New loading state
   const scrollViewRef = useRef(null);
   // Create refs for each digit input in the two PIN fields
   const inputRefsSetPin = useRef([...Array(6)].map(() => React.createRef()));
@@ -168,7 +170,7 @@ const SignUpPage = ({ navigation }) => {
                   lastName: "",
                   phoneNumber: "",
                   email: "",
-                  setPin: "______", // 6-character placeholder (underscore) for 6-digit PIN
+                  setPin: "______", 
                   confirmPin: "______",
                 }}
                 validationSchema={validationSchema}
@@ -177,7 +179,7 @@ const SignUpPage = ({ navigation }) => {
                     firstName: values.firstName,
                     lastName: values.lastName,
                     emailId: values.email.toLowerCase(),
-                    password: values.setPin.replace(/_/g, ""), // remove underscores
+                    password: values.setPin.replace(/_/g, ""),
                     contactNumber: values.phoneNumber,
                     ParticipantCountryCode: selectedCountryCode,
                     isMailVerified: false,
@@ -202,9 +204,11 @@ const SignUpPage = ({ navigation }) => {
                         text2: response.message || "Please try again.",
                         position: "bottom",
                       });
+                      setIsLoading(false);
                     }
                   } catch (err) {
                     console.error(err);
+                    setIsLoading(false);
                   }
                 }}
               >
@@ -379,8 +383,13 @@ const SignUpPage = ({ navigation }) => {
                       <TouchableOpacity
                         style={styles.continueButton}
                         onPress={() => setModalVisible(true)}
+                        disabled={isLoading}
                       >
-                        <Text style={styles.continueButtonText}>Continue</Text>
+                        {isLoading ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.continueButtonText}>Continue</Text>
+                        )}
                       </TouchableOpacity>
                     </>
                   );
@@ -402,6 +411,7 @@ const SignUpPage = ({ navigation }) => {
                       style={styles.modalButton}
                       onPress={() => {
                         setModalVisible(false);
+                        setIsLoading(true);
                         // Trigger Formik submission via the stored ref
                         formSubmitRef.current && formSubmitRef.current();
                       }}

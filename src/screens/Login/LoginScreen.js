@@ -179,7 +179,7 @@ const LoginScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
 
-                      <View style={styles.dividerContainer}>
+                      {/* <View style={styles.dividerContainer}>
                         <View style={styles.divider} />
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
@@ -196,7 +196,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
 
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
