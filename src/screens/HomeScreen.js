@@ -442,14 +442,15 @@ export default function HomeScreen({ navigation }) {
 
                   return (
                     <View key={index} style={styles.eventCard}>
-                      {/* Badge: Paid or Free */}
-                      {event.IsPaid ? (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>Paid</Text>
-                        </View>
-                      ) : (
+                      {!event.IsPaid &&
+                      !event.hasExternalLink &&
+                      event.externalLink != "" ? (
                         <View style={[styles.badge, styles.freeBadge]}>
                           <Text style={styles.badgeText}>Free</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Paid</Text>
                         </View>
                       )}
 
@@ -500,8 +501,15 @@ export default function HomeScreen({ navigation }) {
                             </Text>
                           </View>
                           <View style={styles.eventDetail}>
-                            <Ionicons name="location-outline" size={14} color="#fff" />
-                            <Text style={styles.eventDetailText} numberOfLines={2}>
+                            <Ionicons
+                              name="location-outline"
+                              size={14}
+                              color="#fff"
+                            />
+                            <Text
+                              style={styles.eventDetailText}
+                              numberOfLines={2}
+                            >
                               {event.EventLocation}
                             </Text>
                           </View>
