@@ -1473,7 +1473,7 @@ const styles = StyleSheet.create({
   ticketTypeOption: {
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
-    paddingVertical: 16,
+    paddingVertical: 30,
     paddingHorizontal: 16,
   },
   ticketTypeContent: {
