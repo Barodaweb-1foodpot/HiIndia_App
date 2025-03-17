@@ -427,7 +427,7 @@ export default function HomeScreen({ navigation }) {
               <View key={groupIndex} style={{ marginBottom: 24 }}>
                 {/* Artist Name */}
                 <Text style={styles.artistName}>
-                  {group.artistName || "Unknown Artist"}
+                  {group.artistName || "Events"}
                 </Text>
 
                 {/* Map the events in group.data */}

@@ -772,7 +772,7 @@ export default function BuyTicketScreen({ route }) {
                   </Text>
                 </View>
               </View>
-
+              <View style={{ height: 40 }} />
               {/* Proceed to Payment Button */}
               <TouchableOpacity
                 style={[styles.proceedButton, { marginTop: 16 }]}
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 70,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   // Event Info (location + date/time)
@@ -1302,6 +1302,7 @@ const styles = StyleSheet.create({
   // Order Summary
   summarySection: {
     marginBottom: 2,
+    
   },
   summaryTitle: {
     fontSize: 22,
@@ -1392,6 +1393,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     justifyContent: "center",
     alignSelf: "center",
+    // marginTop: 150,
     
   },
   proceedButtonText: {
