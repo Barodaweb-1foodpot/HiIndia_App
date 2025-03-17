@@ -766,34 +766,26 @@ export default function BuyTicketScreen({ route }) {
 
                 {/* Grand Total */}
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalText}>Total Amount</Text>
+                  <Text style={styles.totalText}>Grand Total</Text>
                   <Text style={styles.totalPrice}>
                     {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
                   </Text>
                 </View>
               </View>
 
-              {/* 
-                NEW placement of the "Proceed to Payment" button and 
-                Grand Total section, now directly below the order summary
-              */}
-              <View style={styles.proceedContainer}>
-                <View style={styles.proceedTotalSection}>
-                  <Text style={styles.totalLabel}>Grand Total</Text>
-                  <Text style={styles.grandTotalText}>
-                    {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.proceedButton} onPress={handleProceed}>
-                  <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color="#FFF"
-                    style={{ marginLeft: 8 }}
-                  />
-                </TouchableOpacity>
-              </View>
+              {/* Proceed to Payment Button */}
+              <TouchableOpacity
+                style={[styles.proceedButton, { marginTop: 16 }]}
+                onPress={handleProceed}
+              >
+                <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color="#FFF"
+                  style={{ marginLeft: 8 }}
+                />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -1309,7 +1301,7 @@ const styles = StyleSheet.create({
   },
   // Order Summary
   summarySection: {
-    marginBottom: 32,
+    marginBottom: 2,
   },
   summaryTitle: {
     fontSize: 22,
@@ -1386,37 +1378,6 @@ const styles = StyleSheet.create({
     color: "#E3000F",
     letterSpacing: 0.3,
   },
-
-  // New container for "Proceed to Payment" below summary
-  proceedContainer: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#FFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-  },
-  proceedTotalSection: {
-    flex: 1,
-  },
-  totalLabel: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  grandTotalText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
-    marginTop: 2,
-  },
   proceedButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1424,12 +1385,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#E3000F",
     borderRadius: 24,
     paddingHorizontal: 24,
-    marginLeft: 20,
     shadowColor: "#E3000F",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+    justifyContent: "center",
+    alignSelf: "center",
+    
   },
   proceedButtonText: {
     fontSize: 15,
