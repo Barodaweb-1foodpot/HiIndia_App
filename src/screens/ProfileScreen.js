@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { API_BASE_URL_UPLOADS } from "@env";
 
 // Import the provided SkeletonLoader component
 import SkeletonLoader from "../components/SkeletonLoader";
+import { AuthContext } from "../context/AuthContext";
 
 // ---------------------------
 // ProfileImage Component
@@ -67,6 +68,7 @@ export default function ProfileScreen() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigation = useNavigation();
+  const {setUser, user} = useContext(AuthContext);
 
   // Load profile data from API and AsyncStorage
   const loadProfile = useCallback(async () => {
@@ -171,6 +173,10 @@ export default function ProfileScreen() {
     }
   }, [shareMessage]);
 
+  useEffect(() => {
+    console.log("[ProfileScreen] User:", user);
+  }, [user]);
+
   // Logout handler remains unchanged
   const handleLogout = useCallback(async () => {
     try {
@@ -179,6 +185,7 @@ export default function ProfileScreen() {
       await AsyncStorage.removeItem("role");
       await AsyncStorage.removeItem("Token");
       await AsyncStorage.removeItem("RefreshToken");
+      setUser(null);
       Toast.show({
         type: "info",
         text1: "Logged Out",

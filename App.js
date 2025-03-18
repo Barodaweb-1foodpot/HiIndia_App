@@ -8,25 +8,24 @@ import { STRIPE_PUBLISHABLE_KEY } from "@env";
 import { usePushNotifications } from "./src/helper/pushNotifications";
 
 const App = () => {
+  const { expoPushToken, fcmToken, notification } = usePushNotifications();
 
-  // 2) Call the hook so it runs when your app mounts
-  const { expoPushToken, notification } = usePushNotifications();
-
-  // 3) Log the token (or handle it in some other way)
   useEffect(() => {
     if (expoPushToken) {
-      console.log("Expo Push Token =>", expoPushToken);
-      // TODO: Optionally, send the token to your backend here
+      console.log("App.js: Expo Push Token =>", expoPushToken);
     }
-  }, [expoPushToken]);
+    if (fcmToken) {
+      console.log("App.js: FCM Token =>", fcmToken);
+    }
+  }, [expoPushToken, fcmToken]);
 
   return (
     <ContextProvider>
       <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-      <NavigationContainer>
-        <MainNavigator />
-        <Toast />
-      </NavigationContainer>
+        <NavigationContainer>
+          <MainNavigator />
+          <Toast />
+        </NavigationContainer>
       </StripeProvider>
     </ContextProvider>
   );

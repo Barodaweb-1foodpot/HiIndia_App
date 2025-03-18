@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as Yup from "yup";
-import { useAuthContext } from "../../context/AuthContext";
+import { AuthContext, useAuthContext } from "../../context/AuthContext";
 import { handleLogin } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
@@ -23,6 +23,8 @@ const LoginPinScreen = ({ navigation }) => {
   // Create refs for each of the 6 PIN input boxes
   const inputRefs = useRef([...Array(6)].map(() => React.createRef()));
   const [isPinVisible, setIsPinVisible] = useState(false);
+  const {setUser} = useContext(AuthContext);
+
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
@@ -47,6 +49,8 @@ const LoginPinScreen = ({ navigation }) => {
     console.log("Submitting PIN for login:", finalPin);
     const temp = { email: loginEmail, password: finalPin };
     const res = await handleLogin(temp);
+    console.log("Response from handleLogin:", res.data);
+    setUser(res.data);
     if (res.isOk) {
       console.log("Login successful:", res);
       Toast.show({
