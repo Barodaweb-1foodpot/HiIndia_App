@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,28 +12,21 @@ import {
   Platform,
   Modal,
   Animated,
+  Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { API_BASE_URL, API_BASE_URL_UPLOADS } from "@env";
-import { formatEventDateTime } from "../../helper/helper_Function"; 
+import { API_BASE_URL_UPLOADS } from "@env";
+import { formatEventDateTime } from "../../helper/helper_Function";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetchProfile } from "../../api/auth_api";
 
-const { width } = Dimensions.get("window");
-
-const calculateAgeFromDate = (dobDate) => {
-  if (!dobDate) return "";
-  const today = new Date();
-  let age = today.getFullYear() - dobDate.getFullYear();
-  const m = today.getMonth() - dobDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
-    age--;
-  }
-  return String(age);
-};
-
-// Skeleton Loader Component
+/**
+ * SkeletonLoader Component
+ * Displays a shimmering effect while an image is loading.
+ */
 const SkeletonLoader = ({ style }) => {
   const [animation] = useState(new Animated.Value(0));
 
@@ -76,7 +69,10 @@ const SkeletonLoader = ({ style }) => {
   );
 };
 
-// EventImage Component that uses SkeletonLoader
+/**
+ * EventImage Component
+ * Displays the event image with a skeleton loader until fully loaded.
+ */
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -86,241 +82,312 @@ const EventImage = ({ uri, style }) => {
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
         source={
-          uri && !error
-            ? { uri }
-            : require("../../../assets/placeholder.jpg")
+          uri && !error ? { uri } : require("../../../assets/placeholder.jpg")
         }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          setLoaded(true);
+          console.log("Image loaded:", uri);
+        }}
         onError={() => {
           setError(true);
           setLoaded(true);
+          console.error("Error loading image:", uri);
         }}
       />
     </View>
   );
 };
 
+/**
+ * BuyTicketScreen Component
+ * Handles ticket purchasing logic: registrations, ticket types, coupons, order summary, etc.
+ */
 export default function BuyTicketScreen({ route }) {
-  const { eventDetail } = route.params || {};
-  const [titleReadMore, setTitleReadMore] = useState(false);
-
   const navigation = useNavigation();
-  const [grandTotal, setGrandTotal] = useState(0);
+  const { eventDetail } = route.params || {};
 
-  const [sameTicketInfo, setsameTicketInfo] = useState(false);
-
+  // State for the number of registrations
   const [numRegistrationsInput, setNumRegistrationsInput] = useState("1");
   const [hasClickedNext, setHasClickedNext] = useState(false);
 
+  // Registrations array storing each participant's data
   const [registrations, setRegistrations] = useState([]);
 
-  const [showMore, setShowMore] = useState(false);
+  // State for copying details from the first registration to all others
+  const [sameTicketInfo, setsameTicketInfo] = useState(false);
 
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-  const [activeRegIndexDOB, setActiveRegIndexDOB] = useState(null);
+  // State for total cost calculations
+  const [grandTotal, setGrandTotal] = useState(0);
 
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [activeRegIndexTicket, setActiveRegIndexTicket] = useState(null);
+  // Downloading states for PDF or other resources (not used here, but kept for reference)
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const [showCouponsModal, setShowCouponsModal] = useState(false);
+  // State for coupon application
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
+  // Validation state
   const [showValidation, setShowValidation] = useState(false);
 
+  // Modals
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [activeRegIndexTicket, setActiveRegIndexTicket] = useState(null);
+  const [showCouponsModal, setShowCouponsModal] = useState(false);
+  const [titleReadMore, setTitleReadMore] = useState(false);
+
+  // State to hold the logged-in user's full name
+  const [loggedInUserName, setLoggedInUserName] = useState("");
+
+  /**
+   * Fetch the user's profile on mount to get their name for the first registration
+   */
+  useEffect(() => {
+    const getProfile = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("role");
+        if (userId) {
+          const res = await fetchProfile(userId);
+          if (res && res.firstName && res.lastName) {
+            setLoggedInUserName(`${res.firstName} ${res.lastName}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    getProfile();
+  }, []);
+
+  /**
+   * Whenever registrations change, recalculate the total
+   */
   useEffect(() => {
     calculateGrandTotal();
   }, [registrations]);
 
+  /**
+   * Step 1: user enters the number of registrations
+   */
   const handleNext = () => {
     const count = parseInt(numRegistrationsInput, 10);
     if (!count || count < 1 || count > 10) {
       alert("Please enter a valid number (1–10).");
       return;
     }
-
-    const newRegs = Array.from({ length: count }, () => ({
-      name: "",
-      dateOfBirth: null,
-      dobString: "",
+    console.log("User clicked next with registration count:", count);
+    // Initialize the registrations array
+    const newRegs = Array.from({ length: count }, (_, index) => ({
+      name: index === 0 ? loggedInUserName : "",
       age: "",
       TicketType: "",
       registrationCharge: 0,
-      copyDetails: false,
     }));
     setRegistrations(newRegs);
     setHasClickedNext(true);
+    Keyboard.dismiss();
   };
 
+  /**
+   * Add another registration
+   * If sameTicketInfo is enabled, copy details from the first registration
+   */
   const handleAddRegistration = () => {
-    const lastReg = registrations[registrations.length - 1];
-    if (sameTicketInfo === true) {
-      let newReg = {
-        ...newReg,
-        name: registrations[0]?.name,
-        dateOfBirth: registrations[0]?.dateOfBirth,
-        dobString: registrations[0]?.dobString,
-        age: registrations[0]?.age,
-        TicketType: registrations[0]?.TicketType,
-        registrationCharge: Number(registrations[0].registrationCharge) || 0,
+    if (registrations.length >= 10) {
+      return;
+    }
+    if (sameTicketInfo && registrations[0]) {
+      const firstReg = registrations[0];
+      const newReg = {
+        ...firstReg,
       };
       setRegistrations((prev) => [...prev, newReg]);
     } else {
       let newReg = {
         name: "",
-        dateOfBirth: null,
-        dobString: "",
         age: "",
         TicketType: "",
         registrationCharge: 0,
       };
       setRegistrations((prev) => [...prev, newReg]);
     }
+    console.log("Added another registration. Total:", registrations.length + 1);
   };
 
+  /**
+   * Cancel a registration at a given index
+   */
   const handleCancelRegistration = (index) => {
+    console.log("Removing registration at index:", index);
     const newRegs = [...registrations];
     newRegs.splice(index, 1);
     setRegistrations(newRegs);
+
+    // If a coupon was applied, check if we still meet min participant requirements
     if (appliedCoupon && newRegs.length < appliedCoupon.minParticipant) {
+      console.log(
+        "Removing coupon due to participant count dropping below requirement"
+      );
       setAppliedCoupon(null);
       calculateGrandTotal(true);
     }
   };
 
-  const showDatePicker = (regIndex) => {
-    setActiveRegIndexDOB(regIndex);
-    setDatePickerVisible(true);
-  };
-  const hideDatePicker = () => {
-    setDatePickerVisible(false);
-    setActiveRegIndexDOB(null);
-  };
-  const handleConfirmDOB = (date) => {
-    const newRegs = [...registrations];
-    newRegs[activeRegIndexDOB].dateOfBirth = date;
+  /**
+   * When sameTicketInfo toggles, copy the first registration details to all others
+   */
+  useEffect(() => {
+    if (sameTicketInfo && registrations.length > 1) {
+      const firstReg = registrations[0];
+      setRegistrations((prev) =>
+        prev.map((reg, idx) => (idx === 0 ? reg : { ...firstReg }))
+      );
+      calculateGrandTotal();
+    }
+  }, [sameTicketInfo]);
 
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    newRegs[activeRegIndexDOB].dobString = `${dd}/${mm}/${yyyy}`;
-
-    newRegs[activeRegIndexDOB].age = calculateAgeFromDate(date);
-    setRegistrations(newRegs);
-    hideDatePicker();
+  /**
+   * Calculate total cost
+   * If a coupon is applied, apply the discount
+   */
+  const calculateGrandTotal = (removeCoupon = false) => {
+    const rawTotal = registrations.reduce(
+      (acc, reg) => acc + (reg.registrationCharge || 0),
+      0
+    );
+    let newTotal = rawTotal;
+    if (!removeCoupon && appliedCoupon) {
+      handleApplyCoupon(appliedCoupon, rawTotal);
+    } else {
+      setGrandTotal(newTotal);
+    }
   };
 
+  /**
+   * Handle coupon application
+   */
+  const handleApplyCoupon = (coupon, rawTotal) => {
+    if (!coupon) return;
+    const discount = Math.min(
+      (rawTotal * coupon.dicountPercentage) / 100,
+      coupon.maxDiscountAmount
+    );
+    const discountedTotal = rawTotal - discount;
+    setAppliedCoupon(coupon);
+    setGrandTotal(discountedTotal);
+    setShowCouponsModal(false);
+  };
+
+  /**
+   * Remove the applied coupon
+   */
+  const handleRemoveCoupon = () => {
+    console.log("Removing coupon:", appliedCoupon?.couponCode);
+    setAppliedCoupon(null);
+    calculateGrandTotal(true);
+  };
+
+  /**
+   * Opens the ticket type modal for a specific registration index
+   */
+  const handleOpenTicketModal = (index) => {
+    console.log("Opening ticket modal for registration index:", index);
+    setActiveRegIndexTicket(index);
+    setShowTicketModal(true);
+  };
+
+  /**
+   * Select a ticket type for the active registration
+   */
   const handleTicketTypeSelect = (type) => {
+    console.log("Selected ticket type:", type.TicketTypeDetail?.TicketType);
     const newRegs = [...registrations];
-    registrations[activeRegIndexTicket].TicketType = type.TicketTypeDetail;
-    registrations[activeRegIndexTicket].registrationCharge =
-      type.ratesForParticipant;
-
+    newRegs[activeRegIndexTicket].TicketType = type.TicketTypeDetail;
+    newRegs[activeRegIndexTicket].registrationCharge = type.ratesForParticipant;
     setRegistrations(newRegs);
     setShowTicketModal(false);
     setActiveRegIndexTicket(null);
   };
 
-  useEffect(() => {
-    toggleCopyDetails();
-  }, [sameTicketInfo]);
-
-  const toggleCopyDetails = (index) => {
-    if (sameTicketInfo === true) {
-      setRegistrations((prevParticipants) => {
-        const firstParticipantName = prevParticipants[0]?.name;
-        const firstParticipantTicketType = prevParticipants[0]?.TicketType;
-        const firstAge = prevParticipants[0]?.age;
-
-        return prevParticipants.map((registrations, index) => {
-          if (index === 0) return registrations; // Keep the first participant unchanged
-          return {
-            ...registrations,
-            age: firstAge,
-            dobString: prevParticipants[0]?.dobString,
-            dateOfBirth: prevParticipants[0]?.dateOfBirth,
-            registrationCharge:
-              Number(prevParticipants[0].registrationCharge) || 0,
-            TicketType: firstParticipantTicketType,
-            name: firstParticipantName,
-          };
-        });
-      });
-      calculateGrandTotal();
-    }
-  };
-
-  const handleApplyCoupon = async (coupon, grandTotal) => {
-    const discount = Math.min(
-      (grandTotal * coupon.dicountPercentage) / 100,
-      coupon.maxDiscountAmount
-    );
-    const newTotal = grandTotal - discount;
-    setAppliedCoupon(coupon);
-    setGrandTotal(newTotal);
-    setShowCouponsModal(false);
-  };
-
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    calculateGrandTotal(true);
-  };
-
-  let finalTotal = 0;
-  const calculateGrandTotal = (code) => {
-    const rawTotal = registrations.reduce(
-      (acc, reg) => acc + reg.registrationCharge,
-      0
-    );
-    finalTotal = rawTotal;
-    setGrandTotal(finalTotal);
-    if (!code || code === undefined) {
-      handleApplyCoupon(appliedCoupon, finalTotal);
-    }
-  };
-
+  /**
+   * Final check and proceed to PaymentScreen
+   */
   const handleProceed = () => {
     let hasError = false;
     registrations.forEach((reg) => {
-      if (!reg.name.trim() || !reg.dobString.trim()) {
+      if (!reg.name.trim() || !reg.age.toString().trim()) {
+        hasError = true;
+      }
+      if (eventDetail.IsPaid && !reg.TicketType) {
         hasError = true;
       }
     });
-
     if (hasError) {
+      console.log("Validation error. Missing fields in registrations.");
       setShowValidation(true);
       return;
     }
-
-    const serializedRegistrations = registrations.map((reg) => ({
-      ...reg,
-      dateOfBirth: reg.dateOfBirth ? reg.dateOfBirth.toISOString() : null,
-    }));
-
+    console.log(
+      "Proceeding to PaymentScreen with registrations:",
+      registrations
+    );
     navigation.navigate("PaymentScreen", {
-      registrations: serializedRegistrations,
+      registrations,
       grandTotal,
       eventDetail,
       appliedCoupon,
     });
   };
 
+  // Subtotal for order summary
+  const subtotal = registrations.reduce(
+    (acc, reg) => acc + (reg.registrationCharge || 0),
+    0
+  );
+  // If coupon is applied, how much discount?
+  const couponDiscount = appliedCoupon ? subtotal - grandTotal : 0;
+
+  const toggleTitleReadMore = useCallback(() => {
+    console.log("Toggling title read more state");
+    setTitleReadMore((prev) => !prev);
+  }, []);
+
   return (
     <View style={styles.rootContainer}>
       <StatusBar style="auto" />
 
-      {/* TOP SECTION */}
+      {/* 
+        Top Section with Event Image 
+        Using the same styling for back and share button as in EventsDetail
+      */}
       <View style={styles.topSection}>
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log("Navigating back");
+            navigation.goBack();
+          }}
         >
           <Ionicons name="chevron-back" size={20} color="#FFF" />
         </TouchableOpacity>
 
-        {/* Main Image with Skeleton Loader */}
+        {/* Share Button */}
+        <TouchableOpacity
+          style={styles.shareTopButton}
+          onPress={() => {
+            console.log(
+              "Sharing event from BuyTicketScreen:",
+              eventDetail?.EventName
+            );
+            // Add your share logic if needed
+          }}
+        >
+          <Ionicons name="share-social-outline" size={20} color="#FFF" />
+        </TouchableOpacity>
+
+        {/* Event Image with Skeleton Loader */}
         <EventImage
           uri={
             eventDetail?.EventImage
@@ -330,76 +397,67 @@ export default function BuyTicketScreen({ route }) {
           style={styles.topImage}
         />
 
-        {/* Bridging Card */}
+        {/* Floating Card with ONLY Event Name */}
         <View style={styles.headerCard}>
-          <Text
-            style={styles.headerCardTitle}
-            numberOfLines={titleReadMore ? undefined : 2}
-          >
-            Register for {eventDetail?.EventName || "Event Name Unavailable"}
-          </Text>
-
-          {eventDetail?.EventName?.length > 50 && (
-            <TouchableOpacity onPress={() => setTitleReadMore(!titleReadMore)}>
-              <Text style={styles.readMoreText}>
-                {titleReadMore ? "Read Less" : "Read More"}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="location-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {eventDetail?.EventLocation || "Location Unavailable"}
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
+              {eventDetail?.EventName || "Event Name Unavailable"}
             </Text>
-          </View>
-
-          {/* Single call to formatEventDateTime for date/time */}
-          <View style={styles.headerCardRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color="#666666"
-              style={styles.headerCardIcon}
-            />
-            <Text style={styles.headerCardSubtitle}>
-              {formatEventDateTime(
-                eventDetail?.StartDate,
-                eventDetail?.EndDate
-              ) || "Date/Time not available"}
-            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
 
-      {/* WHITE SECTION */}
+      {/* White Container */}
       <View style={styles.whiteContainer}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.shortText}>
-            {showMore
-              ? eventDetail?.EventDescreption?.replace(/<[^>]+>/g, "") ||
-                "No description available"
-              : eventDetail?.ShortDescreption ||
-                "No short description available"}
-            <Text
-              style={styles.readMore}
-              onPress={() => setShowMore(!showMore)}
-            >
-              {showMore ? "Read less" : "Read more"}
-            </Text>
-          </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* 
+            Event Location and Date/Time 
+            Moved from the top to the white container
+          */}
+          <View style={styles.eventInfoContainer}>
+            {/* Location Row */}
+            <View style={styles.eventInfoRow}>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color="#666666"
+                style={styles.eventInfoIcon}
+              />
+              <Text style={styles.eventInfoText}>
+                {eventDetail?.EventLocation || "Location Unavailable"}
+              </Text>
+            </View>
+            {/* Date/Time Row */}
+            <View style={styles.eventInfoRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color="#666666"
+                style={styles.eventInfoIcon}
+              />
+              <Text style={styles.eventInfoText}>
+                {formatEventDateTime(
+                  eventDetail?.StartDate,
+                  eventDetail?.EndDate
+                ) || "Date/Time not available"}
+              </Text>
+            </View>
+          </View>
 
-          {/* Number of Registrations */}
+          {/* Step 1: Number of Registrations */}
           {!hasClickedNext && (
             <View style={styles.registrationNumberSection}>
-              <Text style={styles.sectionLabel}>Number of Registration</Text>
+              <Text style={styles.sectionLabel}>Number of Registrations</Text>
               <View style={styles.numberRegContainer}>
                 <TextInput
                   style={styles.numberRegInput}
@@ -428,10 +486,11 @@ export default function BuyTicketScreen({ route }) {
 
           {/* Registration Cards */}
           {hasClickedNext &&
-            registrations?.map((reg, index) => {
+            registrations.map((reg, index) => {
               const nameInvalid = showValidation && !reg.name.trim();
-              const dobInvalid = showValidation && !reg.dobString.trim();
-              const ticketTypeInvalid = showValidation && !reg.TicketType;
+              const ageInvalid = showValidation && !reg.age.toString().trim();
+              const ticketTypeInvalid =
+                showValidation && eventDetail.IsPaid && !reg.TicketType;
 
               return (
                 <View key={index} style={styles.registrationCard}>
@@ -439,12 +498,11 @@ export default function BuyTicketScreen({ route }) {
                     <Text style={styles.registrationTitle}>
                       Registration #{index + 1}
                     </Text>
+                    {/* Cancel button for additional registrations */}
                     {registrations.length > 1 && (
                       <TouchableOpacity
                         style={styles.cancelButton}
-                        onPress={() => {
-                          handleCancelRegistration(index);
-                        }}
+                        onPress={() => handleCancelRegistration(index)}
                       >
                         <Ionicons
                           name="close-circle"
@@ -455,12 +513,13 @@ export default function BuyTicketScreen({ route }) {
                     )}
                   </View>
 
-                  {/* NAME Input */}
+                  {/* Name Input */}
                   <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Full Name</Text>
                     <View
                       style={[
                         styles.boxInputContainer,
-                        nameInvalid && { borderColor: "red" },
+                        nameInvalid && styles.inputError,
                       ]}
                     >
                       <Ionicons name="person-outline" size={20} color="#666" />
@@ -469,13 +528,13 @@ export default function BuyTicketScreen({ route }) {
                         placeholder="Enter your full name"
                         placeholderTextColor="#999"
                         value={reg.name}
-                        onChangeText={(val) => {
-                          setRegistrations((prevRegistrations) =>
-                            prevRegistrations.map((item, i) =>
+                        onChangeText={(val) =>
+                          setRegistrations((prev) =>
+                            prev.map((item, i) =>
                               i === index ? { ...item, name: val } : item
                             )
-                          );
-                        }}
+                          )
+                        }
                       />
                     </View>
                     {nameInvalid && (
@@ -485,39 +544,15 @@ export default function BuyTicketScreen({ route }) {
                     )}
                   </View>
 
-                  {/* DOB Input */}
+                  {/* Age Input */}
                   <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Age</Text>
                     <View
                       style={[
                         styles.boxInputContainer,
-                        dobInvalid && { borderColor: "red" },
+                        ageInvalid && styles.inputError,
                       ]}
                     >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={20}
-                        color="#666"
-                      />
-                      <Text
-                        style={[
-                          styles.boxInput,
-                          !reg.dobString && styles.placeholderText,
-                        ]}
-                        onPress={() => showDatePicker(index)}
-                      >
-                        {reg.dobString || "Select your date of birth"}
-                      </Text>
-                    </View>
-                    {dobInvalid && (
-                      <Text style={styles.errorText}>
-                        Please select your date of birth
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Age (read-only) */}
-                  <View style={styles.inputGroup}>
-                    <View style={styles.boxInputContainer}>
                       <Ionicons
                         name="hourglass-outline"
                         size={20}
@@ -525,70 +560,79 @@ export default function BuyTicketScreen({ route }) {
                       />
                       <TextInput
                         style={styles.boxInput}
-                        placeholder="Age"
+                        placeholder="Enter your age"
                         placeholderTextColor="#999"
                         value={reg.age}
-                        editable={false}
+                        onChangeText={(val) =>
+                          setRegistrations((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, age: val } : item
+                            )
+                          )
+                        }
+                        keyboardType="number-pad"
                       />
                     </View>
+                    {ageInvalid && (
+                      <Text style={styles.errorText}>
+                        Please enter your age
+                      </Text>
+                    )}
                   </View>
 
-                  {/* Ticket Selection */}
+                  {/* Ticket Selection if Event is Paid */}
                   {eventDetail.IsPaid && (
-                    <View style={styles.ticketSection}>
-                      <Text style={styles.sectionLabel}>
-                        Select Ticket Type
-                      </Text>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>Select Ticket Type</Text>
                       <TouchableOpacity
                         style={[
-                          styles.ticketSelector,
-                          ticketTypeInvalid && { borderColor: "red" },
+                          styles.dropdownContainer,
+                          ticketTypeInvalid && styles.inputError,
                         ]}
-                        onPress={() => {
-                          setActiveRegIndexTicket(index);
-                          setShowTicketModal(true);
-                        }}
+                        onPress={() => handleOpenTicketModal(index)}
                       >
-                        <TouchableOpacity
-                          style={styles.ticketOption}
-                          onPress={() => {
-                            setActiveRegIndexTicket(index);
-                            setShowTicketModal(true);
-                          }}
-                        >
-                          <Text style={styles.ticketLabel}>
-                            {reg?.TicketType?.TicketType
-                              ? `${reg.TicketType.TicketType} - `
-                              : "Select Ticket"}
-                          </Text>
-
-                          {reg?.TicketType?.TicketType ? (
-                            <Text style={styles.ticketPrice}>
-                              {eventDetail.countryDetail[0]?.Currency}{" "}
-                              {reg.registrationCharge ||
-                                eventDetail.eventRates[0].ratesForParticipant}
+                        <View style={styles.ticketOption}>
+                          <View style={styles.ticketIconContainer}>
+                            <Ionicons
+                              name="ticket-outline"
+                              size={20}
+                              color="#E3000F"
+                            />
+                          </View>
+                          <View style={styles.ticketContent}>
+                            <Text
+                              style={[
+                                styles.ticketLabel,
+                                !reg.TicketType && styles.placeholderText,
+                              ]}
+                            >
+                              {reg.TicketType
+                                ? reg.TicketType.TicketType
+                                : "Select a ticket type"}
                             </Text>
-                          ) : null}
-                        </TouchableOpacity>
-
-                        <Ionicons name="chevron-down" size={24} color="#666" />
+                            {reg.TicketType && (
+                              <Text style={styles.ticketPrice}>
+                                {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                                {reg.registrationCharge}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        <Ionicons name="chevron-down" size={22} color="#666" />
                       </TouchableOpacity>
-
                       {ticketTypeInvalid && (
                         <Text style={styles.errorText}>
-                          Please enter your Ticket
+                          Please select a ticket type
                         </Text>
                       )}
                     </View>
                   )}
 
-                  {/* Copy Details Option */}
+                  {/* Option to Copy Details for Other Registrations */}
                   {index === 0 && registrations.length > 1 && (
                     <TouchableOpacity
                       style={styles.copyDetailsButton}
-                      onPress={() => {
-                        setsameTicketInfo(!sameTicketInfo);
-                      }}
+                      onPress={() => setsameTicketInfo(!sameTicketInfo)}
                     >
                       <View
                         style={[
@@ -609,8 +653,8 @@ export default function BuyTicketScreen({ route }) {
               );
             })}
 
-          {/* Add Registration Button */}
-          {hasClickedNext && (
+          {/* Add Another Registration Button (if < 10) */}
+          {hasClickedNext && registrations.length < 10 && (
             <TouchableOpacity
               style={styles.addRegistrationButton}
               onPress={handleAddRegistration}
@@ -622,18 +666,24 @@ export default function BuyTicketScreen({ route }) {
             </TouchableOpacity>
           )}
 
-          {eventDetail.couponCode?.length > 0 && hasClickedNext && (
+          {/* Coupons Section */}
+          {eventDetail?.couponCode?.length > 0 && hasClickedNext && (
             <View style={styles.couponsSection}>
+              <Text style={styles.sectionLabel}>Discount Coupon</Text>
               {appliedCoupon ? (
                 <View style={styles.appliedCouponContainer}>
                   <View style={styles.appliedCouponInfo}>
-                    <Ionicons name="pricetag" size={24} color="#28A745" />
+                    <View style={styles.couponIconContainer}>
+                      <Ionicons name="ticket" size={20} color="#FFFFFF" />
+                    </View>
                     <View style={styles.appliedCouponTexts}>
                       <Text style={styles.appliedCouponTitle}>
-                        Coupon Applied: {appliedCoupon.couponCode}
+                        {appliedCoupon.couponCode}
                       </Text>
                       <Text style={styles.appliedCouponDiscount}>
-                        {appliedCoupon.dicountPercentage}% off on total amount
+                        {appliedCoupon.dicountPercentage}% off (max{" "}
+                        {eventDetail.countryDetail[0]?.Currency}{" "}
+                        {appliedCoupon.maxDiscountAmount})
                       </Text>
                     </View>
                   </View>
@@ -641,7 +691,7 @@ export default function BuyTicketScreen({ route }) {
                     style={styles.removeCouponButton}
                     onPress={handleRemoveCoupon}
                   >
-                    <Ionicons name="close-circle" size={24} color="#E3000F" />
+                    <Ionicons name="close-circle" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -650,49 +700,118 @@ export default function BuyTicketScreen({ route }) {
                   onPress={() => setShowCouponsModal(true)}
                 >
                   <View style={styles.viewCouponsContent}>
-                    <Ionicons name="pricetags-outline" size={24} color="#666" />
+                    <View style={styles.couponIconContainer}>
+                      <Ionicons
+                        name="ticket-outline"
+                        size={18}
+                        color="#FFFFFF"
+                      />
+                    </View>
                     <Text style={styles.viewCouponsText}>
                       View Available Coupons
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={24} color="#666" />
+                  <View style={styles.arrowContainer}>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
           )}
 
-          <View style={{ height: 100 }} />
+          {/* Order Summary Section */}
+          {hasClickedNext && registrations.length > 0 && (
+            <View style={styles.summarySection}>
+              <Text style={styles.summaryTitle}>Order Summary</Text>
+              <View style={styles.summaryCard}>
+                {/* Show each ticket with its cost */}
+                {registrations.map((reg, index) => (
+                  <View key={index} style={styles.summaryItem}>
+                    <Text style={styles.summaryText}>
+                      Ticket #{index + 1}:{" "}
+                      {reg?.TicketType?.TicketType || "No ticket selected"}
+                    </Text>
+                    <Text style={styles.summaryPrice}>
+                      {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                      {reg.registrationCharge || 0}
+                    </Text>
+                  </View>
+                ))}
+
+                {/* Subtotal */}
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryText}>Subtotal</Text>
+                  <Text style={styles.summaryPrice}>
+                    {eventDetail?.countryDetail?.[0]?.Currency} {subtotal}
+                  </Text>
+                </View>
+
+                {/* Coupon Discount */}
+                {appliedCoupon && (
+                  <View style={styles.summaryDiscountContainer}>
+                    <Text style={styles.discountLabel}>
+                      Discount ({appliedCoupon.couponCode})
+                    </Text>
+                    <Text style={styles.discountAmount}>
+                      -
+                      {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                      {Math.abs(couponDiscount).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Grand Total */}
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalText}>Total Amount</Text>
+                  <Text style={styles.totalPrice}>
+                    {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 
+                NEW placement of the "Proceed to Payment" button and 
+                Grand Total section, now directly below the order summary
+              */}
+              <View style={styles.proceedContainer}>
+                <View style={styles.proceedTotalSection}>
+                  <Text style={styles.totalLabel}>Grand Total</Text>
+                  <Text style={styles.grandTotalText}>
+                    {eventDetail?.countryDetail?.[0]?.Currency} {grandTotal}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.proceedButton} onPress={handleProceed}>
+                  <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={20}
+                    color="#FFF"
+                    style={{ marginLeft: 8 }}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Bottom Bar */}
-        {hasClickedNext && (
-          <View style={styles.bottomBar}>
-            <View style={styles.totalSection}>
-              <Text style={styles.grandTotalText}>
-                Grand Total:{eventDetail.countryDetail[0]?.Currency}{" "}
-                {grandTotal}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.proceedButton}
-              onPress={handleProceed}
-            >
-              <Text style={styles.proceedButtonText}>Proceed</Text>
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color="#FFF"
-                style={{ marginLeft: 8 }}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Ticket Type Modal */}
+        {/* Ticket Modal */}
         <Modal visible={showTicketModal} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTicketModal(false)}
+          >
+            <View
+              style={styles.ticketModalContainer}
+              onStartShouldSetResponder={() => true}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Ticket Type</Text>
                 <TouchableOpacity
@@ -702,36 +821,40 @@ export default function BuyTicketScreen({ route }) {
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              {eventDetail.IsPaid &&
-                eventDetail.eventRates?.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[
-                      styles.ticketOption,
-                      idx === eventDetail.eventRates.length - 1 && {
-                        borderBottomWidth: 0,
-                      },
-                    ]}
-                    onPress={() => handleTicketTypeSelect(item)}
-                  >
-                    <View style={styles.ticketOptionContent}>
-                      <Text style={styles.ticketOptionType}>
-                        {item.TicketTypeDetail.TicketType}
-                      </Text>
-                      <Text style={styles.ticketOptionPrice}>
-                        {eventDetail.countryDetail[0]?.Currency}{" "}
-                        {item.ratesForParticipant}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
-                  </TouchableOpacity>
-                ))}
+              <ScrollView style={styles.ticketTypesList}>
+                {eventDetail?.IsPaid &&
+                  eventDetail?.eventRates?.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.ticketTypeOption}
+                      onPress={() => handleTicketTypeSelect(item)}
+                    >
+                      <View style={styles.ticketTypeContent}>
+                        <View style={styles.ticketDetailsContainer}>
+                          <Text style={styles.ticketTypeTitle}>
+                            {item.TicketTypeDetail.TicketType}
+                          </Text>
+                          <Text style={styles.ticketTypeDescription}>
+                            {item.TicketTypeDetail.Description ||
+                              "Standard admission ticket"}
+                          </Text>
+                        </View>
+                        <View style={styles.ticketPriceContainer}>
+                          <Text style={styles.ticketTypePrice}>
+                            {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                            {item.ratesForParticipant}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
 
         {/* Coupons Modal */}
-        <Modal visible={showCouponsModal} transparent animationType="slide">
+        <Modal visible={showCouponsModal} transparent animationType="fade">
           <View style={styles.couponModalOverlay}>
             <View style={styles.couponModalContainer}>
               <View style={styles.couponModalHeader}>
@@ -744,20 +867,18 @@ export default function BuyTicketScreen({ route }) {
                 </TouchableOpacity>
               </View>
               <ScrollView>
-                <ScrollView>
-                  {eventDetail?.couponCode?.map((coupon) => {
-                    const isCouponAvailable =
-                      coupon && registrations.length >= coupon?.minParticipant;
-
-                    return (
-                      <View key={coupon.couponCode} style={styles.couponCard}>
-                        <View style={styles.couponContent}>
-                          <View style={styles.couponHeader}>
-                            <Ionicons
-                              name="pricetag"
-                              size={24}
-                              color="#E3000F"
-                            />
+                {eventDetail?.couponCode?.map((coupon) => {
+                  // Check if coupon is valid based on participant count
+                  const isCouponAvailable =
+                    registrations.length >= coupon.minParticipant;
+                  return (
+                    <View key={coupon.couponCode} style={styles.couponCard}>
+                      <View style={styles.couponContent}>
+                        <View style={styles.couponHeader}>
+                          <View style={styles.couponBadge}>
+                            <Ionicons name="ticket" size={20} color="#FFF" />
+                          </View>
+                          <View style={styles.couponDetails}>
                             <Text style={styles.couponCode}>
                               {coupon.couponCode}
                             </Text>
@@ -767,48 +888,45 @@ export default function BuyTicketScreen({ route }) {
                               </Text>
                             </View>
                           </View>
-                          <View style={styles.couponDetails}>
-                            <Text style={styles.couponMinSpend}>
-                              Get Discount Upto:{" "}
-                              {eventDetail.countryDetail[0]?.Currency}{" "}
-                              {coupon.maxDiscountAmount}
-                            </Text>
-                          </View>
                         </View>
-                        {isCouponAvailable ? (
-                          <TouchableOpacity
-                            style={styles.couponApplyButton}
-                            onPress={() => {
-                              handleApplyCoupon(coupon, grandTotal);
-                            }}
-                          >
-                            <Text style={styles.couponApplyText}>Apply</Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <View style={styles.couponUnavailableOverlay}>
-                            <Text style={styles.couponUnavailableText}>
-                              Not Available
+                        <View style={styles.couponInfo}>
+                          <Text style={styles.couponDescription}>
+                            Get discount up to{" "}
+                            {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                            {coupon.maxDiscountAmount}
+                          </Text>
+                          {coupon.minParticipant > 1 && (
+                            <Text style={styles.couponRequirement}>
+                              Requires minimum {coupon.minParticipant}{" "}
+                              participants
                             </Text>
-                          </View>
-                        )}
+                          )}
+                        </View>
                       </View>
-                    );
-                  })}
-                </ScrollView>
+                      {isCouponAvailable ? (
+                        <TouchableOpacity
+                          style={styles.couponApplyButton}
+                          onPress={() => {
+                            console.log("Applying coupon:", coupon.couponCode);
+                            handleApplyCoupon(coupon, subtotal);
+                          }}
+                        >
+                          <Text style={styles.couponApplyText}>Apply</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.couponUnavailableOverlay}>
+                          <Text style={styles.couponUnavailableText}>
+                            Not Available
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
               </ScrollView>
             </View>
           </View>
         </Modal>
-
-        {/* Date Picker Modal */}
-        <DateTimePickerModal
-          isVisible={isDatePickerVisible}
-          mode="date"
-          onConfirm={handleConfirmDOB}
-          onCancel={hideDatePicker}
-          maximumDate={new Date()}
-          textColor="#000"
-        />
       </View>
     </View>
   );
@@ -819,11 +937,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  readMoreText: {
-    fontSize: 14,
-    fontFamily: "Poppins-Medium",
-    color: "#E3000F",
-  },
+  // Top Section with Event Image
   topSection: {
     position: "relative",
     paddingTop: Platform.OS === "ios" ? 40 : 0,
@@ -841,6 +955,21 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareTopButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 25,
+    right: 16,
+    zIndex: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#FFF",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -848,13 +977,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  // Floating Card
   headerCard: {
     position: "absolute",
-    bottom: 25,
+    bottom: 15,
     alignSelf: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     width: "85%",
     shadowColor: "#000",
@@ -862,74 +992,71 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 11,
+    zIndex: 1111,
   },
   headerCardTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 8,
+    fontFamily: "Poppins-Bold",
+    color: "#000000",
   },
-  headerCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
+  readMoreText: {
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    color: "#E3000F",
+    marginTop: 4,
   },
-  headerCardIcon: {
-    marginRight: 4,
-  },
-  headerCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
-  },
-
+  // White container
   whiteContainer: {
     flex: 1,
-    backgroundColor: "#FFF",
-    marginTop: -80,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: "#FFFFFF",
+    marginTop: -65,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 10,
   },
   scrollContent: {
-    paddingTop: 90,
     paddingHorizontal: 20,
+    paddingTop: 70,
+    paddingBottom: 40,
   },
-  shortText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#555",
+  // Event Info (location + date/time)
+  eventInfoContainer: {
     marginBottom: 24,
-    textAlign: "justify",
   },
-  readMore: {
-    color: "#E3000F",
-    fontWeight: "600",
+  eventInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
-
+  eventInfoIcon: {
+    marginRight: 6,
+  },
+  eventInfoText: {
+    fontSize: 14,
+    color: "#666666",
+  },
+  // Number of Registrations
   registrationNumberSection: {
     marginBottom: 24,
   },
   sectionLabel: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#222",
+    color: "#000000",
     marginBottom: 12,
   },
   numberRegContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
   },
   numberRegInput: {
     flex: 1,
-    height: 52,
-    backgroundColor: "#F8F9FA",
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#DDDDDD",
     borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 15,
-    color: "#222",
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
+    fontSize: 16,
   },
   generateButton: {
     flexDirection: "row",
@@ -946,11 +1073,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   generateButtonText: {
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFF",
   },
-
+  // Registration Card
   registrationCard: {
     backgroundColor: "#FFF",
     borderRadius: 16,
@@ -959,16 +1086,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E9ECEF",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 1,
+    elevation: Platform.OS === "android" ? 0 : 6,
   },
   registrationHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   registrationTitle: {
     fontSize: 18,
@@ -976,89 +1103,105 @@ const styles = StyleSheet.create({
     color: "#222",
   },
   cancelButton: {
-    padding: 2,
+    padding: 4,
   },
-
   inputGroup: {
     marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333333",
+    marginBottom: 8,
   },
   boxInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    height: 52,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
+    borderColor: "#DDDDDD",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 50,
+    backgroundColor: "#F8F9FA",
   },
   boxInput: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    color: "#222",
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#333333",
   },
-  placeholderText: {
-    color: "#999",
+  inputError: {
+    borderColor: "#E3000F",
   },
   errorText: {
+    color: "#E3000F",
+    fontSize: 12,
     marginTop: 4,
-    marginLeft: 4,
-    fontSize: 13,
-    color: "red",
   },
-
-  ticketSection: {
-    marginTop: 24,
-  },
-  ticketSelector: {
+  dropdownContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 60,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
+    borderColor: "#DDDDDD",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
   },
   ticketOption: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+  },
+  ticketIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(227, 0, 15, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  ticketContent: {
+    flex: 1,
   },
   ticketLabel: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#222",
+    fontWeight: "500",
+    color: "#333333",
+  },
+  placeholderText: {
+    color: "#999999",
   },
   ticketPrice: {
     fontSize: 14,
-    color: "#666",
+    color: "#666666",
+    marginTop: 2,
   },
-
   copyDetailsButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 10,
   },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 4,
     borderWidth: 2,
-    borderColor: "#E3000F",
+    borderColor: "#DDDDDD",
+    marginRight: 10,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxChecked: {
     backgroundColor: "#E3000F",
+    borderColor: "#E3000F",
   },
   copyDetailsText: {
-    marginLeft: 12,
     fontSize: 14,
-    color: "#444",
+    color: "#333333",
   },
-
   addRegistrationButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1071,24 +1214,69 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   addRegistrationButtonText: {
-    marginLeft: 8,
+    color: "#E3000F",
     fontSize: 15,
     fontWeight: "600",
-    color: "#E3000F",
+    marginLeft: 8,
   },
-
+  // Coupons Section
   couponsSection: {
     marginBottom: 24,
   },
-  appliedCouponContainer: {
+  viewCouponsButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 0,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#E3000F",
+    shadowColor: "#E3000F",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  viewCouponsContent: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  couponIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  viewCouponsText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  arrowContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  appliedCouponContainer: {
+    flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#F8F9FA",
+    alignItems: "center",
+    borderWidth: 0,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#28A745",
+    padding: 12,
+    backgroundColor: "#FF3B4E",
+    shadowColor: "rgba(227, 0, 15, 0.4)",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   appliedCouponInfo: {
     flexDirection: "row",
@@ -1100,59 +1288,134 @@ const styles = StyleSheet.create({
   },
   appliedCouponTitle: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#222",
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
   },
   appliedCouponDiscount: {
-    fontSize: 14,
-    color: "#28A745",
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
     marginTop: 2,
+    letterSpacing: 0.1,
   },
   removeCouponButton: {
-    padding: 2,
-  },
-  viewCouponsButton: {
-    flexDirection: "row",
+    padding: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: "center",
     alignItems: "center",
+  },
+  // Order Summary
+  summarySection: {
+    marginBottom: 32,
+  },
+  summaryTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#222222",
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  summaryCard: {
+    borderWidth: 0,
+    borderRadius: 20,
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: Platform.OS === "android" ? 1 : 6,
+  },
+  summaryItem: {
+    flexDirection: "row",
     justifyContent: "space-between",
-    height: 56,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
+    marginBottom: 16,
   },
-  viewCouponsContent: {
+  summaryText: {
+    fontSize: 15,
+    color: "#555555",
+    letterSpacing: 0.1,
+  },
+  summaryPrice: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333333",
+  },
+  summaryDiscountContainer: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(40, 167, 69, 0.08)",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#28A745",
+  },
+  discountLabel: {
+    fontSize: 15,
+    color: "#28A745",
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  discountAmount: {
+    fontSize: 15,
+    color: "#28A745",
+    fontWeight: "700",
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
     alignItems: "center",
   },
-  viewCouponsText: {
-    marginLeft: 12,
-    fontSize: 15,
-    color: "#444",
+  totalText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#222222",
+    letterSpacing: 0.2,
+  },
+  totalPrice: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#E3000F",
+    letterSpacing: 0.3,
   },
 
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  // New container for "Proceed to Payment" below summary
+  proceedContainer: {
+    marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: "#FFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E9ECEF",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
   },
-  totalSection: {
+  proceedTotalSection: {
     flex: 1,
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: "#666666",
   },
   grandTotalText: {
     fontSize: 16,
     fontWeight: "700",
     color: "#222",
+    marginTop: 2,
   },
   proceedButton: {
     flexDirection: "row",
@@ -1174,153 +1437,182 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
 
+  // Modal Overlays
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "flex-end",
   },
-  modalContainer: {
-    width: "90%",
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 20,
+  ticketModalContainer: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 16,
+    maxHeight: "70%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#222",
+    fontWeight: "600",
+    color: "#000000",
   },
   modalCloseButton: {
     padding: 4,
   },
-  ticketOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
+  ticketTypesList: {
+    maxHeight: 300,
+  },
+  ticketTypeOption: {
     borderBottomWidth: 1,
-    borderBottomColor: "#E9ECEF",
+    borderBottomColor: "#EEEEEE",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
-  ticketOptionContent: {
+  ticketTypeContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  ticketDetailsContainer: {
     flex: 1,
+    marginRight: 12,
   },
-  ticketOptionType: {
-    fontSize: 15,
+  ticketTypeTitle: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#222",
+    color: "#000000",
     marginBottom: 4,
   },
-  ticketOptionPrice: {
+  ticketTypeDescription: {
     fontSize: 14,
-    color: "#666",
+    color: "#666666",
   },
-
+  ticketPriceContainer: {
+    alignItems: "flex-end",
+  },
+  ticketTypePrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#E3000F",
+  },
+  // Coupon Modal
   couponModalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
   couponModalContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: "80%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingTop: 16,
+    maxHeight: "70%",
   },
   couponModalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
   },
   couponModalTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#222",
+    fontWeight: "600",
+    color: "#000000",
   },
   couponCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FAFAFA",
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
+    backgroundColor: "#FFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   couponContent: {
-    flex: 1,
+    marginBottom: 8,
   },
   couponHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  couponBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E3000F",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  couponDetails: {
+    flex: 1,
   },
   couponCode: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#222",
-    marginLeft: 12,
+    fontWeight: "700",
+    color: "#000000",
+    marginBottom: 4,
   },
   discountBadge: {
-    backgroundColor: "#FFE5E7",
-    borderRadius: 15,
-    paddingHorizontal: 3,
-    paddingVertical: 4,
-    marginLeft: 8,
+    backgroundColor: "rgba(227, 0, 15, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: "flex-start",
   },
   discountText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 14,
     color: "#E3000F",
   },
-  couponDetails: {
-    marginLeft: 36,
+  couponInfo: {
+    marginBottom: 8,
   },
-  couponMinSpend: {
+  couponDescription: {
     fontSize: 14,
-    color: "#666",
+    color: "#666666",
+    marginBottom: 4,
+  },
+  couponRequirement: {
+    fontSize: 13,
+    color: "#E3000F",
   },
   couponApplyButton: {
     backgroundColor: "#E3000F",
-    borderRadius: 8,
-    paddingHorizontal: 16,
     paddingVertical: 8,
-    marginLeft: 12,
+    borderRadius: 6,
+    alignItems: "center",
   },
   couponApplyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFF",
+    color: "#FFFFFF",
   },
   couponUnavailableOverlay: {
-    backgroundColor: "rgba(255, 0, 0, 0.1)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
     paddingVertical: 8,
+    borderRadius: 6,
     alignItems: "center",
-    justifyContent: "center",
   },
   couponUnavailableText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#E3000F",
-    textAlign: "center",
+    color: "#FFFFFF",
   },
 });

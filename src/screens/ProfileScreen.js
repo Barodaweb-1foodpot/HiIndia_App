@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Share,
   ScrollView,
   Linking,
-  StatusBar
+  StatusBar,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
@@ -20,12 +20,55 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProfile } from "../api/auth_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 
+// Import the provided SkeletonLoader component
+import SkeletonLoader from "../components/SkeletonLoader";
+
+// ---------------------------
+// ProfileImage Component
+// ---------------------------
+// Moved outside of ProfileScreen to prevent re-creation and wrapped in React.memo.
+const ProfileImage = React.memo(({ source, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  // Check if source is remote (has a uri)
+  const isRemote = source && source.uri;
+
+  // If the image is not remote, mark it as loaded immediately
+  useEffect(() => {
+    if (!isRemote) {
+      setLoaded(true);
+    }
+  }, [isRemote]);
+
+  return (
+    <View style={style}>
+      {isRemote && !loaded && (
+        <SkeletonLoader
+          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+        />
+      )}
+      <Image
+        source={source}
+        style={[style, { opacity: loaded ? 1 : 0 }]}
+        resizeMode="cover"
+        onLoad={() => {
+          console.log("[ProfileImage] Image loaded successfully");
+          setLoaded(true);
+        }}
+      />
+    </View>
+  );
+});
+
+// ---------------------------
+// ProfileScreen Component
+// ---------------------------
 export default function ProfileScreen() {
   const [profileData, setProfileData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigation = useNavigation();
 
+  // Load profile data from API and AsyncStorage
   const loadProfile = useCallback(async () => {
     try {
       console.log("[ProfileScreen] Loading profile data...");
@@ -55,7 +98,6 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log("[ProfileScreen] Screen focused. Setting StatusBar and loading profile.");
-      // Using React Native's StatusBar (or switch to Expo's if you prefer)
       StatusBar.setBarStyle("dark-content");
       loadProfile();
       return () => {
@@ -64,8 +106,13 @@ export default function ProfileScreen() {
     }, [loadProfile])
   );
 
+  // Memoize profile image source to avoid recalculations
   const profileImageSource = useMemo(() => {
-    if (!profileData || !profileData.profileImage || !profileData.profileImage.trim()) {
+    if (
+      !profileData ||
+      !profileData.profileImage ||
+      !profileData.profileImage.trim()
+    ) {
       console.log("[ProfileScreen] Using default placeholder image.");
       return require("../../assets/placeholder.jpg");
     }
@@ -73,33 +120,13 @@ export default function ProfileScreen() {
     return { uri: `${API_BASE_URL_UPLOADS}/${profileData.profileImage}` };
   }, [profileData]);
 
-  const handleLogout = async () => {
-    try {
-      console.log("[ProfileScreen] Logging out...");
-      setShowLogoutModal(false);
-      await AsyncStorage.removeItem("role");
-      await AsyncStorage.removeItem("Token");
-      await AsyncStorage.removeItem("RefreshToken");
-      Toast.show({
-        type: "info",
-        text1: "Logged Out",
-        text2: "You have been logged out successfully!",
-      });
-      console.log("[ProfileScreen] Logout successful, navigating to Login.");
-      navigation.navigate("Auth", { screen: "Login" });
-    } catch (error) {
-      console.error("[ProfileScreen] Error during logout:", error);
-      Toast.show({
-        type: "error",
-        text1: "Logout Error",
-        text2: "Something went wrong during logout.",
-      });
-    }
-  };
+  // Memoize shareMessage so it doesn't get redefined on each render.
+  const shareMessage = useMemo(
+    () => "Hey, check out this amazing event on HiIndia! https://hiindia.com/",
+    []
+  );
 
-  const shareMessage =
-    "Hey, check out this amazing event on HiIndia! https://hiindia.com/";
-
+  // Handle share options with memoized callback
   const handleShareOption = useCallback(async (option) => {
     try {
       console.log("[ProfileScreen] Handling share option:", option);
@@ -142,85 +169,140 @@ export default function ProfileScreen() {
         text2: "Something went wrong with sharing.",
       });
     }
-  }, []);
+  }, [shareMessage]);
+
+  // Logout handler remains unchanged
+  const handleLogout = useCallback(async () => {
+    try {
+      console.log("[ProfileScreen] Logging out...");
+      setShowLogoutModal(false);
+      await AsyncStorage.removeItem("role");
+      await AsyncStorage.removeItem("Token");
+      await AsyncStorage.removeItem("RefreshToken");
+      Toast.show({
+        type: "info",
+        text1: "Logged Out",
+        text2: "You have been logged out successfully!",
+      });
+      console.log("[ProfileScreen] Logout successful, navigating to Login.");
+      navigation.navigate("Auth", { screen: "Login" });
+    } catch (error) {
+      console.error("[ProfileScreen] Error during logout:", error);
+      Toast.show({
+        type: "error",
+        text1: "Logout Error",
+        text2: "Something went wrong during logout.",
+      });
+    }
+  }, [navigation]);
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.screenContainer}>
+      {/* Fixed Title outside the scroll view */}
       <StatusBar
         barStyle="dark-content"
         backgroundColor="transparent"
         translucent
         animated
       />
-      <Text style={styles.headerTitle}>My Profile</Text>
-
-      <View style={styles.profileSection}>
-        <Image source={profileImageSource} style={styles.profileImage} />
-        <View style={styles.profileInfo}>
-          <Text style={styles.userName}>
-            {profileData
-              ? `${profileData.firstName} ${profileData.lastName}`
-              : "Your Name"}
-          </Text>
-          <Text style={styles.userEmail}>
-            {profileData ? profileData.emailId : "Your Email"}
-          </Text>
-        </View>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>My Profile</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.menuItem}
-        onPress={() => navigation.navigate("App", { screen: "EditProfile" })}
-      >
-        <View style={styles.menuLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="settings-outline" size={20} color="#1F2937" />
+      <ScrollView style={styles.container}>
+        {/* Profile Section with SkeletonLoader for Profile Image */}
+        <View style={styles.profileSection}>
+          <ProfileImage
+            source={profileImageSource}
+            style={styles.profileImage}
+          />
+          <View style={styles.profileInfo}>
+            <Text style={styles.userName}>
+              {profileData
+                ? `${profileData.firstName} ${profileData.lastName}`
+                : "Your Name"}
+            </Text>
+            <Text style={styles.userEmail}>
+              {profileData ? profileData.emailId : "Your Email"}
+            </Text>
           </View>
-          <Text style={styles.menuText}>Edit Personal Info</Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>Others</Text>
-
-      <TouchableOpacity
-        style={[styles.menuItem, { backgroundColor: "rgba(255, 248, 249, 1)" }]}
-        onPress={() => setShowShareModal(true)}
-      >
-        <View style={styles.menuLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: "#fff" }]}>
-            <Ionicons name="people-outline" size={20} color="#1F2937" />
+        {/* Menu Items */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("App", { screen: "EditProfile" })}
+        >
+          <View style={styles.menuLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="settings-outline" size={20} color="#1F2937" />
+            </View>
+            <Text style={styles.menuText}>Edit Personal Info</Text>
           </View>
-          <Text style={styles.menuText}>Invite Friends</Text>
-        </View>
-        <Ionicons name="share-social-outline" size={20} color="#9CA3AF" />
-      </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.menuItem}
-        onPress={() => navigation.navigate("App", { screen: "HelpSupport" })}
-      >
-        <View style={styles.menuLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
-          </View>
-          <Text style={styles.menuText}>Help and support</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </TouchableOpacity>
+        <Text style={styles.sectionTitle}>Others</Text>
 
-      <TouchableOpacity
-        style={styles.menuItem}
-        onPress={() => setShowLogoutModal(true)}
-      >
-        <View style={styles.menuLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="log-out-outline" size={20} color="#1F2937" />
+        {/* Invite Friends Menu */}
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: "rgba(255, 248, 249, 1)" }]}
+          onPress={() => setShowShareModal(true)}
+        >
+          <View style={styles.menuLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: "#fff" }]}>
+              <Ionicons name="people-outline" size={20} color="#1F2937" />
+            </View>
+            <Text style={styles.menuText}>Invite Friends</Text>
           </View>
-          <Text style={styles.menuText}>Logout</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </TouchableOpacity>
+          <Ionicons name="share-social-outline" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        {/* New "View Tickets" Menu Item */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            console.log("[ProfileScreen] Navigating to Tickets");
+            navigation.navigate("App", { screen: "ViewTickets" });
+          }}
+        >
+          <View style={styles.menuLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="ticket-outline" size={20} color="#1F2937" />
+            </View>
+            <Text style={styles.menuText}>My Orders</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        {/* Help and Support Menu */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("App", { screen: "HelpSupport" })}
+        >
+          <View style={styles.menuLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
+            </View>
+            <Text style={styles.menuText}>Help and support</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        {/* Logout Menu */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowLogoutModal(true)}
+        >
+          <View style={styles.menuLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="log-out-outline" size={20} color="#1F2937" />
+            </View>
+            <Text style={styles.menuText}>Logout</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Share Modal */}
       <Modal
@@ -311,33 +393,37 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.logoutButton}
-                onPress={handleLogout}
-              >
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <Text style={styles.logoutButtonText}>Log out</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContainer: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  headerContainer: {
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 55 : 25,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 24,
     fontFamily: "Poppins-Bold",
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   profileSection: {
     flexDirection: "row",
@@ -511,3 +597,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export { ProfileScreen };

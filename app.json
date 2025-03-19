@@ -5,7 +5,7 @@
     "scheme": "hiindiaapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon1.jpg",
     "userInterfaceStyle": "light",
     "backgroundColor":"#000",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
       "googleServicesFile": "./google-services.json",
       "package": "com.deep_1012.HiIndia_App",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/icon1.jpg",
         "backgroundColor": "#000"
       }
     },
