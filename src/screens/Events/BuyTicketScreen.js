@@ -396,7 +396,10 @@ export default function BuyTicketScreen({ route }) {
           }
           style={styles.topImage}
         />
+      </View>
 
+      {/* White Container */}
+      <View style={styles.whiteContainer}>
         {/* Floating Card with ONLY Event Name */}
         <View style={styles.headerCard}>
           <View>
@@ -415,10 +418,6 @@ export default function BuyTicketScreen({ route }) {
             )}
           </View>
         </View>
-      </View>
-
-      {/* White Container */}
-      <View style={styles.whiteContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* 
             Event Location and Date/Time 
@@ -757,8 +756,7 @@ export default function BuyTicketScreen({ route }) {
                       Discount ({appliedCoupon.couponCode})
                     </Text>
                     <Text style={styles.discountAmount}>
-                      -
-                      {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                      -{eventDetail?.countryDetail?.[0]?.Currency}{" "}
                       {Math.abs(couponDiscount).toFixed(2)}
                     </Text>
                   </View>
@@ -972,7 +970,7 @@ const styles = StyleSheet.create({
   // Floating Card
   headerCard: {
     position: "absolute",
-    bottom: 15,
+    top: -25,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -1001,7 +999,7 @@ const styles = StyleSheet.create({
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    marginTop: -65,
+    marginTop: -45,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     zIndex: 10,
@@ -1302,7 +1300,6 @@ const styles = StyleSheet.create({
   // Order Summary
   summarySection: {
     marginBottom: 2,
-    
   },
   summaryTitle: {
     fontSize: 22,
@@ -1394,7 +1391,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "center",
     // marginTop: 150,
-    
   },
   proceedButtonText: {
     fontSize: 15,

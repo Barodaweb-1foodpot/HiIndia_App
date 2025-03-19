@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
-    zIndex: 0,
+    zIndex: -1,
   },
   inputContainer: {
     marginTop: 40,

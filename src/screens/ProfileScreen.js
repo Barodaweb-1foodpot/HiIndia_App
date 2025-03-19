@@ -27,7 +27,7 @@ import { AuthContext } from "../context/AuthContext";
 // ---------------------------
 // ProfileImage Component
 // ---------------------------
-// Moved outside of ProfileScreen to prevent re-creation and wrapped in React.memo.
+// Wrapped in React.memo to prevent unnecessary re-renders.
 const ProfileImage = React.memo(({ source, style }) => {
   const [loaded, setLoaded] = useState(false);
   // Check if source is remote (has a uri)
@@ -67,8 +67,9 @@ export default function ProfileScreen() {
   const [profileData, setProfileData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   const navigation = useNavigation();
-  const {setUser, user} = useContext(AuthContext);
+  const { setUser, user } = useContext(AuthContext);
 
   // Load profile data from API and AsyncStorage
   const loadProfile = useCallback(async () => {
@@ -219,10 +220,12 @@ export default function ProfileScreen() {
       <ScrollView style={styles.container}>
         {/* Profile Section with SkeletonLoader for Profile Image */}
         <View style={styles.profileSection}>
-          <ProfileImage
-            source={profileImageSource}
-            style={styles.profileImage}
-          />
+          <TouchableOpacity onPress={() => setShowImagePreview(true)}>
+            <ProfileImage
+              source={profileImageSource}
+              style={styles.profileImage}
+            />
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.userName}>
               {profileData
@@ -403,6 +406,32 @@ export default function ProfileScreen() {
               <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <Text style={styles.logoutButtonText}>Log out</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Preview Modal - Improved with circular image and translucent background */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={showImagePreview}
+        onRequestClose={() => setShowImagePreview(false)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <View style={styles.imagePreviewContent}>
+            <TouchableOpacity
+              style={styles.closePreviewButton}
+              onPress={() => setShowImagePreview(false)}
+            >
+              <Ionicons name="close-circle" size={36} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.circularImageContainer}>
+              <Image
+                source={profileImageSource}
+                style={styles.circularPreviewImage}
+                resizeMode="cover"
+              />
             </View>
           </View>
         </View>
@@ -602,6 +631,44 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     fontSize: 14,
     fontWeight: "600",
+  },
+  // New styles for improved image preview modal
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePreviewContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    height: "100%",
+  },
+  closePreviewButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 20,
+  },
+  circularImageContainer: {
+    width: 300,
+    height: 300,
+    borderRadius: 200,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  circularPreviewImage: {
+    width: "100%",
+    height: "100%",
   },
 });
 

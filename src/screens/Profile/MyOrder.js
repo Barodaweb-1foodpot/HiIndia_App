@@ -119,7 +119,7 @@ export default function MyOrdersScreen({ navigation }) {
         eventEnd: order.event?.EndDate,
         image: order.event?.EventImage
           ? { uri: `${API_BASE_URL_UPLOADS}/${order.event.EventImage}` }
-          : require("../../assets/placeholder.jpg"),
+          : require("../../../assets/placeholder.jpg"),
         tickets: order.registrations || [],
         ticketCount: order.registrations?.length || 0,
         totalRate: order.subTotal,

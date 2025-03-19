@@ -543,23 +543,7 @@ export default function PaymentScreen() {
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
         {/* Updated header card: display only the event name with a Read More button */}
-        <View style={styles.headerCard}>
-          <View>
-            <Text
-              style={styles.headerCardTitle}
-              numberOfLines={titleReadMore ? undefined : 2}
-            >
-              {eventDetail?.EventName || "Event Name Unavailable"}
-            </Text>
-            {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity onPress={toggleTitleReadMore}>
-                <Text style={styles.readMoreText}>
-                  {titleReadMore ? "Read Less" : "Read More"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+
       </View>
 
       {/* WHITE SECTION: Registration details and payment options */}
@@ -616,6 +600,23 @@ export default function PaymentScreen() {
           )}
           <View style={{ height: 100 }} />
         </ScrollView>
+        <View style={styles.headerCard}>
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
+              {eventDetail?.EventName || "Event Name Unavailable"}
+            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* BOTTOM BAR: Grand total and payment button */}
         <View style={styles.bottomBar}>
@@ -682,10 +683,12 @@ const styles = StyleSheet.create({
   topImage: {
     width: "100%",
     height: "100%",
+    zIndex: 0,
+    position: "relative",
   },
   headerCard: {
     position: "absolute",
-    bottom: 25,
+    top: -40,
     alignSelf: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -697,7 +700,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 1111,
+    zIndex: 9,
   },
   headerCardTitle: {
     fontSize: 20,
@@ -716,7 +719,7 @@ const styles = StyleSheet.create({
     marginTop: -80,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    zIndex: 0,
+    zIndex: 10,
   },
   scrollContent: {
     paddingTop: 90,
