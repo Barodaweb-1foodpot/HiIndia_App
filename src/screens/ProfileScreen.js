@@ -17,6 +17,7 @@ import {
   ScrollView,
   Linking,
   StatusBar,
+  Alert,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
@@ -25,6 +26,8 @@ import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProfile, deleteUserAccount } from "../api/auth_api";
 import { API_BASE_URL_UPLOADS } from "@env";
+import * as ImagePicker from "expo-image-picker";
+// Removed expo-permissions import
 
 // Import the provided SkeletonLoader component
 import SkeletonLoader from "../components/SkeletonLoader";
@@ -229,7 +232,7 @@ export default function ProfileScreen() {
       const userId = profileData?._id;
       if (userId) {
         const response = await deleteUserAccount(userId);
-        if (response && response.status===200) {
+        if (response && response.status === 200) {
           await AsyncStorage.removeItem("role");
           await AsyncStorage.removeItem("Token");
           await AsyncStorage.removeItem("RefreshToken");
@@ -262,6 +265,17 @@ export default function ProfileScreen() {
     }
   }, [navigation, profileData, setUser]);
 
+  // Updated profile image press handler:
+  // If a profile image exists, show the preview.
+  // Otherwise, navigate to EditProfile to update the image.
+  const handleProfileImagePress = useCallback(() => {
+    if (profileData?.profileImage) {
+      setShowImagePreview(true);
+    } else {
+      navigation.navigate("App", { screen: "EditProfile" });
+    }
+  }, [profileData, navigation]);
+
   return (
     <View style={styles.screenContainer}>
       <StatusBar
@@ -276,7 +290,7 @@ export default function ProfileScreen() {
 
       <ScrollView style={styles.container}>
         <View style={styles.profileSection}>
-          <TouchableOpacity onPress={() => setShowImagePreview(true)}>
+          <TouchableOpacity onPress={handleProfileImagePress}>
             <ProfileImage
               source={profileImageSource}
               style={styles.profileImage}
@@ -532,6 +546,12 @@ export default function ProfileScreen() {
               <Ionicons name="close-circle" size={36} color="#fff" />
             </TouchableOpacity>
             <View style={styles.circularImageContainer}>
+              <SkeletonLoader
+                style={[
+                  StyleSheet.absoluteFill,
+                  { borderRadius: styles.circularImageContainer.borderRadius },
+                ]}
+              />
               <Image
                 source={profileImageSource}
                 style={styles.circularPreviewImage}
