@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Linking,
   RefreshControl,
+  Dimensions,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,8 +33,11 @@ import { formatEventDateTime } from "../helper/helper_Function";
 import Header from "../components/Header";
 import SkeletonLoader from "../components/SkeletonLoader";
 import BlurWrapper from "../components/BlurWrapper";
+import FilterPanel from "../components/FilterPanel";
 
 import Checkbox from "expo-checkbox";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const EventImage = ({ uri, style }) => {
   const [loaded, setLoaded] = useState(false);
@@ -71,7 +75,7 @@ export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
 
-  // New Cities filter (single-select)
+  // Cities filter (single-select)
   const [cities, setCities] = useState([]);
   const [selectedCity, setSelectedCity] = useState("All");
 
@@ -99,6 +103,7 @@ export default function HomeScreen({ navigation }) {
     loadCities();
   }, []);
 
+  // Re-fetch events whenever filters/tabs/search changes
   useEffect(() => {
     fetchEvent();
   }, [activeTab, searchText, priceFilter, selectedCategoryIds, selectedCity]);
@@ -144,13 +149,15 @@ export default function HomeScreen({ navigation }) {
         : "All";
       const filterDate = activeTab;
 
-      // Call fetchEvents with the new city filter parameter
+      // If user selected a city other than "All", override search text with that city
+      const finalQuery = selectedCity !== "All" ? selectedCity : searchText;
+
+      // Now call fetchEvents with finalQuery instead of cityFilter
       const data = await fetchEvents(
-        searchText,
+        finalQuery,
         catFilter,
         filterDate,
-        priceFilter,
-        selectedCity
+        priceFilter
       );
 
       if (Array.isArray(data) && data.length > 0 && data[0].data) {
@@ -319,97 +326,18 @@ export default function HomeScreen({ navigation }) {
 
           {/* Filter Panel */}
           {showFilterPanel && (
-            <View style={styles.filterPanel}>
-              <Text style={styles.filterPanelTitle}>Filter Events</Text>
-
-              {/* Price Filter (radio) */}
-              <Text style={styles.filterHeading}>Price</Text>
-              <View style={styles.filterPriceRow}>
-                <TouchableOpacity
-                  style={styles.filterPriceItem}
-                  onPress={() => handleSelectPrice("Paid")}
-                >
-                  <View style={styles.radioOuter}>
-                    {priceFilter === "Paid" && (
-                      <View style={styles.radioInner} />
-                    )}
-                  </View>
-                  <Text style={styles.filterPriceLabel}>Paid</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.filterPriceItem}
-                  onPress={() => handleSelectPrice("Free")}
-                >
-                  <View style={styles.radioOuter}>
-                    {priceFilter === "Free" && (
-                      <View style={styles.radioInner} />
-                    )}
-                  </View>
-                  <Text style={styles.filterPriceLabel}>Free</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.filterPriceItem}
-                  onPress={() => handleSelectPrice("All")}
-                >
-                  <View style={styles.radioOuter}>
-                    {priceFilter === "All" && (
-                      <View style={styles.radioInner} />
-                    )}
-                  </View>
-                  <Text style={styles.filterPriceLabel}>All</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Category Filter (multi-select) */}
-              <Text style={[styles.filterHeading, { marginTop: 12 }]}>
-                Categories
-              </Text>
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat._id}
-                  style={styles.categoryRow}
-                  onPress={() => toggleCategory(cat._id)}
-                >
-                  <Checkbox
-                    value={selectedCategoryIds.includes(cat._id)}
-                    onValueChange={() => toggleCategory(cat._id)}
-                    style={styles.checkbox}
-                  />
-                  <Text style={styles.categoryLabel}>{cat.name}</Text>
-                </TouchableOpacity>
-              ))}
-
-              {/* Cities Filter (single-select) */}
-              <Text style={[styles.filterHeading, { marginTop: 12 }]}>
-                Cities
-              </Text>
-              <View style={styles.filterPriceRow}>
-                {cities.map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    style={styles.filterPriceItem}
-                    onPress={() => setSelectedCity(city)}
-                  >
-                    <View style={styles.radioOuter}>
-                      {selectedCity === city && (
-                        <View style={styles.radioInner} />
-                      )}
-                    </View>
-                    <Text style={styles.filterPriceLabel}>{city}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Filter Actions */}
-              <View style={styles.filterActions}>
-                <TouchableOpacity onPress={handleClearFilter}>
-                  <Text style={styles.filterClearText}>Clear</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={toggleFilterPanel}>
-                  <Text style={styles.filterDoneText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <FilterPanel
+              categories={categories}
+              selectedCategoryIds={selectedCategoryIds}
+              toggleCategory={toggleCategory}
+              cities={cities}
+              selectedCity={selectedCity}
+              setSelectedCity={setSelectedCity}
+              priceFilter={priceFilter}
+              handleSelectPrice={handleSelectPrice}
+              handleClearFilter={handleClearFilter}
+              toggleFilterPanel={toggleFilterPanel}
+            />
           )}
 
           {/* Tabs: Upcoming / Past */}
@@ -485,7 +413,7 @@ export default function HomeScreen({ navigation }) {
                     <View key={index} style={styles.eventCard}>
                       {!event.IsPaid &&
                       !event.hasExternalLink &&
-                      event.externalLink != "" ? (
+                      event.externalLink !== "" ? (
                         <View style={[styles.badge, styles.freeBadge]}>
                           <Text style={styles.badgeText}>Free</Text>
                         </View>
@@ -594,6 +522,7 @@ const styles = StyleSheet.create({
   },
   stickyContainer: {
     backgroundColor: "#fff",
+    zIndex: 10,
   },
   mainContent: {
     paddingBottom: 120,
@@ -632,82 +561,118 @@ const styles = StyleSheet.create({
     color: "#000",
     marginLeft: 8,
   },
-  filterPanel: {
-    backgroundColor: "#f8f8f8",
-    padding: 16,
-    borderRadius: 12,
+  filterPanelWrapper: {
+    maxHeight: SCREEN_HEIGHT * 0.6,
     marginBottom: 16,
-    elevation: 2,
+  },
+  filterPanel: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  filterPanelContent: {
+    padding: 20,
   },
   filterPanelTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 20,
+    color: "#000",
+  },
+  filterHeading: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 12,
-  },
-  filterHeading: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 6,
+    marginTop: 16,
+    color: "#000",
   },
   filterPriceRow: {
     flexDirection: "row",
-    marginBottom: 10,
-    alignItems: "center",
     flexWrap: "wrap",
-  },
-  filterPriceItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 20,
     marginBottom: 8,
   },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 24,
+    marginBottom: 12,
+  },
+  radioCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: "#E3000F",
-    marginRight: 6,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 8,
   },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  radioFill: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: "#E3000F",
   },
-  filterPriceLabel: {
-    fontSize: 14,
+  radioLabel: {
+    fontSize: 16,
     color: "#000",
   },
-  categoryRow: {
+  categoriesContainer: {
+    marginBottom: 8,
+  },
+  checkboxOption: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-    marginLeft: 16,
+    marginBottom: 12,
+    paddingVertical: 2,
+  },
+  checkboxWrapper: {
+    marginRight: 10,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    marginRight: 6,
+    width: 15,
+    height: 15,
+    borderRadius: 14,
+    borderColor: "#E3000F",
   },
-  categoryLabel: {
-    fontSize: 14,
+  checkboxLabel: {
+    fontSize: 16,
     color: "#000",
+  },
+  citiesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 16,
   },
   filterActions: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 12,
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
-  filterClearText: {
-    fontSize: 14,
-    color: "red",
+  filterActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  filterDoneText: {
-    fontSize: 14,
+  clearButtonText: {
+    fontSize: 16,
     color: "#E3000F",
+    fontWeight: "500",
+  },
+  doneButton: {
+    backgroundColor: "#E3000F",
+    borderRadius: 8,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: "#fff",
     fontWeight: "600",
   },
   tabsContainer: {

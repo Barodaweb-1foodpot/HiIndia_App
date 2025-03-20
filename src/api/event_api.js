@@ -23,12 +23,15 @@ export const listActiveEvents = async () => {
   }
 };
 
+/**
+ * Updated fetchEvents to use only `match` for location
+ * (city) filtering, removing the `cityFilter` field.
+ */
 export const fetchEvents = async (
   query,
   categoryFilter,
   filterDate,
-  priceFilter,
-  cityFilter
+  priceFilter
 ) => {
   try {
     console.log(
@@ -39,9 +42,7 @@ export const fetchEvents = async (
       "categoryFilter:",
       categoryFilter,
       "priceFilter:",
-      priceFilter,
-      "cityFilter:",
-      cityFilter
+      priceFilter
     );
 
     const response = await axios.post(
@@ -52,7 +53,6 @@ export const fetchEvents = async (
         filterDate,
         categoryFilter,
         priceFilter,
-        cityFilter, // new filter parameter
       }
     );
 
