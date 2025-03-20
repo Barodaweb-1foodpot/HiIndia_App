@@ -94,7 +94,7 @@ export default function License({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 65 : 25,
+    paddingTop: Platform.OS === "ios" ? 65 : 40,
     backgroundColor: "#fff",
     paddingHorizontal: 20,
   },

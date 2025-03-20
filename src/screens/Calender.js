@@ -83,16 +83,29 @@ export default function CalendarScreen({ navigation }) {
     fetchData();
   }, []);
 
-  // This function doesn't update state directly anymore
+  // Updated renderHeader function to include the legend
   const renderHeader = (date) => {
     const monthYear = date.toString("MMMM yyyy");
     // Store the current month in a ref instead of state
     currentMonthRef.current = monthYear;
     
-    // We'll update the state outside of the render cycle
     return (
       <BlurView intensity={80} tint="light" style={styles.monthHeader}>
         <Text style={styles.monthText}>{monthYear}</Text>
+        <View style={styles.inlineLegendsContainer}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: "#E3000F" }]} />
+            <Text style={styles.legendText}>Selected</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: "rgba(252, 224, 228, 0.8)" }]} />
+            <Text style={styles.legendText}>Has Events</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { borderWidth: 1, borderColor: "#1F2937" }]} />
+            <Text style={styles.legendText}>Today</Text>
+          </View>
+        </View>
       </BlurView>
     );
   };
@@ -346,24 +359,6 @@ export default function CalendarScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.calendarContainer}>
-          <View style={styles.calendarHeaderContainer}>
-            <Text style={styles.calendarHeaderTitle}>{currentMonth}</Text>
-            <View style={styles.legendContainer}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: "#E3000F" }]} />
-                <Text style={styles.legendText}>Selected</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: "rgba(252, 224, 228, 0.8)" }]} />
-                <Text style={styles.legendText}>Has Events</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { borderWidth: 1, borderColor: "#1F2937" }]} />
-                <Text style={styles.legendText}>Today</Text>
-              </View>
-            </View>
-          </View>
-
           <Calendar
             style={styles.calendar}
             theme={{
@@ -481,6 +476,7 @@ const styles = StyleSheet.create({
   },
   calendarContainer: {
     margin: 16,
+    marginBottom: 8,
     borderRadius: 24,
     backgroundColor: "#fff",
     shadowColor: "#000",
@@ -490,26 +486,26 @@ const styles = StyleSheet.create({
     elevation: 4,
     overflow: 'hidden',
   },
-  calendarHeaderContainer: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+  monthHeader: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
   },
-  calendarHeaderTitle: {
-    fontSize: 18,
+  monthText: {
+    fontSize: 20,
     fontWeight: "700",
     color: "#1F2937",
     marginBottom: 8,
   },
-  legendContainer: {
+  inlineLegendsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginTop: 8,
+    justifyContent: 'center',
+    marginTop: 4,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    marginHorizontal: 8,
   },
   legendDot: {
     width: 10,
@@ -521,19 +517,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6B7280",
   },
-  monthHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 15,
-    marginBottom: 10,
-    borderRadius: 16,
-  },
-  monthText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
   calendar: {
     borderRadius: 24,
     backgroundColor: "#fff",
@@ -541,6 +524,7 @@ const styles = StyleSheet.create({
   },
   upcomingEventsContainer: {
     marginHorizontal: 16,
+    marginTop: 8,
     marginBottom: 16,
   },
   upcomingEventsTitle: {
@@ -548,6 +532,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F2937",
     marginBottom: 12,
+    paddingLeft: 4,
   },
   upcomingEventsScroll: {
     paddingBottom: 8,

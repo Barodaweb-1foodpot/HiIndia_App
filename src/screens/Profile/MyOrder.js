@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 26,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingTop: Platform.OS === "ios" ? 50 : 40,
   },
   backButton: {
     width: 40,
