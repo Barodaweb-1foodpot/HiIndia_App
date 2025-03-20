@@ -22,6 +22,7 @@ import {
   fetchEvents,
   listActiveEvents,
   getEventCategoriesByPartner,
+  getCitiesByEventPartner,
 } from "../api/event_api";
 
 import { API_BASE_URL_UPLOADS } from "@env";
@@ -70,6 +71,10 @@ export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
 
+  // New Cities filter (single-select)
+  const [cities, setCities] = useState([]);
+  const [selectedCity, setSelectedCity] = useState("All");
+
   // Tab states: "Upcoming" or "Past"
   const [activeTab, setActiveTab] = useState("Upcoming");
 
@@ -91,11 +96,12 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     fetchActiveEvent();
     loadCategories();
+    loadCities();
   }, []);
 
   useEffect(() => {
     fetchEvent();
-  }, [activeTab, searchText, priceFilter, selectedCategoryIds]);
+  }, [activeTab, searchText, priceFilter, selectedCategoryIds, selectedCity]);
 
   const loadCategories = async () => {
     try {
@@ -105,6 +111,18 @@ export default function HomeScreen({ navigation }) {
       }
     } catch (err) {
       console.error("Error loading categories:", err);
+    }
+  };
+
+  const loadCities = async () => {
+    try {
+      const res = await getCitiesByEventPartner();
+      if (res?.cities) {
+        // Prepend "All" as the default option
+        setCities(["All", ...res.cities]);
+      }
+    } catch (err) {
+      console.error("Error loading cities:", err);
     }
   };
 
@@ -126,12 +144,13 @@ export default function HomeScreen({ navigation }) {
         : "All";
       const filterDate = activeTab;
 
-      // Data format: [ { count, data: [ { artistName, data: [event objects] }, ... ], status: 200 } ]
+      // Call fetchEvents with the new city filter parameter
       const data = await fetchEvents(
         searchText,
         catFilter,
         filterDate,
-        priceFilter
+        priceFilter,
+        selectedCity
       );
 
       if (Array.isArray(data) && data.length > 0 && data[0].data) {
@@ -222,6 +241,7 @@ export default function HomeScreen({ navigation }) {
   const handleClearFilter = () => {
     setPriceFilter("All");
     setSelectedCategoryIds([]);
+    setSelectedCity("All");
   };
 
   const handleBookNow = (event) => {
@@ -359,6 +379,27 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
 
+              {/* Cities Filter (single-select) */}
+              <Text style={[styles.filterHeading, { marginTop: 12 }]}>
+                Cities
+              </Text>
+              <View style={styles.filterPriceRow}>
+                {cities.map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    style={styles.filterPriceItem}
+                    onPress={() => setSelectedCity(city)}
+                  >
+                    <View style={styles.radioOuter}>
+                      {selectedCity === city && (
+                        <View style={styles.radioInner} />
+                      )}
+                    </View>
+                    <Text style={styles.filterPriceLabel}>{city}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               {/* Filter Actions */}
               <View style={styles.filterActions}>
                 <TouchableOpacity onPress={handleClearFilter}>
@@ -427,7 +468,7 @@ export default function HomeScreen({ navigation }) {
               <View key={groupIndex} style={{ marginBottom: 24 }}>
                 {/* Artist Name */}
                 <Text style={styles.artistName}>
-                  {group.artistName || "Unknown Artist"}
+                  {group.artistName || "Events"}
                 </Text>
 
                 {/* Map the events in group.data */}
@@ -442,14 +483,15 @@ export default function HomeScreen({ navigation }) {
 
                   return (
                     <View key={index} style={styles.eventCard}>
-                      {/* Badge: Paid or Free */}
-                      {event.IsPaid ? (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>Paid</Text>
-                        </View>
-                      ) : (
+                      {!event.IsPaid &&
+                      !event.hasExternalLink &&
+                      event.externalLink != "" ? (
                         <View style={[styles.badge, styles.freeBadge]}>
                           <Text style={styles.badgeText}>Free</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Paid</Text>
                         </View>
                       )}
 
@@ -500,8 +542,15 @@ export default function HomeScreen({ navigation }) {
                             </Text>
                           </View>
                           <View style={styles.eventDetail}>
-                            <Ionicons name="location-outline" size={14} color="#fff" />
-                            <Text style={styles.eventDetailText} numberOfLines={2}>
+                            <Ionicons
+                              name="location-outline"
+                              size={14}
+                              color="#fff"
+                            />
+                            <Text
+                              style={styles.eventDetailText}
+                              numberOfLines={2}
+                            >
                               {event.EventLocation}
                             </Text>
                           </View>
@@ -604,11 +653,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: 10,
     alignItems: "center",
+    flexWrap: "wrap",
   },
   filterPriceItem: {
     flexDirection: "row",
     alignItems: "center",
     marginRight: 20,
+    marginBottom: 8,
   },
   radioOuter: {
     width: 20,

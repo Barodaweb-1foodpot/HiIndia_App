@@ -43,11 +43,12 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async (values) => {
-    console.log("Attempting login with email:", values.email);
-    setLoginEmail(values.email);
+    const lowerCaseEmail = values.email.toLowerCase();
+    console.log("Attempting login with email:", lowerCaseEmail);
+    setLoginEmail(lowerCaseEmail);
     navigation.navigate("LoginPin");
   };
-  
+
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
@@ -112,7 +113,11 @@ const LoginScreen = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <View style={styles.headerCard}>
+
+            </View>
+
+            <View style={styles.whiteContainer}>
+            <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>
                   Log in to your account
                 </Text>
@@ -120,9 +125,6 @@ const LoginScreen = ({ navigation }) => {
                   Enter Your Email address to continue
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.whiteContainer}>
               <View style={styles.contentContainer}>
                 <Formik
                   initialValues={{ email: "" }}
@@ -178,7 +180,7 @@ const LoginScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
 
-                      <View style={styles.dividerContainer}>
+                       <View style={styles.dividerContainer}>
                         <View style={styles.divider} />
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
@@ -186,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
 
                       <TouchableOpacity
                         style={styles.socialButton}
-                        // onPress={handleGoogleSignIn}
+                        onPress={handleGoogleSignIn}
                       >
                         <Image
                           source={require("../../../assets/google.png")}
@@ -195,7 +197,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> 
 
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
@@ -241,20 +243,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 50,
     paddingBottom: 50,
-    height: 180,
+    height: 200,
   },
   logo: {
     width: "100%",
-    height: 60,
-    marginTop: 10,
+    height: 70,
+    marginTop: 20,
   },
   headerCard: {
     position: "absolute",
-    bottom: -40,
+    top: -35,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 15,
     paddingHorizontal: 20,
     width: "85%",
     shadowColor: "#000",
@@ -278,12 +280,15 @@ const styles = StyleSheet.create({
   whiteContainer: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    zIndex: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 10,
   },
   contentContainer: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 80,
+    marginTop: 15,
   },
   inputContainer: {
     marginBottom: 20,

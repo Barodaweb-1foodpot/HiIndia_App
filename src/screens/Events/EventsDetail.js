@@ -271,8 +271,13 @@ export default function EventsDetail({ navigation, route }) {
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
 
-        {/* Floating Card with ONLY Event Name now */}
-        <View style={styles.headerCard}>
+       
+      </View>
+
+      {/* White Section */}
+      <View style={styles.whiteContainer}>
+         {/* Floating Card with ONLY Event Name now */}
+         <View style={styles.headerCard}>
           <View>
             <Text
               style={styles.headerCardTitle}
@@ -289,10 +294,6 @@ export default function EventsDetail({ navigation, route }) {
             )}
           </View>
         </View>
-      </View>
-
-      {/* White Section */}
-      <View style={styles.whiteContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
@@ -686,7 +687,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     position: "absolute",
-    bottom: 15,
+    top: -35,
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -730,7 +731,7 @@ const styles = StyleSheet.create({
     marginTop: -65,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    zIndex:0,
+    zIndex:10,
   },
   scrollViewContent: {
     paddingHorizontal: 20,

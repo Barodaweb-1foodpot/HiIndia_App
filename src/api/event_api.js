@@ -27,7 +27,8 @@ export const fetchEvents = async (
   query,
   categoryFilter,
   filterDate,
-  priceFilter
+  priceFilter,
+  cityFilter
 ) => {
   try {
     console.log(
@@ -38,7 +39,9 @@ export const fetchEvents = async (
       "categoryFilter:",
       categoryFilter,
       "priceFilter:",
-      priceFilter
+      priceFilter,
+      "cityFilter:",
+      cityFilter
     );
 
     const response = await axios.post(
@@ -49,6 +52,7 @@ export const fetchEvents = async (
         filterDate,
         categoryFilter,
         priceFilter,
+        cityFilter, // new filter parameter
       }
     );
 
@@ -82,6 +86,26 @@ export const getEventCategoriesByPartner = async () => {
     Toast.show({
       type: "error",
       text1: "Categories Error",
+      text2: "Something went wrong. Please try again.",
+    });
+    throw new Error(error);
+  }
+};
+
+export const getCitiesByEventPartner = async () => {
+  try {
+    const partnerId = await AsyncStorage.getItem("role");
+    console.log("Fetching cities for event partner:", partnerId);
+    const response = await axios.get(
+      `${API_BASE_URL}/auth/get/citiesByEventPartner/673eca62e41a0eb1aa6904cd`
+    );
+    console.log("Response received:-----------------", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching cities:", error);
+    Toast.show({
+      type: "error",
+      text1: "Cities Error",
       text2: "Something went wrong. Please try again.",
     });
     throw new Error(error);

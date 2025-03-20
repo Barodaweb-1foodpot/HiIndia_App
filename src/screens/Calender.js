@@ -8,6 +8,8 @@ import {
   Animated,
   Platform,
   StatusBar,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -15,20 +17,35 @@ import { BlurView } from "expo-blur";
 import { fetchCalendarEvents } from "../api/event_api"; 
 import { API_BASE_URL_UPLOADS } from "@env";
 
+const { width } = Dimensions.get('window');
+
 export default function CalendarScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState("");
   const [eventsData, setEventsData] = useState({});
+  const [currentMonth, setCurrentMonth] = useState('');
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const currentMonthRef = useRef('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch events with pageNo=1, perPage=1000, no search query, category "All", filterDate "All"
-        const res = await fetchCalendarEvents("", "All", "All","All");
-        console.log("===============",res[0])
+        const res = await fetchCalendarEvents("", "All", "All", "All");
         const eventsArray = res[0].data || [];
         const groupedEvents = {};
 
+        // Set current month from today's date
+        const today = new Date();
+        const currentMonthStr = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        setCurrentMonth(currentMonthStr);
+        currentMonthRef.current = currentMonthStr;
+        
+        // Set today's date as selected by default
+        const todayString = today.toISOString().split("T")[0];
+        setSelectedDate(todayString);
+
+        // Group events by date
         eventsArray.forEach((event) => {
           if (event.StartDate) {
             const dateKey = new Date(event.StartDate)
@@ -37,11 +54,28 @@ export default function CalendarScreen({ navigation }) {
             if (!groupedEvents[dateKey]) {
               groupedEvents[dateKey] = [];
             }
-            // Push the entire event object so that the details page receives all fields
             groupedEvents[dateKey].push(event);
           }
         });
         setEventsData(groupedEvents);
+
+        // Find upcoming events (next 3 events from today)
+        const allEvents = [];
+        Object.keys(groupedEvents).forEach(date => {
+          groupedEvents[date].forEach(event => {
+            allEvents.push({...event, dateKey: date});
+          });
+        });
+        
+        // Sort by date
+        allEvents.sort((a, b) => new Date(a.StartDate) - new Date(b.StartDate));
+        
+        // Filter future events
+        const futureEvents = allEvents.filter(event => 
+          new Date(event.StartDate) >= today
+        ).slice(0, 3);
+        
+        setUpcomingEvents(futureEvents);
       } catch (error) {
         console.error("Error fetching events:", error);
       }
@@ -49,13 +83,23 @@ export default function CalendarScreen({ navigation }) {
     fetchData();
   }, []);
 
+  // This function doesn't update state directly anymore
   const renderHeader = (date) => {
     const monthYear = date.toString("MMMM yyyy");
+    // Store the current month in a ref instead of state
+    currentMonthRef.current = monthYear;
+    
+    // We'll update the state outside of the render cycle
     return (
       <BlurView intensity={80} tint="light" style={styles.monthHeader}>
         <Text style={styles.monthText}>{monthYear}</Text>
       </BlurView>
     );
+  };
+
+  // Update the current month state when the month changes
+  const onMonthChange = (month) => {
+    setCurrentMonth(month.toString("MMMM yyyy"));
   };
 
   /**
@@ -74,12 +118,15 @@ export default function CalendarScreen({ navigation }) {
         customStyles: {
           container: {
             borderRadius: 12,
-            backgroundColor: "rgba(252, 224, 228, 1)",
+            backgroundColor: "rgba(252, 224, 228, 0.8)",
           },
           text: {
             fontWeight: "600",
           },
         },
+        dots: [
+          { color: '#E3000F', selectedDotColor: '#E3000F' }
+        ],
       };
     });
 
@@ -89,7 +136,7 @@ export default function CalendarScreen({ navigation }) {
         customStyles: {
           container: {
             borderRadius: 12,
-            borderColor: "black",
+            borderColor: "#1F2937",
             borderWidth: 1,
           },
           text: {
@@ -98,7 +145,7 @@ export default function CalendarScreen({ navigation }) {
         },
       };
     } else {
-      marked[todayString].customStyles.container.borderColor = "black";
+      marked[todayString].customStyles.container.borderColor = "#1F2937";
       marked[todayString].customStyles.container.borderWidth = 1;
     }
 
@@ -136,6 +183,17 @@ export default function CalendarScreen({ navigation }) {
     });
   };
 
+  const formatEventTime = (dateString) => {
+    if (!dateString) return "";
+    const dateObj = new Date(dateString);
+    if (isNaN(dateObj)) return "";
+    return dateObj.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   // Render event cards for the selected date.
   const renderEventList = (eventsList = []) => {
     return eventsList.map((event, index) => (
@@ -163,10 +221,21 @@ export default function CalendarScreen({ navigation }) {
             <Text style={styles.eventTitle} numberOfLines={1}>
               {event.EventName}
             </Text>
-            <View style={styles.dateBadge}>
-              <Text style={styles.dateText}>
-                {formatSelectedDate(selectedDate)}
-              </Text>
+            <View style={styles.dateTimeContainer}>
+              <View style={styles.dateBadge}>
+                <Ionicons name="calendar-outline" size={14} color="#E3000F" style={styles.dateIcon} />
+                <Text style={styles.dateText}>
+                  {formatSelectedDate(event.StartDate || selectedDate)}
+                </Text>
+              </View>
+              {event.StartDate && (
+                <View style={styles.timeBadge}>
+                  <Ionicons name="time-outline" size={14} color="#4B5563" style={styles.dateIcon} />
+                  <Text style={styles.timeText}>
+                    {formatEventTime(event.StartDate)}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           <View style={styles.locationContainer}>
@@ -181,6 +250,66 @@ export default function CalendarScreen({ navigation }) {
       </TouchableOpacity>
     ));
   };
+
+  // Render upcoming events preview below calendar
+  const renderUpcomingEvents = () => {
+    if (upcomingEvents.length === 0) return null;
+    
+    return (
+      <View style={styles.upcomingEventsContainer}>
+        <Text style={styles.upcomingEventsTitle}>Upcoming Events</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.upcomingEventsScroll}
+        >
+          {upcomingEvents.map((event, index) => (
+            <TouchableOpacity
+              key={event._id ? event._id : index}
+              style={styles.upcomingEventCard}
+              activeOpacity={0.7}
+              onPress={() => {
+                setSelectedDate(event.dateKey);
+                // Scroll to event list
+                setTimeout(() => {
+                  if (eventsListRef.current) {
+                    eventsListRef.current.scrollTo({ y: 400, animated: true });
+                  }
+                }, 300);
+              }}
+            >
+              <Image
+                source={
+                  event.EventImage
+                    ? { uri: `${API_BASE_URL_UPLOADS}/${event.EventImage}` }
+                    : require("../../assets/placeholder.jpg")
+                }
+                style={styles.upcomingEventImage}
+              />
+              <View style={styles.upcomingEventOverlay}>
+                <Text style={styles.upcomingEventDate}>
+                  {formatSelectedDate(event.dateKey)}
+                </Text>
+              </View>
+              <View style={styles.upcomingEventInfo}>
+                <Text style={styles.upcomingEventTitle} numberOfLines={1}>
+                  {event.EventName}
+                </Text>
+                <View style={styles.upcomingEventLocation}>
+                  <Ionicons name="location-outline" size={12} color="#6B7280" />
+                  <Text style={styles.upcomingEventLocationText} numberOfLines={1}>
+                    {event.EventLocation}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const eventsListRef = useRef(null);
 
   return (
     <View style={styles.container}>
@@ -198,30 +327,17 @@ export default function CalendarScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Events Calendar</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity style={styles.todayButton} onPress={() => {
+          const today = new Date().toISOString().split("T")[0];
+          setSelectedDate(today);
+        }}>
+          <Ionicons name="today-outline" size={20} color="#E3000F" />
+        </TouchableOpacity>
       </BlurView>
-      <Calendar
-        style={styles.calendar}
-        theme={{
-          backgroundColor: "#ffffff",
-          calendarBackground: "#ffffff",
-          textSectionTitleColor: "#6B7280",
-          dayTextColor: "#1F2937",
-          textDisabledColor: "#d9e1e8",
-          arrowColor: "#1F2937",
-          monthTextColor: "#1F2937",
-          textDayFontSize: 16,
-          textMonthFontSize: 16,
-          textDayHeaderFontSize: 14,
-        }}
-        markingType="custom"
-        markedDates={getMarkedDates()}
-        onDayPress={(day) => setSelectedDate(day.dateString)}
-        renderHeader={renderHeader}
-        enableSwipeMonths
-      />
+
       <Animated.ScrollView
-        style={styles.eventsContainer}
+        ref={eventsListRef}
+        style={styles.scrollContainer}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -229,15 +345,93 @@ export default function CalendarScreen({ navigation }) {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.calendarContainer}>
+          <View style={styles.calendarHeaderContainer}>
+            <Text style={styles.calendarHeaderTitle}>{currentMonth}</Text>
+            <View style={styles.legendContainer}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: "#E3000F" }]} />
+                <Text style={styles.legendText}>Selected</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: "rgba(252, 224, 228, 0.8)" }]} />
+                <Text style={styles.legendText}>Has Events</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { borderWidth: 1, borderColor: "#1F2937" }]} />
+                <Text style={styles.legendText}>Today</Text>
+              </View>
+            </View>
+          </View>
+
+          <Calendar
+            style={styles.calendar}
+            theme={{
+              backgroundColor: "#ffffff",
+              calendarBackground: "#ffffff",
+              textSectionTitleColor: "#6B7280",
+              textSectionTitleDisabledColor: "#d9e1e8",
+              selectedDayBackgroundColor: "#E3000F",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#1F2937",
+              dayTextColor: "#1F2937",
+              textDisabledColor: "#d9e1e8",
+              dotColor: "#E3000F",
+              selectedDotColor: "#ffffff",
+              arrowColor: "#1F2937",
+              disabledArrowColor: "#d9e1e8",
+              monthTextColor: "#1F2937",
+              indicatorColor: "#E3000F",
+              textDayFontFamily: "System",
+              textMonthFontFamily: "System",
+              textDayHeaderFontFamily: "System",
+              textDayFontWeight: "400",
+              textMonthFontWeight: "700",
+              textDayHeaderFontWeight: "600",
+              textDayFontSize: 16,
+              textMonthFontSize: 16,
+              textDayHeaderFontSize: 14,
+            }}
+            markingType="custom"
+            markedDates={getMarkedDates()}
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            renderHeader={renderHeader}
+            onMonthChange={onMonthChange}
+            enableSwipeMonths
+          />
+        </View>
+
+        {renderUpcomingEvents()}
+
         {selectedDate && eventsData[selectedDate] && (
           <View style={styles.eventListContainer}>
-            <Text style={styles.eventsHeader}>
-              Showing events schedule on{" "}
-              <Text style={styles.selectedDate}>
-                {formatSelectedDate(selectedDate)}
+            <View style={styles.eventsHeaderContainer}>
+              <View style={styles.eventsHeaderLeft}>
+                <Ionicons name="calendar" size={20} color="#E3000F" />
+                <Text style={styles.eventsHeader}>
+                  Events on{" "}
+                  <Text style={styles.selectedDate}>
+                    {formatSelectedDate(selectedDate)}
+                  </Text>
+                </Text>
+              </View>
+              <Text style={styles.eventCount}>
+                {eventsData[selectedDate].length} {eventsData[selectedDate].length === 1 ? 'Event' : 'Events'}
               </Text>
-            </Text>
+            </View>
             {renderEventList(eventsData[selectedDate])}
+          </View>
+        )}
+
+        {selectedDate && (!eventsData[selectedDate] || eventsData[selectedDate].length === 0) && (
+          <View style={styles.noEventsContainer}>
+            <View style={styles.noEventsIconContainer}>
+              <Ionicons name="calendar-outline" size={40} color="#fff" />
+            </View>
+            <Text style={styles.noEventsTitle}>No Events</Text>
+            <Text style={styles.noEventsSubtitle}>
+              There are no events scheduled for {formatSelectedDate(selectedDate)}
+            </Text>
           </View>
         )}
       </Animated.ScrollView>
@@ -250,29 +444,82 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
+  scrollContainer: {
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 44 : 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 40,
     paddingBottom: 15,
     backgroundColor: "rgba(255,255,255,0.9)",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 5,
+    zIndex: 10,
   },
   backButton: {
     padding: 10,
     borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.05)",
   },
-  placeholder: {
-    width: 44,
+  todayButton: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(227, 0, 15, 0.1)",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1F2937",
+  },
+  calendarContainer: {
+    margin: 16,
+    borderRadius: 24,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  calendarHeaderContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  calendarHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginTop: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: "#6B7280",
   },
   monthHeader: {
     flexDirection: "row",
@@ -288,27 +535,100 @@ const styles = StyleSheet.create({
     color: "#1F2937",
   },
   calendar: {
-    margin: 16,
     borderRadius: 24,
+    backgroundColor: "#fff",
+    padding: 8,
+  },
+  upcomingEventsContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  upcomingEventsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  upcomingEventsScroll: {
+    paddingBottom: 8,
+  },
+  upcomingEventCard: {
+    width: width * 0.4,
+    marginRight: 12,
+    borderRadius: 16,
     backgroundColor: "#fff",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    padding: 8,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
   },
-  eventsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
+  upcomingEventImage: {
+    width: '100%',
+    height: 100,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  upcomingEventOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: 'rgba(227, 0, 15, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderBottomLeftRadius: 12,
+  },
+  upcomingEventDate: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  upcomingEventInfo: {
+    padding: 10,
+  },
+  upcomingEventTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  upcomingEventLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  upcomingEventLocationText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginLeft: 4,
   },
   eventListContainer: {
-    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  eventsHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  eventsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   eventsHeader: {
     fontSize: 16,
     color: "#6B7280",
-    marginBottom: 16,
+    marginLeft: 8,
+  },
+  eventCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: "#E3000F",
+    backgroundColor: "rgba(227, 0, 15, 0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   selectedDate: {
     color: "#1F2937",
@@ -319,12 +639,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     marginBottom: 16,
-    padding: 10,
+    padding: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: "#E3000F",
   },
   eventImage: {
     width: 90,
@@ -346,15 +668,37 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 8,
   },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   dateBadge: {
-    backgroundColor: "#f3f4f6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: "rgba(227, 0, 15, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
-    alignSelf: "flex-start",
+  },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dateIcon: {
+    marginRight: 4,
   },
   dateText: {
-    fontSize: 13,
+    fontSize: 12,
+    color: "#E3000F",
+    fontWeight: "500",
+  },
+  timeText: {
+    fontSize: 12,
     color: "#4B5563",
     fontWeight: "500",
   },
@@ -376,5 +720,36 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: "#6B7280",
+  },
+  noEventsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    marginTop: 20,
+  },
+  noEventsIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#E3000F",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    shadowColor: "#E3000F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  noEventsTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  noEventsSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: 'center',
   },
 });

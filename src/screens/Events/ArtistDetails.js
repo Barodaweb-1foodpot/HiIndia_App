@@ -10,15 +10,22 @@ import {
   Animated,
   Platform,
   Share,
+  LogBox,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { Ionicons } from "@expo/vector-icons";
-import { SharedElement } from "react-navigation-shared-element";
 import { LinearGradient } from "expo-linear-gradient";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import BlurWrapper from "../../components/BlurWrapper";
-import HTML from "react-native-render-html"; // Import HTML renderer
+import HTML from "react-native-render-html";
+
+// Suppress warnings related to defaultProps deprecation in function components
+LogBox.ignoreLogs([
+  "Warning: TRenderEngineProvider: Support for defaultProps",
+  "Warning: MemoizedTNodeRenderer: Support for defaultProps",
+  "Warning: TNodeChildrenRenderer: Support for defaultProps",
+]);
 
 const { width } = Dimensions.get("window");
 const HEADER_HEIGHT = Platform.OS === "ios" ? 110 : 100;
@@ -35,15 +42,33 @@ const ArtistDetails = () => {
     eventLocation,
   } = route.params;
 
-  // State for loading and animations
   const [isLoading, setIsLoading] = useState(true);
   const [scrollY] = useState(new Animated.Value(0));
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Animation values for transitions
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
 
   // Simulate loading state
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
+      
+      // Start fade-in and scale animations
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+      
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
@@ -51,7 +76,7 @@ const ArtistDetails = () => {
   // Header animation based on scroll
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 100, 200],
-    outputRange: [0, 0.7, 1], // Fade in as you scroll
+    outputRange: [0, 0.7, 1],
     extrapolate: "clamp",
   });
 
@@ -72,26 +97,12 @@ const ArtistDetails = () => {
     }
   };
 
-  // Animation values for content
+  // Animation value for content opacity
   const opacity = scrollY.interpolate({
     inputRange: [0, 50],
     outputRange: [1, 0.9],
     extrapolate: "clamp",
   });
-
-  // HTML rendering configuration
-  const htmlConfig = {
-    tagsStyles: {
-      p: {
-        fontSize: 16,
-        lineHeight: 24,
-        color: "#4B5563",
-      },
-      strong: {
-        fontWeight: "700",
-      },
-    },
-  };
 
   return (
     <View style={styles.container}>
@@ -102,10 +113,8 @@ const ArtistDetails = () => {
         animated
       />
 
-      {/* Fixed Header with Blur - Now fades in on scroll */}
-      <Animated.View
-        style={[styles.headerContainer, { opacity: headerOpacity }]}
-      >
+      {/* Fixed Header with Blur */}
+      <Animated.View style={[styles.headerContainer, { opacity: headerOpacity }]}>
         <BlurWrapper style={styles.header}>
           <TouchableOpacity
             style={styles.headerButton}
@@ -122,18 +131,6 @@ const ArtistDetails = () => {
           </Animated.Text>
 
           <View style={styles.headerActions}>
-            {/* Example: Favorite button commented out
-            <TouchableOpacity 
-              style={styles.headerButton} 
-              onPress={() => setIsFavorite(!isFavorite)}
-            >
-              <Ionicons 
-                name={isFavorite ? "heart" : "heart-outline"} 
-                size={24} 
-                color={isFavorite ? "#FF4D6D" : "#FFFFFF"} 
-              />
-            </TouchableOpacity> 
-            */}
             <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
@@ -141,7 +138,7 @@ const ArtistDetails = () => {
         </BlurWrapper>
       </Animated.View>
 
-      {/* Floating back button for when header is transparent */}
+      {/* Floating Back Button */}
       <Animated.View
         style={[
           styles.floatingBackButton,
@@ -154,10 +151,7 @@ const ArtistDetails = () => {
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </Animated.View>
@@ -166,29 +160,22 @@ const ArtistDetails = () => {
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
         scrollEventThrottle={16}
       >
-        {/* Add padding to the top to account for the status bar */}
+        {/* Extra padding for status bar */}
         <View style={{ height: Platform.OS === "ios" ? 10 : 0 }} />
 
-        {/* Profile Area with Cover Gradient and Profile Photo */}
+        {/* Cover and Profile Section */}
         <View style={styles.coverContainer}>
           {isLoading ? (
             <SkeletonLoader style={styles.coverImage} />
           ) : (
             <View style={styles.coverImageContainer}>
               <LinearGradient
-                colors={[
-                  "#0F1F38", // Deep Blue
-                  "#0D1C3C", // Dark Navy Blue
-                  "#092845", // Teal Blue
-                  "#11233F", // Midnight Blue
-                  "#2E1D39", // Dark Purple
-                ]}
+                colors={["#0F1F38", "#0D1C3C", "#092845", "#11233F", "#2E1D39"]}
                 style={styles.coverImage}
               />
               <BlurWrapper style={styles.coverOverlay} />
@@ -199,7 +186,12 @@ const ArtistDetails = () => {
             {isLoading ? (
               <SkeletonLoader style={styles.artistImagePlaceholder} />
             ) : (
-              <SharedElement id={`artist.${artistName}.image`}>
+              <Animated.View
+                style={{
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }]
+                }}
+              >
                 <Image
                   source={
                     artistImage
@@ -208,7 +200,7 @@ const ArtistDetails = () => {
                   }
                   style={styles.artistImage}
                 />
-              </SharedElement>
+              </Animated.View>
             )}
 
             {isLoading ? (
@@ -217,11 +209,20 @@ const ArtistDetails = () => {
               </View>
             ) : (
               <View style={styles.artistInfo}>
-                <SharedElement id={`artist.${artistName}.name`}>
-                  <Text style={styles.artistName}>
-                    {artistName || "Artist Name Unavailable"}
-                  </Text>
-                </SharedElement>
+                <Animated.Text 
+                  style={[
+                    styles.artistName,
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                      })}]
+                    }
+                  ]}
+                >
+                  {artistName || "Artist Name Unavailable"}
+                </Animated.Text>
               </View>
             )}
           </View>
@@ -239,24 +240,36 @@ const ArtistDetails = () => {
               <View>
                 <SkeletonLoader style={styles.descPlaceholder} />
                 <SkeletonLoader style={styles.descPlaceholder} />
-                <SkeletonLoader
-                  style={[styles.descPlaceholder, { width: "70%" }]}
-                />
+                <SkeletonLoader style={[styles.descPlaceholder, { width: "70%" }]} />
               </View>
             ) : (
-              <View style={styles.descriptionContainer}>
+              <Animated.View 
+                style={[
+                  styles.descriptionContainer,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0]
+                    })}]
+                  }
+                ]}
+              >
                 {artistDesc ? (
-                  <HTML 
-                    source={{ html: artistDesc }} 
-                    contentWidth={width - 72} // Account for section padding and margins
-                    tagsStyles={htmlConfig.tagsStyles}
+                  <HTML
+                    source={{ html: artistDesc }}
+                    contentWidth={width - 72}
+                    tagsStyles={{
+                      p: { fontSize: 16, lineHeight: 24, color: "#4B5563" },
+                      strong: { fontWeight: "700" },
+                    }}
                   />
                 ) : (
                   <Text style={styles.artistDesc}>
                     No artist description available.
                   </Text>
                 )}
-              </View>
+              </Animated.View>
             )}
           </View>
 
@@ -270,37 +283,34 @@ const ArtistDetails = () => {
               {isLoading ? (
                 <View>
                   <SkeletonLoader style={styles.eventPlaceholder} />
-                  <SkeletonLoader
-                    style={[styles.eventPlaceholder, { width: "80%" }]}
-                  />
+                  <SkeletonLoader style={[styles.eventPlaceholder, { width: "80%" }]} />
                 </View>
               ) : (
-                <View style={styles.eventCard}>
+                <Animated.View 
+                  style={[
+                    styles.eventCard,
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0]
+                      })}]
+                    }
+                  ]}
+                >
                   <Text style={styles.eventName}>{eventName}</Text>
 
                   {eventDateTime && (
                     <View style={styles.eventDetail}>
-                      <Ionicons
-                        name="calendar-outline"
-                        size={18}
-                        color="#6B7280"
-                      />
-                      <Text style={styles.eventDetailText}>
-                        {eventDateTime}
-                      </Text>
+                      <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+                      <Text style={styles.eventDetailText}>{eventDateTime}</Text>
                     </View>
                   )}
 
                   {eventLocation && (
                     <View style={styles.eventDetail}>
-                      <Ionicons
-                        name="location-outline"
-                        size={18}
-                        color="#6B7280"
-                      />
-                      <Text style={styles.eventDetailText}>
-                        {eventLocation}
-                      </Text>
+                      <Ionicons name="location-outline" size={18} color="#6B7280" />
+                      <Text style={styles.eventDetailText}>{eventLocation}</Text>
                     </View>
                   )}
 
@@ -310,13 +320,13 @@ const ArtistDetails = () => {
                   >
                     <Text style={styles.eventButtonText}>Get Tickets</Text>
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               )}
             </View>
           )}
         </Animated.View>
 
-        {/* Extra space at bottom for better scrolling */}
+        {/* Extra space at bottom */}
         <View style={styles.bottomSpacing} />
       </Animated.ScrollView>
     </View>
@@ -379,7 +389,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   coverContainer: {
-    height: 320, // Increased height to accommodate profile pic and name
+    height: 320,
     marginTop: Platform.OS === "ios" ? -10 : 0,
   },
   coverImageContainer: {
@@ -401,7 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: "100%",
     paddingHorizontal: 20,
-    paddingTop: 40, // Added padding to push down profile content
+    paddingTop: 40,
   },
   artistImagePlaceholder: {
     width: 140,
