@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useContext,
+} from "react";
 import {
   View,
   Text,
@@ -17,7 +23,7 @@ import * as Clipboard from "expo-clipboard";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchProfile } from "../api/auth_api";
+import { fetchProfile, deleteUserAccount } from "../api/auth_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 
 // Import the provided SkeletonLoader component
@@ -27,13 +33,10 @@ import { AuthContext } from "../context/AuthContext";
 // ---------------------------
 // ProfileImage Component
 // ---------------------------
-// Wrapped in React.memo to prevent unnecessary re-renders.
 const ProfileImage = React.memo(({ source, style }) => {
   const [loaded, setLoaded] = useState(false);
-  // Check if source is remote (has a uri)
   const isRemote = source && source.uri;
 
-  // If the image is not remote, mark it as loaded immediately
   useEffect(() => {
     if (!isRemote) {
       setLoaded(true);
@@ -44,7 +47,10 @@ const ProfileImage = React.memo(({ source, style }) => {
     <View style={style}>
       {isRemote && !loaded && (
         <SkeletonLoader
-          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
         />
       )}
       <Image
@@ -67,11 +73,11 @@ export default function ProfileScreen() {
   const [profileData, setProfileData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const navigation = useNavigation();
   const { setUser, user } = useContext(AuthContext);
 
-  // Load profile data from API and AsyncStorage
   const loadProfile = useCallback(async () => {
     try {
       console.log("[ProfileScreen] Loading profile data...");
@@ -82,7 +88,10 @@ export default function ProfileScreen() {
           console.log("[ProfileScreen] Profile loaded successfully:", res);
           setProfileData(res);
         } else {
-          console.log("[ProfileScreen] Profile load failed. Invalid response:", res);
+          console.log(
+            "[ProfileScreen] Profile load failed. Invalid response:",
+            res
+          );
           Toast.show({
             type: "error",
             text1: "Profile Error",
@@ -100,7 +109,9 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("[ProfileScreen] Screen focused. Setting StatusBar and loading profile.");
+      console.log(
+        "[ProfileScreen] Screen focused. Setting StatusBar and loading profile."
+      );
       StatusBar.setBarStyle("dark-content");
       loadProfile();
       return () => {
@@ -109,7 +120,6 @@ export default function ProfileScreen() {
     }, [loadProfile])
   );
 
-  // Memoize profile image source to avoid recalculations
   const profileImageSource = useMemo(() => {
     if (
       !profileData ||
@@ -123,62 +133,69 @@ export default function ProfileScreen() {
     return { uri: `${API_BASE_URL_UPLOADS}/${profileData.profileImage}` };
   }, [profileData]);
 
-  // Memoize shareMessage so it doesn't get redefined on each render.
   const shareMessage = useMemo(
     () => "Hey, check out this amazing event on HiIndia! https://hiindia.com/",
     []
   );
 
-  // Handle share options with memoized callback
-  const handleShareOption = useCallback(async (option) => {
-    try {
-      console.log("[ProfileScreen] Handling share option:", option);
-      switch (option) {
-        case "copyLink":
-          await Clipboard.setStringAsync(shareMessage);
-          Toast.show({
-            type: "success",
-            text1: "Link copied!",
-            text2: "Invite link copied to clipboard.",
-          });
-          break;
-        case "whatsapp":
-          Linking.openURL(`whatsapp://send?text=${encodeURIComponent(shareMessage)}`);
-          break;
-        case "facebook":
-          await Share.share({ message: shareMessage });
-          break;
-        case "email":
-          Linking.openURL(
-            `mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(shareMessage)}`
-          );
-          break;
-        case "linkedin":
-          await Share.share({ message: shareMessage });
-          break;
-        case "twitter":
-          Linking.openURL(`twitter://post?message=${encodeURIComponent(shareMessage)}`);
-          break;
-        default:
-          console.log("[ProfileScreen] Unknown share option:", option);
-          break;
+  const handleShareOption = useCallback(
+    async (option) => {
+      try {
+        console.log("[ProfileScreen] Handling share option:", option);
+        switch (option) {
+          case "copyLink":
+            await Clipboard.setStringAsync(shareMessage);
+            Toast.show({
+              type: "success",
+              text1: "Link copied!",
+              text2: "Invite link copied to clipboard.",
+            });
+            break;
+          case "whatsapp":
+            Linking.openURL(
+              `whatsapp://send?text=${encodeURIComponent(shareMessage)}`
+            );
+            break;
+          case "facebook":
+            await Share.share({ message: shareMessage });
+            break;
+          case "email":
+            Linking.openURL(
+              `mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(
+                shareMessage
+              )}`
+            );
+            break;
+          case "linkedin":
+            await Share.share({ message: shareMessage });
+            break;
+          case "twitter":
+            Linking.openURL(
+              `twitter://post?message=${encodeURIComponent(shareMessage)}`
+            );
+            break;
+          default:
+            console.log("[ProfileScreen] Unknown share option:", option);
+            break;
+        }
+        setShowShareModal(false);
+      } catch (error) {
+        console.error("[ProfileScreen] Error sharing event:", error);
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Something went wrong with sharing.",
+        });
       }
-      setShowShareModal(false);
-    } catch (error) {
-      console.error("[ProfileScreen] Error sharing event:", error);
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Something went wrong with sharing.",
-      });
-    }
-  }, [shareMessage]);
+    },
+    [shareMessage]
+  );
 
   useEffect(() => {
     console.log("[ProfileScreen] User:", user);
   }, [user]);
 
-  // Logout handler remains unchanged
+  // Logout handler
   const handleLogout = useCallback(async () => {
     try {
       console.log("[ProfileScreen] Logging out...");
@@ -202,11 +219,51 @@ export default function ProfileScreen() {
         text2: "Something went wrong during logout.",
       });
     }
-  }, [navigation]);
+  }, [navigation, setUser]);
+
+  // Delete account handler
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      console.log("[ProfileScreen] Deleting account...");
+      setShowDeleteAccountModal(false);
+      const userId = profileData?._id;
+      if (userId) {
+        const response = await deleteUserAccount(userId);
+        if (response && response.status===200) {
+          await AsyncStorage.removeItem("role");
+          await AsyncStorage.removeItem("Token");
+          await AsyncStorage.removeItem("RefreshToken");
+          setUser(null);
+          Toast.show({
+            type: "info",
+            text1: "Account Deleted",
+            text2: "Your account has been deleted successfully!",
+          });
+
+          navigation.navigate("Auth", { screen: "Login" });
+        } else {
+          throw new Error("Failed to delete account");
+        }
+      } else {
+        console.log("[ProfileScreen] No user id found.");
+        Toast.show({
+          type: "error",
+          text1: "Delete Account Error",
+          text2: "User ID not found.",
+        });
+      }
+    } catch (error) {
+      console.error("[ProfileScreen] Error deleting account:", error);
+      Toast.show({
+        type: "error",
+        text1: "Delete Account Error",
+        text2: "Something went wrong while deleting your account.",
+      });
+    }
+  }, [navigation, profileData, setUser]);
 
   return (
     <View style={styles.screenContainer}>
-      {/* Fixed Title outside the scroll view */}
       <StatusBar
         barStyle="dark-content"
         backgroundColor="transparent"
@@ -218,7 +275,6 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.container}>
-        {/* Profile Section with SkeletonLoader for Profile Image */}
         <View style={styles.profileSection}>
           <TouchableOpacity onPress={() => setShowImagePreview(true)}>
             <ProfileImage
@@ -238,7 +294,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Menu Items */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("App", { screen: "EditProfile" })}
@@ -254,9 +309,11 @@ export default function ProfileScreen() {
 
         <Text style={styles.sectionTitle}>Others</Text>
 
-        {/* Invite Friends Menu */}
         <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: "rgba(255, 248, 249, 1)" }]}
+          style={[
+            styles.menuItem,
+            { backgroundColor: "rgba(255, 248, 249, 1)" },
+          ]}
           onPress={() => setShowShareModal(true)}
         >
           <View style={styles.menuLeft}>
@@ -268,7 +325,6 @@ export default function ProfileScreen() {
           <Ionicons name="share-social-outline" size={20} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* New "View Tickets" Menu Item */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => {
@@ -285,7 +341,6 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* Help and Support Menu */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("App", { screen: "HelpSupport" })}
@@ -299,7 +354,6 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* Logout Menu */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => setShowLogoutModal(true)}
@@ -309,6 +363,19 @@ export default function ProfileScreen() {
               <Ionicons name="log-out-outline" size={20} color="#1F2937" />
             </View>
             <Text style={styles.menuText}>Logout</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, styles.deleteAccountItem]}
+          onPress={() => setShowDeleteAccountModal(true)}
+        >
+          <View style={styles.menuLeft}>
+            <View style={[styles.iconContainer, styles.deleteIconContainer]}>
+              <Ionicons name="trash-outline" size={20} color="#E3000F" />
+            </View>
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
@@ -403,7 +470,10 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
                 <Text style={styles.logoutButtonText}>Log out</Text>
               </TouchableOpacity>
             </View>
@@ -411,7 +481,42 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Image Preview Modal - Improved with circular image and translucent background */}
+      {/* Delete Account Modal */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={showDeleteAccountModal}
+        onRequestClose={() => setShowDeleteAccountModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.deleteAccountModalContent]}>
+            <View style={styles.deleteWarningIcon}>
+              <Ionicons name="trash" size={24} color="#fff" />
+            </View>
+            <Text style={styles.deleteAccountTitle}>Delete Account</Text>
+            <Text style={styles.deleteAccountMessage}>
+              Are you sure you want to delete your account? This action cannot
+              be undone and all your data will be permanently removed.
+            </Text>
+            <View style={styles.deleteAccountButtons}>
+              <TouchableOpacity
+                style={styles.cancelDeleteButton}
+                onPress={() => setShowDeleteAccountModal(false)}
+              >
+                <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmDeleteButton}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.confirmDeleteButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Preview Modal */}
       <Modal
         animationType="fade"
         transparent
@@ -632,7 +737,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // New styles for improved image preview modal
+  deleteAccountItem: {
+    marginTop: 8,
+    borderColor: "#FECACA",
+  },
+  deleteIconContainer: {
+    backgroundColor: "#FEE2E2",
+  },
+  deleteAccountText: {
+    fontSize: 14,
+    color: "#E3000F",
+    fontWeight: "500",
+    fontFamily: "Poppins-Regular",
+  },
+  deleteAccountModalContent: {
+    alignItems: "center",
+    paddingTop: 40,
+    paddingBottom: 24,
+  },
+  deleteWarningIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3000F",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  deleteAccountTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#E3000F",
+    marginBottom: 8,
+  },
+  deleteAccountMessage: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  deleteAccountButtons: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  cancelDeleteButton: {
+    flex: 1,
+    backgroundColor: "#000",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  cancelDeleteButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    backgroundColor: "#E3000F",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  confirmDeleteButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   imagePreviewOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.7)",

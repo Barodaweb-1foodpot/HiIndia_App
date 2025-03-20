@@ -17,17 +17,17 @@ import * as Yup from "yup";
 
 import Toast from "react-native-toast-message";
 import { useAuthContext } from "../../context/AuthContext";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+// import {
+//   GoogleSignin,
+//   statusCodes,
+// } from "@react-native-google-signin/google-signin";
 
-import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
+// import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
 
-GoogleSignin.configure({
-  webClientId:
-    "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
-});
+// GoogleSignin.configure({
+//   webClientId:
+//     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
+// });
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
@@ -188,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
 
                       <TouchableOpacity
                         style={styles.socialButton}
-                        onPress={handleGoogleSignIn}
+                        // onPress={handleGoogleSignIn}
                       >
                         <Image
                           source={require("../../../assets/google.png")}

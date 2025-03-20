@@ -140,10 +140,7 @@ export const fetchActiveCountries = async () => {
     console.log("[fetchActiveCountries] Fetched data:", res.data);
     return res.data;
   } catch (error) {
-    console.error(
-      "[fetchActiveCountries] Error fetching active countries:",
-      error
-    );
+    console.error("[fetchActiveCountries] Error fetching active countries:", error);
     Toast.show({
       type: "error",
       text1: "Country Codes Error",
@@ -155,10 +152,7 @@ export const fetchActiveCountries = async () => {
 
 export const fetchProfile = async (participantId) => {
   try {
-    console.log(
-      "[fetchProfile] Fetching profile for participantId:",
-      participantId
-    );
+    console.log("[fetchProfile] Fetching profile for participantId:", participantId);
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`
     );
@@ -177,17 +171,13 @@ export const fetchProfile = async (participantId) => {
 
 export const updateProfileByApp = async (participantId, formData) => {
   try {
-    console.log(
-      `[updateProfileByApp] Updating profile for participantId: ${participantId}`
-    );
-
+    console.log(`[updateProfileByApp] Updating profile for participantId: ${participantId}`);
     const res = await axios.patch(
       `${API_BASE_URL}/auth/updateProfileByApp/${participantId}`,
       formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
-          // Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -228,10 +218,7 @@ export const handleGoogleLogin = async (email) => {
 export const verifyGoogleToken = async (token) => {
   try {
     console.log("[verifyGoogleToken] Verifying Google token:", token);
-
-    const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, {
-      token,
-    });
+    const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, { token });
     console.log("[verifyGoogleToken] Token verification response:", res.data);
 
     if (res.data.isOk) {
@@ -239,9 +226,7 @@ export const verifyGoogleToken = async (token) => {
       console.log("[verifyGoogleToken] handleGoogleLogin response:", response);
 
       if (response.status === 200) {
-        console.log(
-          "[verifyGoogleToken] Setting AsyncStorage items for Google login"
-        );
+        console.log("[verifyGoogleToken] Setting AsyncStorage items for Google login");
         await AsyncStorage.setItem("role", response.data._id);
         await AsyncStorage.setItem("Token", response.token);
         await AsyncStorage.setItem("RefreshToken", response.refreshToken);
@@ -253,10 +238,7 @@ export const verifyGoogleToken = async (token) => {
         });
         return true;
       } else {
-        console.log(
-          "[verifyGoogleToken] Google login failed with response:",
-          response
-        );
+        console.log("[verifyGoogleToken] Google login failed with response:", response);
         Toast.show({
           type: "success",
           text1: response.message,
@@ -265,15 +247,38 @@ export const verifyGoogleToken = async (token) => {
       }
     }
   } catch (error) {
-    console.error(
-      "[verifyGoogleToken] Error during Google token verification:",
-      error
-    );
+    console.error("[verifyGoogleToken] Error during Google token verification:", error);
     Toast.show({
       type: "error",
       text1: "Google Token Verification Error",
       text2: "Something went wrong during token verification.",
     });
     throw new Error(error);
+  }
+};
+
+export const deleteUserAccount = async (participantId) => {
+  try {
+    const token = await AsyncStorage.getItem("Token");
+    console.log("[deleteUserAccount] Deleting account for participantId:", participantId);
+    const res = await axios.delete(
+      `${API_BASE_URL}/auth/remove/participant/${participantId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
+    );
+    console.log("[deleteUserAccount] Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("[deleteUserAccount] Error deleting account:", error);
+    Toast.show({
+      type: "error",
+      text1: "Delete Account Error",
+      text2: "Something went wrong while deleting your account.",
+    });
+    throw error;
   }
 };
