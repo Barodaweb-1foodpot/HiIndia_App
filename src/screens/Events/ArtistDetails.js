@@ -15,7 +15,6 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { Ionicons } from "@expo/vector-icons";
-import { SharedElement } from "react-navigation-shared-element";
 import { LinearGradient } from "expo-linear-gradient";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import BlurWrapper from "../../components/BlurWrapper";
@@ -46,11 +45,30 @@ const ArtistDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollY] = useState(new Animated.Value(0));
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Animation values for transitions
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
 
   // Simulate loading state
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
+      
+      // Start fade-in and scale animations
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+      
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
@@ -168,7 +186,12 @@ const ArtistDetails = () => {
             {isLoading ? (
               <SkeletonLoader style={styles.artistImagePlaceholder} />
             ) : (
-              <SharedElement id={`artist.${artistName}.image`}>
+              <Animated.View
+                style={{
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }]
+                }}
+              >
                 <Image
                   source={
                     artistImage
@@ -177,7 +200,7 @@ const ArtistDetails = () => {
                   }
                   style={styles.artistImage}
                 />
-              </SharedElement>
+              </Animated.View>
             )}
 
             {isLoading ? (
@@ -186,11 +209,20 @@ const ArtistDetails = () => {
               </View>
             ) : (
               <View style={styles.artistInfo}>
-                <SharedElement id={`artist.${artistName}.name`}>
-                  <Text style={styles.artistName}>
-                    {artistName || "Artist Name Unavailable"}
-                  </Text>
-                </SharedElement>
+                <Animated.Text 
+                  style={[
+                    styles.artistName,
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                      })}]
+                    }
+                  ]}
+                >
+                  {artistName || "Artist Name Unavailable"}
+                </Animated.Text>
               </View>
             )}
           </View>
@@ -211,7 +243,18 @@ const ArtistDetails = () => {
                 <SkeletonLoader style={[styles.descPlaceholder, { width: "70%" }]} />
               </View>
             ) : (
-              <View style={styles.descriptionContainer}>
+              <Animated.View 
+                style={[
+                  styles.descriptionContainer,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0]
+                    })}]
+                  }
+                ]}
+              >
                 {artistDesc ? (
                   <HTML
                     source={{ html: artistDesc }}
@@ -226,7 +269,7 @@ const ArtistDetails = () => {
                     No artist description available.
                   </Text>
                 )}
-              </View>
+              </Animated.View>
             )}
           </View>
 
@@ -243,7 +286,18 @@ const ArtistDetails = () => {
                   <SkeletonLoader style={[styles.eventPlaceholder, { width: "80%" }]} />
                 </View>
               ) : (
-                <View style={styles.eventCard}>
+                <Animated.View 
+                  style={[
+                    styles.eventCard,
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0]
+                      })}]
+                    }
+                  ]}
+                >
                   <Text style={styles.eventName}>{eventName}</Text>
 
                   {eventDateTime && (
@@ -266,7 +320,7 @@ const ArtistDetails = () => {
                   >
                     <Text style={styles.eventButtonText}>Get Tickets</Text>
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               )}
             </View>
           )}
