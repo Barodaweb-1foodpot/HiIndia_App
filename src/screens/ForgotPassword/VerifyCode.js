@@ -12,17 +12,20 @@ import {
   StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Formik } from "formik";
-import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
 import { handleSetPassword } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
 const VerifyCode = ({ navigation }) => {
-  const resetInputRefs = useRef([]);
-  const confirmInputRefs = useRef([]);
+  // Create refs for each of the 6-digit input boxes
+  const resetInputRefs = useRef([...Array(6)].map(() => React.createRef()));
+  const confirmInputRefs = useRef([...Array(6)].map(() => React.createRef()));
   const { forgot_id } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Local state arrays for reset and confirm PIN
+  const [resetPin, setResetPin] = useState(["", "", "", "", "", ""]);
+  const [confirmPin, setConfirmPin] = useState(["", "", "", "", "", ""]);
 
   // Dismiss the keyboard on tap outside
   const dismissKeyboard = () => {
@@ -30,21 +33,79 @@ const VerifyCode = ({ navigation }) => {
     console.log("Keyboard dismissed");
   };
 
-  // Validation schema for reset and confirm PIN fields
-  const validationSchema = Yup.object().shape({
-    resetPin: Yup.string()
-      .required("Reset PIN is required")
-      .matches(/^\d{6}$/, "Reset PIN must be exactly 6 digits"),
-    confirmPin: Yup.string()
-      .required("Confirm PIN is required")
-      .oneOf([Yup.ref("resetPin")], "Pins do not match")
-      .matches(/^\d{6}$/, "Confirm PIN must be exactly 6 digits"),
-  });
+  // ---------------- Reset PIN Logic ---------------- //
+  const handleResetPinChange = (text, index) => {
+    if (/^\d*$/.test(text)) {
+      const newPin = [...resetPin];
+      newPin[index] = text;
+      setResetPin(newPin);
+      // If a digit is entered and not the last box, move focus to the next
+      if (text.length === 1 && index < 5) {
+        resetInputRefs.current[index + 1].focus();
+      }
+    }
+  };
 
-  const handleResetPassword = async (values) => {
-    console.log("Using forgot_id:", forgot_id);
+  const handleResetPinKeyPress = (e, index) => {
+    if (e.nativeEvent.key === "Backspace") {
+      if (resetPin[index] === "" && index > 0) {
+        const newPin = [...resetPin];
+        newPin[index - 1] = "";
+        setResetPin(newPin);
+        resetInputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  // ---------------- Confirm PIN Logic ---------------- //
+  const handleConfirmPinChange = (text, index) => {
+    if (/^\d*$/.test(text)) {
+      const newPin = [...confirmPin];
+      newPin[index] = text;
+      setConfirmPin(newPin);
+      // Move to next input if a digit is entered
+      if (text.length === 1 && index < 5) {
+        confirmInputRefs.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleConfirmPinKeyPress = (e, index) => {
+    if (e.nativeEvent.key === "Backspace") {
+      if (confirmPin[index] === "" && index > 0) {
+        const newPin = [...confirmPin];
+        newPin[index - 1] = "";
+        setConfirmPin(newPin);
+        confirmInputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  // ---------------- Handle PIN Reset Submission ---------------- //
+  const handleResetPassword = async () => {
+    const resetPinStr = resetPin.join("");
+    const confirmPinStr = confirmPin.join("");
+
+    if (resetPinStr.length < 6 || confirmPinStr.length < 6) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter a complete 6-digit PIN for both fields",
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+      return;
+    }
+    if (resetPinStr !== confirmPinStr) {
+      Toast.show({
+        type: "error",
+        text1: "Pins do not match",
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+      return;
+    }
     setIsLoading(true);
-    const res = await handleSetPassword(forgot_id, values.confirmPin);
+    const res = await handleSetPassword(forgot_id, confirmPinStr);
     console.log("Reset password response:", res);
     if (res.isOk) {
       Toast.show({
@@ -89,132 +150,62 @@ const VerifyCode = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
+            </View>
+
+            <View style={styles.whiteContainer}>
               <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>Update Security PIN</Text>
                 <Text style={styles.headerCardSubtitle}>
                   Set a new PIN to keep your account secure
                 </Text>
               </View>
-            </View>
 
-            <View style={styles.whiteContainer}>
-              <Formik
-                initialValues={{ resetPin: "", confirmPin: "" }}
-                validationSchema={validationSchema}
-                onSubmit={handleResetPassword}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Reset PIN</Text>
+                <View style={styles.pinContainer}>
+                  {[...Array(6)].map((_, index) => (
+                    <TextInput
+                      key={`reset-${index}`}
+                      ref={(ref) => (resetInputRefs.current[index] = ref)}
+                      style={styles.pinInput}
+                      keyboardType="phone-pad"
+                      maxLength={1}
+                      value={resetPin[index]}
+                      onChangeText={(text) => handleResetPinChange(text, index)}
+                      onKeyPress={(e) => handleResetPinKeyPress(e, index)}
+                    />
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Confirm PIN</Text>
+                <View style={styles.pinContainer}>
+                  {[...Array(6)].map((_, index) => (
+                    <TextInput
+                      key={`confirm-${index}`}
+                      ref={(ref) => (confirmInputRefs.current[index] = ref)}
+                      style={styles.pinInput}
+                      keyboardType="phone-pad"
+                      maxLength={1}
+                      value={confirmPin[index]}
+                      onChangeText={(text) =>
+                        handleConfirmPinChange(text, index)
+                      }
+                      onKeyPress={(e) => handleConfirmPinKeyPress(e, index)}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetPassword}
+                disabled={isLoading}
+                activeOpacity={0.8}
               >
-                {({
-                  handleChange,
-                  handleBlur,
-                  handleSubmit,
-                  values,
-                  errors,
-                  touched,
-                }) => (
-                  <>
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Reset PIN</Text>
-                      <View style={styles.pinContainer}>
-                        {[...Array(6)].map((_, index) => (
-                          <TextInput
-                            key={index}
-                            ref={(ref) => (resetInputRefs.current[index] = ref)}
-                            style={[
-                              styles.pinInput,
-                              values.resetPin[index] && styles.pinInputFilled,
-                            ]}
-                            keyboardType="phone-pad"
-                            maxLength={1}
-                            value={values.resetPin[index]}
-                            onChangeText={(value) => {
-                              const newPin =
-                                values.resetPin.substring(0, index) +
-                                value +
-                                values.resetPin.substring(index + 1);
-                              handleChange("resetPin")(newPin);
-                              console.log(`Reset PIN updated at index ${index}: ${newPin}`);
-                              if (value && index < 5) {
-                                resetInputRefs.current[index + 1].focus();
-                              }
-                            }}
-                            onKeyPress={(e) => {
-                              if (e.nativeEvent.key === "Backspace" && index > 0) {
-                                const newPin =
-                                  values.resetPin.substring(0, index) +
-                                  " " +
-                                  values.resetPin.substring(index + 1);
-                                handleChange("resetPin")(newPin);
-                                resetInputRefs.current[index - 1].focus();
-                                console.log(`Backspace pressed on reset PIN at index ${index}`);
-                              }
-                            }}
-                            onBlur={handleBlur("resetPin")}
-                          />
-                        ))}
-                      </View>
-                      {touched.resetPin && errors.resetPin && (
-                        <Text style={styles.errorText}>{errors.resetPin}</Text>
-                      )}
-
-                      <Text style={styles.inputLabel}>Confirm PIN</Text>
-                      <View style={styles.pinContainer}>
-                        {[...Array(6)].map((_, index) => (
-                          <TextInput
-                            key={index}
-                            ref={(ref) =>
-                              (confirmInputRefs.current[index] = ref)
-                            }
-                            style={[
-                              styles.pinInput,
-                              values.confirmPin[index] && styles.pinInputFilled,
-                            ]}
-                            keyboardType="phone-pad"
-                            maxLength={1}
-                            value={values.confirmPin[index]}
-                            onChangeText={(value) => {
-                              const newPin =
-                                values.confirmPin.substring(0, index) +
-                                value +
-                                values.confirmPin.substring(index + 1);
-                              handleChange("confirmPin")(newPin);
-                              console.log(`Confirm PIN updated at index ${index}: ${newPin}`);
-                              if (value && index < 5) {
-                                confirmInputRefs.current[index + 1].focus();
-                              }
-                            }}
-                            onKeyPress={(e) => {
-                              if (e.nativeEvent.key === "Backspace" && index > 0) {
-                                const newPin =
-                                  values.confirmPin.substring(0, index) +
-                                  " " +
-                                  values.confirmPin.substring(index + 1);
-                                handleChange("confirmPin")(newPin);
-                                confirmInputRefs.current[index - 1].focus();
-                                console.log(`Backspace pressed on confirm PIN at index ${index}`);
-                              }
-                            }}
-                            onBlur={handleBlur("confirmPin")}
-                          />
-                        ))}
-                      </View>
-                      {touched.confirmPin && errors.confirmPin && (
-                        <Text style={styles.errorText}>{errors.confirmPin}</Text>
-                      )}
-                    </View>
-
-                    <TouchableOpacity
-                      style={styles.resetButton}
-                      onPress={handleSubmit}
-                      disabled={isLoading}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.resetButtonText}>
-                        {isLoading ? "Setting..." : "Reset and Continue"}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </Formik>
+                <Text style={styles.resetButtonText}>
+                  {isLoading ? "Setting..." : "Reset and Continue"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -241,7 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 30,
     paddingBottom: 50,
-    height: 180,
+    height: 200,
   },
   backButton: {
     position: "absolute",
@@ -251,18 +242,18 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: "100%",
-    height: 60,
-    marginTop: 10,
+    height: 70,
+    marginTop: 20,
   },
   headerCard: {
     position: "absolute",
-    bottom: -50,
+    top: -40,
     alignSelf: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    width: "85%",
+    width: "95%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
@@ -286,7 +277,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
-    zIndex: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 10,
   },
   inputContainer: {
     marginTop: 40,
@@ -303,19 +296,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pinInput: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
+    borderColor: "#ccc",
+    borderRadius: 10,
     textAlign: "center",
     fontSize: 18,
-    fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFFFFF",
-  },
-  pinInputFilled: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#000000",
+    backgroundColor: "#fff",
   },
   resetButton: {
     backgroundColor: "#E3000F",
@@ -329,12 +317,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",
-  },
-  errorText: {
-    color: "#FF0000",
-    fontSize: 12,
-    marginBottom: 8,
-    fontFamily: "Poppins-Regular",
   },
 });
 

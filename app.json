@@ -7,9 +7,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon1.jpg",
     "userInterfaceStyle": "light",
-    "backgroundColor":"#000",
+    "backgroundColor": "#000",
     "newArchEnabled": true,
-    "splash": {},
+    "splash": {
+      "image": "./assets/icon1.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deep_1012.HiIndia_App"
@@ -30,7 +34,6 @@
       [
         "@react-native-google-signin/google-signin"
       ]
-
     ],
     "extra": {
       "eas": {

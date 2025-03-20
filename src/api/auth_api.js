@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const handleLogin = async (values) => {
   try {
     console.log("[handleLogin] Logging in with:", values);
+    console.log("[handleLogin] API_BASE_URL:", API_BASE_URL);
     const res = await axios.post(`${API_BASE_URL}/participantLogin`, values, {
       validateStatus: () => true,
     });

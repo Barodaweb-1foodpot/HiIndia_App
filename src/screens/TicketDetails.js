@@ -250,7 +250,7 @@ ${ticketsInfo}
       <View style={styles.contentContainer}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={{ paddingBottom:140 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Event Details */}

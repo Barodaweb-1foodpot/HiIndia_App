@@ -11,6 +11,7 @@ import {
   Dimensions,
   Animated,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -194,7 +195,6 @@ const TicketItem = ({ registration }) => {
 /*
   PaymentScreen Component:
   Manages the event registration and payment flow using Stripe’s PaymentSheet.
-  Updated header card now displays only the event name with a "Read More" button if the name is long.
 */
 export default function PaymentScreen() {
   const navigation = useNavigation();
@@ -301,25 +301,30 @@ export default function PaymentScreen() {
     try {
       setIsLoading(true);
       // Register the event and get the client secret for payment
-      const { clientSecret, orderId } = await handleRegister();
-      console.log("---------------", orderId);
+      const registerResponse = await handleRegister();
+      // Handle free event case
+      if (registerResponse === "Free") {
+        console.log("Event is free – no payment required");
+        Toast.show({ type: "success", text1: "Registration successful!" });
+        // Keep loader active until redirect
+        setTimeout(() => {
+          console.log(
+            "Redirecting to Tickets tab after free event registration"
+          );
+          navigation.navigate("Tab", { screen: "Tickets" });
+        }, 1000);
+        return;
+      }
+      const { clientSecret, orderId } = registerResponse;
       if (clientSecret === "Free") {
         console.log("Event is free – no payment required");
         Toast.show({ type: "success", text1: "Registration successful!" });
-        setIsLoading(false);
-
-        await handleSendMail(orderId);
-        // Redirect to Tickets tab after a short delay
         setTimeout(() => {
-          console.log("Redirecting to Tickets tab after payment");
+          console.log(
+            "Redirecting to Tickets tab after free event registration"
+          );
           navigation.navigate("Tab", { screen: "Tickets" });
-        }, 2000);
-
-        // await updatePaymentStatus(clientSecret, "Free event", true);
-        setTimeout(() => {
-          console.log("Redirecting to Tickets tab for free event");
-          navigation.navigate("Tab", { screen: "Tickets" });
-        }, 2000);
+        }, 1000);
         return;
       }
       if (!clientSecret) {
@@ -375,13 +380,14 @@ export default function PaymentScreen() {
       console.log("Payment status updated:", updateRes);
       if (updateRes.isOk) {
         await handleSendMail(updateRes.orderId);
-        // Redirect to Tickets tab after a short delay
+        // Keep loader active until redirect
         setTimeout(() => {
           console.log("Redirecting to Tickets tab after payment");
           navigation.navigate("Tab", { screen: "Tickets" });
-        }, 2000);
+        }, 1000);
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     } catch (error) {
       console.error("Error during payment process:", error);
       Toast.show({
@@ -411,7 +417,6 @@ export default function PaymentScreen() {
       }
       const userId = await AsyncStorage.getItem("role");
       const amountInCents = Math.round(grandTotal * 100);
-      setIsLoading(true);
       // Format participants data from ticketList
       const formattedParticipants = ticketList.map((participant) => {
         console.log("Formatting participant:", participant.name);
@@ -450,17 +455,15 @@ export default function PaymentScreen() {
             "Got clientSecret from server:",
             response.data[0].orderId
           );
-          const data = {
+          return {
             clientSecret: response.clientSecret,
             orderId: response.data[0].orderId,
           };
-          return data;
         } else if (eventDetail.IsPaid === false) {
           console.log("Event is free; returning 'Free'");
           return "Free";
         }
       } else {
-        setIsLoading(false);
         Toast.show({
           type: "error",
           text1: response.status === 401 ? "Login Again Session Expired" : "",
@@ -473,7 +476,6 @@ export default function PaymentScreen() {
         }
       }
     } catch (error) {
-      setIsLoading(false);
       console.error("Error during event registration:", error);
       Toast.show({
         type: "error",
@@ -491,7 +493,6 @@ export default function PaymentScreen() {
       const response = await sendEventTicketByOrderId(orderId);
       console.log("Email send response:", response);
       if (response.isOk || response.status === 200) {
-        setIsLoading(false);
         Toast.show({
           type: "success",
           text1: response.message,
@@ -499,7 +500,6 @@ export default function PaymentScreen() {
           visibilityTime: 2000,
         });
       } else {
-        setIsLoading(false);
         Toast.show({
           type: "error",
           text1: "Something went wrong sending the mail",
@@ -508,7 +508,6 @@ export default function PaymentScreen() {
         });
       }
     } catch (error) {
-      setIsLoading(false);
       console.error("Error sending mail:", error);
       Toast.show({
         type: "error",
@@ -544,23 +543,7 @@ export default function PaymentScreen() {
           defaultSource={require("../../../assets/placeholder.jpg")}
         />
         {/* Updated header card: display only the event name with a Read More button */}
-        <View style={styles.headerCard}>
-          <View>
-            <Text
-              style={styles.headerCardTitle}
-              numberOfLines={titleReadMore ? undefined : 2}
-            >
-              {eventDetail?.EventName || "Event Name Unavailable"}
-            </Text>
-            {eventDetail?.EventName?.length > 50 && (
-              <TouchableOpacity onPress={toggleTitleReadMore}>
-                <Text style={styles.readMoreText}>
-                  {titleReadMore ? "Read Less" : "Read More"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+
       </View>
 
       {/* WHITE SECTION: Registration details and payment options */}
@@ -617,35 +600,52 @@ export default function PaymentScreen() {
           )}
           <View style={{ height: 100 }} />
         </ScrollView>
+        <View style={styles.headerCard}>
+          <View>
+            <Text
+              style={styles.headerCardTitle}
+              numberOfLines={titleReadMore ? undefined : 2}
+            >
+              {eventDetail?.EventName || "Event Name Unavailable"}
+            </Text>
+            {eventDetail?.EventName?.length > 50 && (
+              <TouchableOpacity onPress={toggleTitleReadMore}>
+                <Text style={styles.readMoreText}>
+                  {titleReadMore ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* BOTTOM BAR: Grand total and payment button */}
         <View style={styles.bottomBar}>
           <View style={styles.totalSection}>
-            <View style={styles.totalSection}>
-              <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalText}>
-                {eventDetail.countryDetail[0].Currency} {grandTotal}
-              </Text>
-            </View>
+            <Text style={styles.grandTotalLabel}>Grand Total</Text>
+            <Text style={styles.grandTotalText}>
+              {eventDetail.countryDetail[0].Currency} {grandTotal}
+            </Text>
           </View>
           <TouchableOpacity
             disabled={isLoading}
             style={styles.makePaymentButton}
             onPress={handleMakePayment}
           >
-            <Text style={styles.makePaymentButtonText}>
-              {isLoading
-                ? "Processing..."
-                : grandTotal > 0
-                ? "Make Payment"
-                : "Proceed"}
-            </Text>
-            <Ionicons
-              name="arrow-forward"
-              size={20}
-              color="#FFF"
-              style={{ marginLeft: 8 }}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <>
+                <Text style={styles.makePaymentButtonText}>
+                  {grandTotal > 0 ? "Make Payment" : "Proceed"}
+                </Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color="#FFF"
+                  style={{ marginLeft: 8 }}
+                />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -683,10 +683,12 @@ const styles = StyleSheet.create({
   topImage: {
     width: "100%",
     height: "100%",
+    zIndex: 0,
+    position: "relative",
   },
   headerCard: {
     position: "absolute",
-    bottom: 25,
+    top: -40,
     alignSelf: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -698,7 +700,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 4,
-    zIndex: 1111,
+    zIndex: 9,
   },
   headerCardTitle: {
     fontSize: 20,
@@ -717,7 +719,7 @@ const styles = StyleSheet.create({
     marginTop: -80,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    zIndex: 0,
+    zIndex: 10,
   },
   scrollContent: {
     paddingTop: 90,

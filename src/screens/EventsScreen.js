@@ -38,7 +38,9 @@ const EventImage = ({ uri, style }) => {
     <View style={style}>
       {!loaded && <SkeletonLoader style={StyleSheet.absoluteFill} />}
       <Image
-        source={uri && !error ? { uri } : require("../../assets/placeholder.jpg")}
+        source={
+          uri && !error ? { uri } : require("../../assets/placeholder.jpg")
+        }
         style={[style, loaded ? {} : { opacity: 0 }]}
         resizeMode="cover"
         onLoadEnd={() => {
@@ -83,7 +85,13 @@ const SearchBar = React.memo(({ visible, searchText, setSearchText }) =>
  * Dropdown - Category dropdown filter
  */
 const Dropdown = React.memo(
-  ({ dropdownOpen, selectedCategory, category, onToggle, onSelectCategory }) => (
+  ({
+    dropdownOpen,
+    selectedCategory,
+    category,
+    onToggle,
+    onSelectCategory,
+  }) => (
     <View style={styles.dropdownWrapper}>
       <TouchableOpacity style={styles.dropdownButton} onPress={onToggle}>
         <Text style={styles.dropdownButtonText}>{selectedCategory}</Text>
@@ -190,13 +198,13 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
   const eventDate = formatEventDateTime(item.StartDate, item.EndDate);
   return (
     <View style={styles.eventCard}>
-      {item.IsPaid ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Paid</Text>
-        </View>
-      ) : (
+      {!item.IsPaid && !item.hasExternalLink && item.externalLink !== "" ? (
         <View style={[styles.badge, styles.freeBadge]}>
           <Text style={styles.badgeText}>Free</Text>
+        </View>
+      ) : (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Paid</Text>
         </View>
       )}
       <EventImage uri={eventImageUri} style={styles.eventImage} />
@@ -212,7 +220,10 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
         >
           <Ionicons name="information-circle-outline" size={20} color="#000" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton} onPress={() => onShare(item)}>
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={() => onShare(item)}
+        >
           <Ionicons name="share-social-outline" size={20} color="#000" />
         </TouchableOpacity>
       </View>
@@ -221,17 +232,19 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
           <Text style={styles.eventTitle} numberOfLines={1}>
             {item.EventName}
           </Text>
+
+          <View style={styles.eventDetail}>
+            <Ionicons name="calendar-outline" size={14} color="#fff" />
+            <Text style={styles.eventDetailText}>{eventDate}</Text>
+          </View>
           <View style={styles.eventDetail}>
             <Ionicons name="location-outline" size={14} color="#fff" />
             <Text style={styles.eventDetailText} numberOfLines={2}>
               {item.EventLocation}
             </Text>
           </View>
-          <View style={styles.eventDetail}>
-            <Ionicons name="calendar-outline" size={14} color="#fff" />
-            <Text style={styles.eventDetailText}>{eventDate}</Text>
-          </View>
         </View>
+
         <View style={styles.registerContainer}>
           <TouchableOpacity
             style={styles.registerButton}
@@ -299,8 +312,12 @@ export default function EventsScreen({ navigation }) {
         });
         // Sort groups by the earliest event date in each group
         sortedGroups.sort((a, b) => {
-          const earliestA = a.data[0] ? new Date(a.data[0].StartDate).getTime() : Infinity;
-          const earliestB = b.data[0] ? new Date(b.data[0].StartDate).getTime() : Infinity;
+          const earliestA = a.data[0]
+            ? new Date(a.data[0].StartDate).getTime()
+            : Infinity;
+          const earliestB = b.data[0]
+            ? new Date(b.data[0].StartDate).getTime()
+            : Infinity;
           return earliestA - earliestB;
         });
         if (firstTime) {
@@ -370,7 +387,12 @@ export default function EventsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       {/* Header Section (imported) */}
       <Header
         onNotificationPress={() => {
@@ -398,7 +420,11 @@ export default function EventsScreen({ navigation }) {
         </View>
 
         {/* Search Bar with clear button */}
-        <SearchBar visible={searchVisible} searchText={searchText} setSearchText={setSearchText} />
+        <SearchBar
+          visible={searchVisible}
+          searchText={searchText}
+          setSearchText={setSearchText}
+        />
 
         {/* Dropdown for Category Filtering */}
         <Dropdown
@@ -411,12 +437,18 @@ export default function EventsScreen({ navigation }) {
 
         {/* Main Events List with Pull-to-Refresh */}
         <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}
         >
           {loading && !refreshing ? (
-            <ActivityIndicator size="large" color="#000" style={{ marginVertical: 20 }} />
+            <ActivityIndicator
+              size="large"
+              color="#000"
+              style={{ marginVertical: 20 }}
+            />
           ) : artistGroups.length > 0 ? (
             artistGroups.map((group, groupIndex) => (
               <View key={groupIndex} style={{ marginBottom: 24 }}>
@@ -424,7 +456,11 @@ export default function EventsScreen({ navigation }) {
                   {group.artistName || "Unknown Artist"}
                 </Text>
                 {group.data.map((item) => (
-                  <CategoryCard key={item._id} item={item} navigation={navigation} />
+                  <CategoryCard
+                    key={item._id}
+                    item={item}
+                    navigation={navigation}
+                  />
                 ))}
               </View>
             ))
@@ -734,9 +770,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingLeft: 8,
   },
+  registerContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingLeft: 8,
+  },
   registerButton: {
     backgroundColor: "#E3000F",
-    paddingHorizontal: 24,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 20,
   },
@@ -744,11 +785,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    marginVertical: 16,
   },
 });

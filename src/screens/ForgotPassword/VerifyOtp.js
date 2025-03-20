@@ -12,17 +12,22 @@ import {
   StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Formik } from "formik";
-import * as Yup from "yup";
 import { useAuthContext } from "../../context/AuthContext";
 import { requestOTP, verifyOTP } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
 
 const VerifyOtp = ({ navigation }) => {
-  const inputRefs = useRef([]);
+  // Create refs for the 6 OTP input boxes
+  const inputRefs = useRef([...Array(6)].map(() => React.createRef()));
   const { forgotEmail } = useAuthContext();
   const [timeLeft, setTimeLeft] = useState(60);
   const [isLoading, setIsLoading] = useState(false);
+  // Local state array for the 6-digit code
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,16 +42,6 @@ const VerifyOtp = ({ navigation }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const dismissKeyboard = () => {
-    Keyboard.dismiss();
-  };
-
-  const validationSchema = Yup.object().shape({
-    otp: Yup.string()
-      .required("OTP is required")
-      .matches(/^\d{6}$/, "OTP must be exactly 6 digits"),
-  });
-
   const handleSendAgain = async () => {
     setIsLoading(true);
     const res = await requestOTP(forgotEmail);
@@ -57,6 +52,7 @@ const VerifyOtp = ({ navigation }) => {
         position: "bottom",
         visibilityTime: 2000,
       });
+      setTimeLeft(60);
     } else {
       Toast.show({
         type: "error",
@@ -68,9 +64,44 @@ const VerifyOtp = ({ navigation }) => {
     setIsLoading(false);
   };
 
-  const handleVerifyAndContinue = async (values) => {
+  const handleInputChange = (text, index) => {
+    // Only allow numeric input
+    if (/^\d*$/.test(text)) {
+      const newCode = [...code];
+      newCode[index] = text;
+      setCode(newCode);
+      // Move focus to next input if a digit is entered (and not the last box)
+      if (text.length === 1 && index < 5) {
+        inputRefs.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleKeyPress = (e, index) => {
+    if (e.nativeEvent.key === "Backspace") {
+      // If current box is empty and not the first, clear previous box and focus it
+      if (code[index] === "" && index > 0) {
+        const newCode = [...code];
+        newCode[index - 1] = "";
+        setCode(newCode);
+        inputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  const handleSubmitOTP = async () => {
+    const otp = code.join("");
+    if (otp.length < 6) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter the complete 6-digit OTP",
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+      return;
+    }
     setIsLoading(true);
-    const payload = { email: forgotEmail, otp: values.otp };
+    const payload = { email: forgotEmail, otp };
     const res = await verifyOTP(payload);
     if (res.isOk) {
       Toast.show({
@@ -111,100 +142,56 @@ const VerifyOtp = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
+            </View>
+
+            <View style={styles.whiteContainer}>
               <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>Verification Code</Text>
                 <Text style={styles.headerCardSubtitle}>
                   Verification code sent to {forgotEmail}
                 </Text>
               </View>
-            </View>
 
-            <View style={styles.whiteContainer}>
-              <Formik
-                initialValues={{ otp: "" }}
-                validationSchema={validationSchema}
-                onSubmit={() => {}}
-              >
-                {({
-                  handleChange,
-                  handleBlur,
-                  values,
-                  errors,
-                  touched,
-                }) => (
-                  <>
-                    <View style={styles.inputContainer}>
-                      <View style={styles.otpContainer}>
-                        {[...Array(6)].map((_, index) => (
-                          <TextInput
-                            key={index}
-                            ref={(ref) => (inputRefs.current[index] = ref)}
-                            style={[
-                              styles.otpInput,
-                              values.otp[index] && styles.otpInputFilled,
-                            ]}
-                            keyboardType="phone-pad"
-                            maxLength={1}
-                            value={values.otp[index]}
-                            onChangeText={(val) => {
-                              const newOtp =
-                                values.otp.substring(0, index) +
-                                val +
-                                values.otp.substring(index + 1);
-                              handleChange("otp")(newOtp);
-                              if (val && index < 5) {
-                                inputRefs.current[index + 1].focus();
-                              }
-                            }}
-                            onKeyPress={(e) => {
-                              if (
-                                e.nativeEvent.key === "Backspace" &&
-                                index > 0
-                              ) {
-                                const newOtp =
-                                  values.otp.substring(0, index) +
-                                  " " +
-                                  values.otp.substring(index + 1);
-                                handleChange("otp")(newOtp);
-                                inputRefs.current[index - 1].focus();
-                              }
-                            }}
-                            onBlur={handleBlur("otp")}
-                          />
-                        ))}
-                      </View>
-                      {touched.otp && errors.otp && (
-                        <Text style={styles.errorText}>{errors.otp}</Text>
-                      )}
-                      <View style={styles.timerRow}>
-                        <Text style={styles.timerText}>Didn’t receive code? </Text>
-                        {timeLeft > 0 ? (
-                          <Text style={styles.timer}>Wait {timeLeft}s</Text>
-                        ) : (
-                          <TouchableOpacity
-                            onPress={handleSendAgain}
-                            activeOpacity={0.7}
-                            disabled={isLoading}
-                          >
-                            <Text style={styles.timer}>Send Again</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.otpContainer}>
+                  {[...Array(6)].map((_, index) => (
+                    <TextInput
+                      key={index}
+                      ref={(ref) => (inputRefs.current[index] = ref)}
+                      style={styles.otpInput}
+                      keyboardType="phone-pad"
+                      maxLength={1}
+                      value={code[index]}
+                      onChangeText={(val) => handleInputChange(val, index)}
+                      onKeyPress={(e) => handleKeyPress(e, index)}
+                    />
+                  ))}
+                </View>
+                <View style={styles.timerRow}>
+                  <Text style={styles.timerText}>Didn’t receive code? </Text>
+                  {timeLeft > 0 ? (
+                    <Text style={styles.timer}>Wait {timeLeft}s</Text>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={handleSendAgain}
+                      activeOpacity={0.7}
+                      disabled={isLoading}
+                    >
+                      <Text style={styles.timer}>Send Again</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-                      {/* Button placed here, so it's below the "Didn’t receive code?" text */}
-                      <TouchableOpacity
-                        style={styles.verifyButton}
-                        onPress={() => handleVerifyAndContinue(values)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.verifyButtonText}>
-                          Verify and Continue
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </Formik>
+                <TouchableOpacity
+                  style={styles.verifyButton}
+                  onPress={handleSubmitOTP}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.verifyButtonText}>
+                    Verify and Continue
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -231,7 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 30,
     paddingBottom: 50,
-    height: 180,
+    height: 200,
   },
   backButton: {
     position: "absolute",
@@ -241,18 +228,18 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: "100%",
-    height: 60,
-    marginTop: 10,
+    height: 70,
+    marginTop: 20,
   },
   headerCard: {
     position: "absolute",
-    bottom: -50,
+    top: -35,
     alignSelf: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 4,
     paddingHorizontal: 20,
-    width: "85%",
+    width: "95%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
@@ -276,7 +263,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
-    zIndex: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 10,
   },
   inputContainer: {
     marginTop: 40,
@@ -287,31 +276,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   otpInput: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
+    borderColor: "#ccc",
+    borderRadius: 10,
     textAlign: "center",
     fontSize: 18,
-    fontFamily: "Poppins-Regular",
-    backgroundColor: "#FFF",
-  },
-  otpInputFilled: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#000",
-  },
-  errorText: {
-    color: "#F00",
-    fontSize: 12,
-    marginBottom: 8,
-    fontFamily: "Poppins-Regular",
+    backgroundColor: "#fff",
   },
   timerRow: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 10,
-    marginBottom: 20, 
+    marginBottom: 20,
   },
   timerText: {
     color: "#666",

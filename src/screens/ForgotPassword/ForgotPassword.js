@@ -90,15 +90,16 @@ const ForgotPassword = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <View style={styles.headerCard}>
+              
+            </View>
+
+            <View style={styles.whiteContainer}>
+            <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>Forgot Password</Text>
                 <Text style={styles.headerCardSubtitle}>
                   Enter your registered email address below to recover your password.
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.whiteContainer}>
               <Formik
                 initialValues={{ email: forgotEmail || "" }}
                 validationSchema={validationSchema}
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 30,
     paddingBottom: 50,
-    height: 180,
+    height: 200,
   },
   backButton: {
     position: "absolute",
@@ -181,18 +182,18 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: "100%",
-    height: 60,
-    marginTop: 10,
+    height: 70,
+    marginTop: 20,
   },
   headerCard: {
     position: "absolute",
-    bottom: -50,
+    top: -35,
     alignSelf: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 20,
-    width: "85%",
+    width: "95%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
@@ -216,10 +217,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     paddingHorizontal: 20,
     paddingVertical: 40,
-    zIndex: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 10,
   },
   inputContainer: {
-    marginTop: 35,
+    marginTop: 60,
   },
   inputLabel: {
     fontSize: 14,
