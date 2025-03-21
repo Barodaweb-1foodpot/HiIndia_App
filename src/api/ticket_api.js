@@ -13,7 +13,14 @@ export const getTickets = async () => {
     const url = `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`;
     console.log("Making GET request to:", url);
 
-    const response = await axios.get(url);
+    const response = await axios.get(url,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
+    );
     console.log("Response data received:", response.data);
 
     return response.data;
@@ -35,7 +42,14 @@ export const sendEventTicketByOrderId = async (orderId) => {
     const url = `${API_BASE_URL}/auth/send/sendEventTicketByOrderId`;
     console.log("sendEventTicketByOrderId: Making POST request to:", url);
 
-    const response = await axios.post(url, { orderId });
+    const response = await axios.post(url, { orderId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
+    );
     console.log("Response data received:", response.data);
 
     return response.data;
@@ -57,7 +71,14 @@ export const getTicketsByOrderId = async (orderId) => {
     const url = `${API_BASE_URL}/auth/get/getTicketsByOrderId`;
     console.log("getTicketsByOrderId: Making POST request to:", url);
 
-    const response = await axios.post(url, { orderId });
+    const response = await axios.post(url, { orderId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
+    );
     console.log("Number of tickets found:", response.data?.data?.length);
 
     return response.data;
