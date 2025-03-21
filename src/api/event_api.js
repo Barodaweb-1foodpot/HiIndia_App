@@ -9,6 +9,7 @@ export const listActiveEvents = async () => {
       "Fetching active events from:",
       `${API_BASE_URL}/auth/listActive/event`
     );
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.get(`${API_BASE_URL}/auth/listActive/event`,
       {
         headers: {
@@ -51,7 +52,7 @@ export const fetchEvents = async (
       "priceFilter:",
       priceFilter
     );
-
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.post(
       `${API_BASE_URL}/auth/list-by-params/eventforApp`,
       {
@@ -61,14 +62,7 @@ export const fetchEvents = async (
         categoryFilter,
         priceFilter,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        validateStatus: () => true,
-      }
-      
-    );
+          );
 
     console.log("Response received:", response.data);
 
@@ -90,6 +84,7 @@ export const getEventCategoriesByPartner = async () => {
       "Fetching event categories from:",
       `${API_BASE_URL}/auth/get/getEventCategoriesByPartner`
     );
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.get(
       `${API_BASE_URL}/auth/get/getEventCategoriesByPartner`,
       {
@@ -114,6 +109,7 @@ export const getEventCategoriesByPartner = async () => {
 
 export const getCitiesByEventPartner = async () => {
   try {
+    const token = await AsyncStorage.getItem("Token");
     const partnerId = await AsyncStorage.getItem("role");
     console.log("Fetching cities for event partner:", partnerId);
     const response = await axios.get(
@@ -197,6 +193,7 @@ export const ExentRegister = async (payload) => {
 
 export const EventTicket = async () => {
   try {
+    const token = await AsyncStorage.getItem("Token");
     console.log("Fetching event ticket...");
     const id = await AsyncStorage.getItem("role");
     console.log("Retrieved role id:", id);
@@ -239,7 +236,7 @@ export const fetchCalendarEvents = async (
       "priceFilter:",
       priceFilter
     );
-
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.post(
       `${API_BASE_URL}/auth/list-by-params/eventforAppCalender`,
       {

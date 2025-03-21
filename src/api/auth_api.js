@@ -153,6 +153,7 @@ export const fetchActiveCountries = async () => {
 export const fetchProfile = async (participantId) => {
   try {
     console.log("[fetchProfile] Fetching profile for participantId:", participantId);
+    const token = await AsyncStorage.getItem("Token");
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`,
       {

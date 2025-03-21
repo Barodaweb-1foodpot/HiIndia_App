@@ -17,6 +17,7 @@ export const createPaymentIntent = async (amount, currency = "usd") => {
 export const updatePaymentStatus = async (clientSecret, status , isPaid) => {
   try {
     const val = { clientSecret, status ,isPaid};
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.patch(
       `${API_BASE_URL}/auth/patch/PaymentStatus`,
       val,

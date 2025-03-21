@@ -12,7 +12,7 @@ export const getTickets = async () => {
 
     const url = `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`;
     console.log("Making GET request to:", url);
-
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.get(url,
       {
         headers: {
@@ -41,7 +41,7 @@ export const sendEventTicketByOrderId = async (orderId) => {
 
     const url = `${API_BASE_URL}/auth/send/sendEventTicketByOrderId`;
     console.log("sendEventTicketByOrderId: Making POST request to:", url);
-
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.post(url, { orderId },
       {
         headers: {
@@ -70,7 +70,7 @@ export const getTicketsByOrderId = async (orderId) => {
 
     const url = `${API_BASE_URL}/auth/get/getTicketsByOrderId`;
     console.log("getTicketsByOrderId: Making POST request to:", url);
-
+    const token = await AsyncStorage.getItem("Token");
     const response = await axios.post(url, { orderId },
       {
         headers: {
