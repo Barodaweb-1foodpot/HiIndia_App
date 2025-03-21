@@ -19,7 +19,13 @@ export const updatePaymentStatus = async (clientSecret, status , isPaid) => {
     const val = { clientSecret, status ,isPaid};
     const response = await axios.patch(
       `${API_BASE_URL}/auth/patch/PaymentStatus`,
-      val
+      val,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
     );
     return response.data;
   } catch (error) {

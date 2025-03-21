@@ -9,7 +9,14 @@ export const listActiveEvents = async () => {
       "Fetching active events from:",
       `${API_BASE_URL}/auth/listActive/event`
     );
-    const response = await axios.get(`${API_BASE_URL}/auth/listActive/event`);
+    const response = await axios.get(`${API_BASE_URL}/auth/listActive/event`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
+    );
     console.log("[Response received:", response.data);
     return response;
   } catch (error) {
@@ -53,7 +60,14 @@ export const fetchEvents = async (
         filterDate,
         categoryFilter,
         priceFilter,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
       }
+      
     );
 
     console.log("Response received:", response.data);
@@ -77,7 +91,13 @@ export const getEventCategoriesByPartner = async () => {
       `${API_BASE_URL}/auth/get/getEventCategoriesByPartner`
     );
     const response = await axios.get(
-      `${API_BASE_URL}/auth/get/getEventCategoriesByPartner`
+      `${API_BASE_URL}/auth/get/getEventCategoriesByPartner`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
     );
     console.log("Response received:", response.data);
     return response;
@@ -97,7 +117,13 @@ export const getCitiesByEventPartner = async () => {
     const partnerId = await AsyncStorage.getItem("role");
     console.log("Fetching cities for event partner:", partnerId);
     const response = await axios.get(
-      `${API_BASE_URL}/auth/get/citiesByEventPartner/673eca62e41a0eb1aa6904cd`
+      `${API_BASE_URL}/auth/get/citiesByEventPartner/673eca62e41a0eb1aa6904cd`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
     );
     console.log("Response received:-----------------", response.data);
     return response.data;
@@ -125,6 +151,7 @@ export const SaveEvent = async (values) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        validateStatus: () => true,
       }
     );
     console.log("Response received:", response.data);
@@ -174,7 +201,13 @@ export const EventTicket = async () => {
     const id = await AsyncStorage.getItem("role");
     console.log("Retrieved role id:", id);
     const response = await axios.get(
-      `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`
+      `${API_BASE_URL}/auth/get/eventRegisterTicket/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
     );
     console.log("Response received:", response.data);
     return response.data;

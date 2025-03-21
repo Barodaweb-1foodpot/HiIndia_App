@@ -154,7 +154,13 @@ export const fetchProfile = async (participantId) => {
   try {
     console.log("[fetchProfile] Fetching profile for participantId:", participantId);
     const res = await axios.get(
-      `${API_BASE_URL}/auth/get/participant/${participantId}`
+      `${API_BASE_URL}/auth/get/participant/${participantId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        validateStatus: () => true,
+      }
     );
     console.log("[fetchProfile] Profile data:", res.data);
     return res.data;
@@ -177,8 +183,10 @@ export const updateProfileByApp = async (participantId, formData) => {
       formData,
       {
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
+        validateStatus: () => true,        
       }
     );
     console.log("[updateProfileByApp] Response:", res.data);
