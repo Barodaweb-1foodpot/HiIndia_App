@@ -211,20 +211,24 @@ export default function ProfileScreen() {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>My Profile</Text>
       </View>
-      <ScrollView style={styles.container}>
-        <View style={styles.profileSection}>
-          <TouchableOpacity onPress={handleProfileImagePress}>
-            <ProfileImage source={profileImageSource} style={styles.profileImage} />
-          </TouchableOpacity>
-          <View style={styles.profileInfo}>
-            <Text style={styles.userName}>
-              {profileData ? `${profileData.firstName} ${profileData.lastName}` : "Your Name"}
-            </Text>
-            <Text style={styles.userEmail}>
-              {profileData ? profileData.emailId : "Your Email"}
-            </Text>
-          </View>
+
+      {/* Profile section is now fixed (not scrollable) */}
+      <View style={styles.profileSection}>
+        <TouchableOpacity onPress={handleProfileImagePress}>
+          <ProfileImage source={profileImageSource} style={styles.profileImage} />
+        </TouchableOpacity>
+        <View style={styles.profileInfo}>
+          <Text style={styles.userName}>
+            {profileData ? `${profileData.firstName} ${profileData.lastName}` : "Your Name"}
+          </Text>
+          <Text style={styles.userEmail}>
+            {profileData ? profileData.emailId : "Your Email"}
+          </Text>
         </View>
+      </View>
+
+      {/* Scrollable menu items */}
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 130 }}>
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("App", { screen: "EditProfile" })}
@@ -349,6 +353,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
+    margin: 20,
     marginBottom: 32,
   },
   profileImage: {

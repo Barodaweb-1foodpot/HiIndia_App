@@ -9,11 +9,7 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#000",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/icon1.jpg",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "splash": {},
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deep_1012.HiIndia_App",

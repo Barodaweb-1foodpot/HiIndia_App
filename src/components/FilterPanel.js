@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
   filterPanelContent: {
     padding: 14,
     paddingTop: 12,
+    paddingBottom: 60,
   },
   filterPanelHeader: {
     flexDirection: 'row',
