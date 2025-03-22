@@ -17,17 +17,17 @@ import * as Yup from "yup";
 
 import Toast from "react-native-toast-message";
 import { useAuthContext } from "../../context/AuthContext";
-// import {
-//   GoogleSignin,
-//   statusCodes,
-// } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 
-// import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
+import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
 
-// GoogleSignin.configure({
-//   webClientId:
-//     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
-// });
+GoogleSignin.configure({
+  webClientId:
+    "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
+});
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
@@ -180,7 +180,7 @@ const LoginScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
 
-                       {/* <View style={styles.dividerContainer}>
+                       <View style={styles.dividerContainer}>
                         <View style={styles.divider} />
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
@@ -188,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
 
                       <TouchableOpacity
                         style={styles.socialButton}
-                        // onPress={handleGoogleSignIn}
+                        onPress={handleGoogleSignIn}
                       >
                         <Image
                           source={require("../../../assets/google.png")}
@@ -197,7 +197,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                      </TouchableOpacity>  */}
+                      </TouchableOpacity> 
 
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>

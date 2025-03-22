@@ -16,7 +16,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.deep_1012.HiIndia_App"
+      "bundleIdentifier": "com.deep_1012.HiIndia_App",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
