@@ -179,6 +179,7 @@ export const fetchProfile = async (participantId) => {
 export const updateProfileByApp = async (participantId, formData) => {
   try {
     console.log(`[updateProfileByApp] Updating profile for participantId: ${participantId}`);
+    const token = await AsyncStorage.getItem("Token");
     const res = await axios.patch(
       `${API_BASE_URL}/auth/updateProfileByApp/${participantId}`,
       formData,

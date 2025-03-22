@@ -188,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
 
                       <TouchableOpacity
                         style={styles.socialButton}
-                        // onPress={handleGoogleSignIn}
+                        onPress={handleGoogleSignIn}
                       >
                         <Image
                           source={require("../../../assets/google.png")}
