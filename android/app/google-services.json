@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "936625231687",
+    "project_id": "hiindia-953fd",
+    "storage_bucket": "hiindia-953fd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936625231687:android:62fe6bf0ef0f88935f5e62",
+        "android_client_info": {
+          "package_name": "com.deep_1012.HiIndia_App"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "936625231687-b46mgu5bkfmq45fn9d02rc639afo9g0q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.deep_1012.HiIndia_App",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKmtq4WmcAdx5lq3bJQNrR-D4DHpJwg_M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
