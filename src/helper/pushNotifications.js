@@ -23,7 +23,7 @@ export const usePushNotifications = () => {
   const [fcmToken, setFcmToken] = useState(null);
   const [notification, setNotification] = useState(null);
   const user = useAuthContext();
-  
+
   // Refs for listeners
   const notificationListener = useRef();
   const responseListener = useRef();
@@ -34,10 +34,12 @@ export const usePushNotifications = () => {
     try {
       let deviceId = await AsyncStorage.getItem("deviceId");
       if (!deviceId) {
-        deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        deviceId = `device_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(2, 9)}`;
         await AsyncStorage.setItem("deviceId", deviceId);
       }
-      
+
       console.log("Sending FCM token to backend:", token, deviceId);
       const userId = await AsyncStorage.getItem("role");
       // Make your API call here to send token to your backend
@@ -55,8 +57,6 @@ export const usePushNotifications = () => {
       });
 
       console.log("response is ", response);
-
- 
     } catch (error) {
       console.error("Error sending token:", error);
     }
@@ -65,11 +65,14 @@ export const usePushNotifications = () => {
   // Request Expo notification permissions and get token
   async function registerForExpoPushNotifications() {
     let token;
-    
+
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
+      console.log("Initial notification permission status:", existingStatus);
+
       if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync({
           ios: {
@@ -77,24 +80,41 @@ export const usePushNotifications = () => {
             allowBadge: true,
             allowSound: true,
             allowAnnouncements: true,
+            allowCriticalAlerts: true,
+            allowProvisional: true,
           },
         });
         finalStatus = status;
+        console.log("New notification permission status:", status);
       }
-      
+
       if (finalStatus !== "granted") {
         console.log("Failed to get push token for Expo notifications!");
         return null;
       }
-      
-      token = (await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId,
-      })).data;
+
+      token = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId,
+        })
+      ).data;
+
+      console.log("Expo Push Token obtained:", token);
     } else {
-      console.log("Must use physical device for Push Notifications");
-      return null;
+      console.log("Running on simulator - Push notifications will be limited");
+      // For simulator testing, we'll still try to get a token
+      try {
+        token = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId: Constants.expoConfig?.extra?.eas?.projectId,
+          })
+        ).data;
+        console.log("Simulator Expo Push Token:", token);
+      } catch (error) {
+        console.error("Error getting simulator token:", error);
+      }
     }
-    
+
     return token;
   }
 
@@ -107,104 +127,227 @@ export const usePushNotifications = () => {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#FF231F7C",
       });
+    } else if (Platform.OS === "ios") {
+      // Configure iOS notification categories with more actions
+      await Notifications.setNotificationCategoryAsync("default", [
+        {
+          identifier: "default",
+          buttons: [
+            {
+              title: "View",
+              action: "view",
+            },
+            {
+              title: "Reply",
+              action: "reply",
+            },
+            {
+              title: "Dismiss",
+              action: "dismiss",
+            },
+          ],
+        },
+      ]);
     }
   }
 
+  // Handle notification response actions
+  const handleNotificationResponse = (response) => {
+    const { actionIdentifier, notification } = response;
+    console.log("Notification action:", actionIdentifier);
+
+    switch (actionIdentifier) {
+      case "view":
+        // Handle view action - navigate to relevant screen
+        console.log("View action triggered for notification:", notification);
+        break;
+      case "reply":
+        // Handle reply action
+        console.log("Reply action triggered for notification:", notification);
+        break;
+      case "dismiss":
+        // Handle dismiss action
+        console.log("Dismiss action triggered for notification:", notification);
+        break;
+      default:
+        // Handle default tap action
+        console.log("Default tap action for notification:", notification);
+    }
+  };
+
+  // Update badge count
+  const updateBadgeCount = async (count) => {
+    if (Platform.OS === "ios") {
+      await Notifications.setBadgeCountAsync(count);
+    }
+  };
+
   // Set up Firebase Cloud Messaging
   async function setupFirebaseMessaging() {
-    // Debug initial state
-    messaging().getInitialNotification().then(remoteMessage => {
-      console.log('FCM Initial notification state:', remoteMessage ? 'Has notification' : 'No notification');
-    });
+    try {
+      // Debug initial state
+      const initialNotification = await messaging().getInitialNotification();
+      console.log(
+        "FCM Initial notification state:",
+        initialNotification ? "Has notification" : "No notification"
+      );
 
-    // Verify permissions
-    messaging().hasPermission().then(authStatus => {
-      console.log('FCM Permission status:', authStatus);
-    });
-    
-    // Request permission
-    const authStatus = await messaging().requestPermission();
-    const enabled = 
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED || 
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-      
-    if (enabled) {
-      // Get and store FCM token
-      const token = await messaging().getToken();
-      console.log("HiIndia FCM Token:", token);
-      setFcmToken(token);
-      sendTokenToBackend(token);
-      
-      // Set up token refresh handler
-      const unsubscribeTokenRefresh = messaging().onTokenRefresh((newToken) => {
-        console.log("FCM token refreshed:", newToken);
-        setFcmToken(newToken);
-        sendTokenToBackend(newToken);
-      });
-      
-      // Handle foreground messages
-      const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
-        console.log("FCM message received in foreground:", remoteMessage);
-        
-        // Display notification using Expo's API
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification?.title || "New Notification",
-            body: remoteMessage.notification?.body || "You have a new message",
-            data: remoteMessage.data || {},
-          },
-          trigger: null, // Show immediately
+      // Verify permissions
+      const permissionStatus = await messaging().hasPermission();
+      console.log("FCM Permission status:", permissionStatus);
+
+      // Request permission
+      const authStatus = await messaging().requestPermission();
+      console.log("FCM Authorization status:", authStatus);
+
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        // Get and store FCM token
+        const token = await messaging().getToken();
+        console.log("FCM Token obtained:", token);
+        setFcmToken(token);
+        sendTokenToBackend(token);
+
+        // Set up token refresh handler
+        const unsubscribeTokenRefresh = messaging().onTokenRefresh(
+          (newToken) => {
+            console.log("FCM token refreshed:", newToken);
+            setFcmToken(newToken);
+            sendTokenToBackend(newToken);
+          }
+        );
+
+        // Handle foreground messages
+        const unsubscribeForeground = messaging().onMessage(
+          async (remoteMessage) => {
+            console.log("FCM message received in foreground:", remoteMessage);
+
+            // For simulator testing, we'll use a simpler notification
+            if (Platform.OS === "ios" && Device.isDevice === false) {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: "Test Notification",
+                  body: "This is a test notification for simulator",
+                  sound: "default",
+                  badge: 1,
+                },
+                trigger: null,
+              });
+            } else {
+              // Regular notification for real devices
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title:
+                    remoteMessage.notification?.title || "New Notification",
+                  body:
+                    remoteMessage.notification?.body ||
+                    "You have a new message",
+                  data: remoteMessage.data || {},
+                  sound: Platform.OS === "ios" ? "default" : true,
+                  badge: 1,
+                  categoryIdentifier: "default",
+                  attachments: remoteMessage.notification?.imageUrl
+                    ? [
+                        {
+                          url: remoteMessage.notification.imageUrl,
+                          identifier: "image",
+                        },
+                      ]
+                    : undefined,
+                },
+                trigger: null,
+              });
+            }
+
+            // Update badge count
+            const currentBadge = await Notifications.getBadgeCountAsync();
+            await updateBadgeCount(currentBadge + 1);
+          }
+        );
+
+        // Handle background messages with enhanced iOS support
+        messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+          console.log("Message handled in the background:", remoteMessage);
+
+          // Schedule a local notification with rich content
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title:
+                remoteMessage.notification?.title || "Background Notification",
+              body:
+                remoteMessage.notification?.body || "You have a new message",
+              data: remoteMessage.data || {},
+              sound: Platform.OS === "ios" ? "default" : true,
+              badge: 1,
+              categoryIdentifier: "default",
+              attachments: remoteMessage.notification?.imageUrl
+                ? [
+                    {
+                      url: remoteMessage.notification.imageUrl,
+                      identifier: "image",
+                    },
+                  ]
+                : undefined,
+            },
+            trigger: null,
+          });
         });
-      });
-      
-      // Handle background messages
-      messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-        console.log("Message handled in the background:", remoteMessage);
-        
-        // Schedule a local notification
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification?.title || "Background Notification",
-            body: remoteMessage.notification?.body || "You have a new message",
-            data: remoteMessage.data || {},
-          },
-          trigger: null,
-        });
-      });
-      
-      // Handle notification opening app from background
-      const unsubscribeOpenedApp = messaging().onNotificationOpenedApp((remoteMessage) => {
-        console.log("Notification caused app to open from background:", remoteMessage.notification);
-      });
-      
-      // Check if app was opened from a notification
-      messaging().getInitialNotification().then((remoteMessage) => {
-        if (remoteMessage) {
-          console.log("App opened from quit state due to notification:", remoteMessage.notification);
-        }
-      });
-      
-      return () => {
-        unsubscribeForeground();
-        unsubscribeTokenRefresh();
-        unsubscribeOpenedApp && unsubscribeOpenedApp();
-      };
+
+        // Handle notification opening app from background
+        const unsubscribeOpenedApp = messaging().onNotificationOpenedApp(
+          (remoteMessage) => {
+            console.log(
+              "Notification caused app to open from background:",
+              remoteMessage.notification
+            );
+          }
+        );
+
+        // Check if app was opened from a notification
+        messaging()
+          .getInitialNotification()
+          .then((remoteMessage) => {
+            if (remoteMessage) {
+              console.log(
+                "App opened from quit state due to notification:",
+                remoteMessage.notification
+              );
+            }
+          });
+
+        return () => {
+          unsubscribeForeground();
+          unsubscribeTokenRefresh();
+          unsubscribeOpenedApp && unsubscribeOpenedApp();
+        };
+      } else {
+        console.log("FCM permissions not granted");
+      }
+    } catch (error) {
+      console.error("Error in setupFirebaseMessaging:", error);
     }
-    
-    return () => {};
   }
 
   // Monitor app state changes
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
         console.log("App has come to the foreground!");
-      } else if (appState.current === "active" && nextAppState.match(/inactive|background/)) {
+      } else if (
+        appState.current === "active" &&
+        nextAppState.match(/inactive|background/)
+      ) {
         console.log("App has gone to the background!");
       }
       appState.current = nextAppState;
     });
-    
+
     return () => {
       subscription.remove();
     };
@@ -217,39 +360,48 @@ export const usePushNotifications = () => {
   // Main setup effect
   useEffect(() => {
     let cleanup = () => {};
-    
+
     const setup = async () => {
+      // Reset badge count on app launch
+      if (Platform.OS === "ios") {
+        await Notifications.setBadgeCountAsync(0);
+      }
+
       // Set up notification channels first
       await setupNotificationChannels();
-      
+
       // Set up Expo notifications
       const expoToken = await registerForExpoPushNotifications();
       if (expoToken) {
         setExpoPushToken(expoToken);
         console.log("Expo Push Token:", expoToken);
       }
-      
-      // Set up Expo notification listeners
-      notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
-        console.log("Notification received:", notif);
-        setNotification(notif);
-      });
-      
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("User tapped notification:", response);
-      });
-      
+
+      // Set up Expo notification listeners with enhanced response handling
+      notificationListener.current =
+        Notifications.addNotificationReceivedListener((notif) => {
+          console.log("Notification received:", notif);
+          setNotification(notif);
+        });
+
+      responseListener.current =
+        Notifications.addNotificationResponseReceivedListener(
+          handleNotificationResponse
+        );
+
       // Set up Firebase messaging
       const firebaseCleanup = await setupFirebaseMessaging();
       cleanup = firebaseCleanup;
     };
-    
+
     setup();
-    
+
     // Cleanup all listeners
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
       }
       if (responseListener.current) {
         Notifications.removeNotificationSubscription(responseListener.current);

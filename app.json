@@ -11,12 +11,15 @@
     "newArchEnabled": true,
     "splash": {},
     "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
-      "bundleIdentifier": "com.deep_1012.HiIndia_App",
+      "bundleIdentifier": "com.hiindia.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"],
+        "NSAppleMusicUsageDescription": "Allow notifications to receive updates",
+        "NSCameraUsageDescription": "Allow notifications to receive updates",
+        "NSMicrophoneUsageDescription": "Allow notifications to receive updates",
+        "NSPhotoLibraryUsageDescription": "Allow notifications to receive updates"
       }
     },
     "android": {
@@ -32,8 +35,24 @@
     },
     "plugins": [
       "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      ["@react-native-google-signin/google-signin"],
       [
-        "@react-native-google-signin/google-signin"
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon1.jpg",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
       ]
     ],
     "extra": {
