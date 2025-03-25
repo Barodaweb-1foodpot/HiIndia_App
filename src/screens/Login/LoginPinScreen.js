@@ -136,12 +136,13 @@ const LoginPinScreen = ({ navigation }) => {
                       key={`pin-${index}`}
                       ref={(ref) => (inputRefs.current[index] = ref)}
                       style={styles.pinInput}
-                      keyboardType="phone-pad"
+                      keyboardType="number-pad"
                       maxLength={1}
                       value={pin[index]}
                       onChangeText={(text) => handleInputChange(text, index)}
                       onKeyPress={(e) => handleKeyPress(e, index)}
                       secureTextEntry={!isPinVisible}
+                      textContentType="oneTimeCode"
                     />
                   ))}
                 </View>

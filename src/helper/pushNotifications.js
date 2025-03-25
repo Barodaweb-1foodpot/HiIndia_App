@@ -18,10 +18,10 @@ Notifications.setNotificationHandler({
 });
 
 export const usePushNotifications = () => {
-  // State to store tokens and notifications
   const [expoPushToken, setExpoPushToken] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const user = useAuthContext();
   
   // Refs for listeners
@@ -38,10 +38,12 @@ export const usePushNotifications = () => {
         await AsyncStorage.setItem("deviceId", deviceId);
       }
       
-      console.log("Sending FCM token to backend:", token, deviceId);
       const userId = await AsyncStorage.getItem("role");
-      // Make your API call here to send token to your backend
-      console.log("user id is ", userId);
+      if (!userId) {
+        console.log("No user ID found, skipping token update");
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/update-fcm-token`, {
         method: "POST",
         headers: {
@@ -54,9 +56,12 @@ export const usePushNotifications = () => {
         }),
       });
 
-      console.log("response is ", response);
+      if (!response.ok) {
+        throw new Error(`Failed to update FCM token: ${response.status}`);
+      }
 
- 
+      await AsyncStorage.setItem("fcmToken", token);
+      console.log("FCM token successfully updated");
     } catch (error) {
       console.error("Error sending token:", error);
     }
@@ -110,6 +115,43 @@ export const usePushNotifications = () => {
     }
   }
 
+  // Initialize FCM token immediately
+  const initializeFCM = async () => {
+    try {
+      // Check if we already have a token
+      const storedToken = await AsyncStorage.getItem("fcmToken");
+      if (storedToken) {
+        setFcmToken(storedToken);
+        console.log("Using stored FCM token:", storedToken);
+      }
+
+      // Request permission and get new token
+      const authStatus = await messaging().requestPermission();
+      const enabled = 
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED || 
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      
+      if (enabled) {
+        const token = await messaging().getToken();
+        console.log("New FCM Token obtained:", token);
+        
+        if (token !== storedToken) {
+          setFcmToken(token);
+          await sendTokenToBackend(token);
+        }
+        
+        // Set up token refresh handler
+        messaging().onTokenRefresh(async (newToken) => {
+          console.log("FCM token refreshed:", newToken);
+          setFcmToken(newToken);
+          await sendTokenToBackend(newToken);
+        });
+      }
+    } catch (error) {
+      console.error("Error initializing FCM:", error);
+    }
+  };
+
   // Set up Firebase Cloud Messaging
   async function setupFirebaseMessaging() {
     // Debug initial state
@@ -122,83 +164,114 @@ export const usePushNotifications = () => {
       console.log('FCM Permission status:', authStatus);
     });
     
-    // Request permission
-    const authStatus = await messaging().requestPermission();
-    const enabled = 
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED || 
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    // Handle foreground messages
+    const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
+      console.log("FCM message received in foreground:", remoteMessage);
       
-    if (enabled) {
-      // Get and store FCM token
-      const token = await messaging().getToken();
-      console.log("HiIndia FCM Token:", token);
-      setFcmToken(token);
-      sendTokenToBackend(token);
-      
-      // Set up token refresh handler
-      const unsubscribeTokenRefresh = messaging().onTokenRefresh((newToken) => {
-        console.log("FCM token refreshed:", newToken);
-        setFcmToken(newToken);
-        sendTokenToBackend(newToken);
+      // Display notification using Expo's API
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: remoteMessage.notification?.title || "New Notification",
+          body: remoteMessage.notification?.body || "You have a new message",
+          data: remoteMessage.data || {},
+        },
+        trigger: null, // Show immediately
       });
-      
-      // Handle foreground messages
-      const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
-        console.log("FCM message received in foreground:", remoteMessage);
-        
-        // Display notification using Expo's API
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification?.title || "New Notification",
-            body: remoteMessage.notification?.body || "You have a new message",
-            data: remoteMessage.data || {},
-          },
-          trigger: null, // Show immediately
-        });
-      });
-      
-      // Handle background messages
-      messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-        console.log("Message handled in the background:", remoteMessage);
-        
-        // Schedule a local notification
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification?.title || "Background Notification",
-            body: remoteMessage.notification?.body || "You have a new message",
-            data: remoteMessage.data || {},
-          },
-          trigger: null,
-        });
-      });
-      
-      // Handle notification opening app from background
-      const unsubscribeOpenedApp = messaging().onNotificationOpenedApp((remoteMessage) => {
-        console.log("Notification caused app to open from background:", remoteMessage.notification);
-      });
-      
-      // Check if app was opened from a notification
-      messaging().getInitialNotification().then((remoteMessage) => {
-        if (remoteMessage) {
-          console.log("App opened from quit state due to notification:", remoteMessage.notification);
-        }
-      });
-      
-      return () => {
-        unsubscribeForeground();
-        unsubscribeTokenRefresh();
-        unsubscribeOpenedApp && unsubscribeOpenedApp();
-      };
-    }
+    });
     
-    return () => {};
+    // Handle background messages
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log("Message handled in the background:", remoteMessage);
+      
+      // Schedule a local notification
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: remoteMessage.notification?.title || "Background Notification",
+          body: remoteMessage.notification?.body || "You have a new message",
+          data: remoteMessage.data || {},
+        },
+        trigger: null,
+      });
+    });
+    
+    // Handle notification opening app from background
+    const unsubscribeOpenedApp = messaging().onNotificationOpenedApp((remoteMessage) => {
+      console.log("Notification caused app to open from background:", remoteMessage.notification);
+    });
+    
+    // Check if app was opened from a notification
+    messaging().getInitialNotification().then((remoteMessage) => {
+      if (remoteMessage) {
+        console.log("App opened from quit state due to notification:", remoteMessage.notification);
+      }
+    });
+    
+    return () => {
+      unsubscribeForeground();
+      unsubscribeOpenedApp && unsubscribeOpenedApp();
+    };
   }
+
+  // Main setup effect
+  useEffect(() => {
+    let cleanup = () => {};
+    
+    const setup = async () => {
+      try {
+        // Set up notification channels first
+        await setupNotificationChannels();
+        
+        // Initialize FCM immediately
+        await initializeFCM();
+        
+        // Set up Expo notifications
+        const expoToken = await registerForExpoPushNotifications();
+        if (expoToken) {
+          setExpoPushToken(expoToken);
+          console.log("Expo Push Token:", expoToken);
+        }
+        
+        // Set up notification listeners
+        notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
+          console.log("Notification received:", notif);
+          setNotification(notif);
+        });
+        
+        responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+          console.log("User tapped notification:", response);
+        });
+        
+        // Set up Firebase messaging handlers
+        const firebaseCleanup = await setupFirebaseMessaging();
+        cleanup = firebaseCleanup;
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Error in setup:", error);
+      }
+    };
+    
+    setup();
+    
+    // Cleanup all listeners
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+      cleanup();
+    };
+  }, []);
 
   // Monitor app state changes
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
+    const subscription = AppState.addEventListener("change", async (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === "active") {
         console.log("App has come to the foreground!");
+        // Re-initialize FCM when app comes to foreground
+        await initializeFCM();
       } else if (appState.current === "active" && nextAppState.match(/inactive|background/)) {
         console.log("App has gone to the background!");
       }
@@ -214,53 +287,10 @@ export const usePushNotifications = () => {
     console.log("user inside context is ", user);
   }, [user]);
 
-  // Main setup effect
-  useEffect(() => {
-    let cleanup = () => {};
-    
-    const setup = async () => {
-      // Set up notification channels first
-      await setupNotificationChannels();
-      
-      // Set up Expo notifications
-      const expoToken = await registerForExpoPushNotifications();
-      if (expoToken) {
-        setExpoPushToken(expoToken);
-        console.log("Expo Push Token:", expoToken);
-      }
-      
-      // Set up Expo notification listeners
-      notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
-        console.log("Notification received:", notif);
-        setNotification(notif);
-      });
-      
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("User tapped notification:", response);
-      });
-      
-      // Set up Firebase messaging
-      const firebaseCleanup = await setupFirebaseMessaging();
-      cleanup = firebaseCleanup;
-    };
-    
-    setup();
-    
-    // Cleanup all listeners
-    return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
-      cleanup();
-    };
-  }, [user]);
-
   return {
     expoPushToken,
     fcmToken,
     notification,
+    isInitialized,
   };
 };
