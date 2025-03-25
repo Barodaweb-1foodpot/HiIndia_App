@@ -11,6 +11,7 @@ import {
   Keyboard,
   StatusBar,
   Linking,
+  Platform,
 } from "react-native";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -28,6 +29,11 @@ import { useAuthContext } from "../../context/AuthContext";
 //   webClientId:
 //     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
 // });
+
+import * as AppleAuthentication from "expo-apple-authentication";
+import axios from "axios";
+import { API_BASE_URL } from "@env";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
@@ -93,6 +99,70 @@ const LoginScreen = ({ navigation }) => {
           text2: error.message,
         });
       }
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      // Ensure Apple Sign In is available only on iOS devices
+      if (Platform.OS !== "ios") {
+        Toast.show({
+          type: "error",
+          text1: "Apple Sign-In is only available on iOS devices.",
+        });
+        return;
+      }
+      const appleCredential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      console.log("Apple Credential:", appleCredential);
+
+      const { identityToken } = appleCredential;
+      if (!identityToken) {
+        Toast.show({
+          type: "error",
+          text1: "Apple Sign-In Error",
+          text2: "Unable to retrieve identity token.",
+        });
+        return;
+      }
+      // Send the identity token to your backend for verification
+      const res = await axios.post(
+        `${API_BASE_URL}/participantHandleAppleLogin`,
+        { id_token: identityToken },
+        {
+         
+          validateStatus: () => true,
+        }
+      );
+      console.log("Apple Login Response:", res.data);
+      if (res.data.success) {
+        await AsyncStorage.setItem("role", res.data.data._id);
+        await AsyncStorage.setItem("Token", res.data.token);
+        await AsyncStorage.setItem("RefreshToken", res.data.refreshToken);
+        Toast.show({
+          type: "success",
+          text1: "Login Successful",
+          text2: "Welcome back!",
+        });
+        navigation.navigate("Tab");
+      } else if(res.data.status===401) {
+        Toast.show({
+          type: "error",
+          text1: "No Account Found",
+          text2: res.data.message || "Something went wrong.",
+        });
+      }
+    } catch (error) {
+      console.log("Error during Apple Sign-In:", error);
+      Toast.show({
+        type: "error",
+        text1: "Apple Sign-In Error",
+        text2: error.message || "Something went wrong.",
+      });
     }
   };
 
@@ -198,7 +268,10 @@ const LoginScreen = ({ navigation }) => {
                         </Text>
                       </TouchableOpacity>  */}
 
-                      <TouchableOpacity style={styles.appleButton}>
+                      <TouchableOpacity
+                        style={styles.appleButton}
+                        onPress={handleAppleSignIn}
+                      >
                         <Image
                           source={require("../../../assets/apple.png")}
                           style={[styles.socialIcon, styles.appleIcon]}
