@@ -113,11 +113,10 @@ const LoginScreen = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
-
             </View>
 
             <View style={styles.whiteContainer}>
-            <View style={styles.headerCard}>
+              <View style={styles.headerCard}>
                 <Text style={styles.headerCardTitle}>
                   Log in to your account
                 </Text>
@@ -180,13 +179,13 @@ const LoginScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
 
-                       {/* <View style={styles.dividerContainer}>
+                      <View style={styles.dividerContainer}>
                         <View style={styles.divider} />
                         <Text style={styles.dividerText}>or</Text>
                         <View style={styles.divider} />
                       </View>
 
-                      <TouchableOpacity
+                      {/* <TouchableOpacity
                         style={styles.socialButton}
                         onPress={handleGoogleSignIn}
                       >
@@ -198,6 +197,16 @@ const LoginScreen = ({ navigation }) => {
                           Continue with Google
                         </Text>
                       </TouchableOpacity>  */}
+
+                      <TouchableOpacity style={styles.appleButton}>
+                        <Image
+                          source={require("../../../assets/apple.png")}
+                          style={[styles.socialIcon, styles.appleIcon]}
+                        />
+                        <Text style={styles.appleButtonText}>
+                          Continue with Apple
+                        </Text>
+                      </TouchableOpacity>
 
                       <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
@@ -403,6 +412,24 @@ const styles = StyleSheet.create({
   linkText: {
     color: "#FF0000",
     textDecorationLine: "underline",
+  },
+  appleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    backgroundColor: "#000000",
+  },
+  appleIcon: { tintColor: "#FFFFFF" },
+  appleButtonText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    color: "#FFFFFF",
+    marginRight: 32,
   },
 });
 
