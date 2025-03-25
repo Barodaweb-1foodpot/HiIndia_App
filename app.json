@@ -16,7 +16,10 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "ASAuthorizationAppleID": {
+          "AppleSignIn": true
+        }
       }
     },
     "android": {
