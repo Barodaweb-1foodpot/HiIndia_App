@@ -255,7 +255,7 @@ const LoginScreen = ({ navigation }) => {
                         <View style={styles.divider} />
                       </View>
 
-                      {/* <TouchableOpacity
+                       {/* <TouchableOpacity
                         style={styles.socialButton}
                         onPress={handleGoogleSignIn}
                       >
@@ -266,7 +266,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                      </TouchableOpacity>  */}
+                      </TouchableOpacity>   */}
 
                       <TouchableOpacity
                         style={styles.appleButton}

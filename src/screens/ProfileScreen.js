@@ -27,7 +27,7 @@ import ShareModal from "../components/ShareModal";
 import LogoutModal from "../components/LogoutModal";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
-// import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 // Define modal types for consolidated state
 const MODALS = {
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
       await AsyncStorage.removeItem("role");
       await AsyncStorage.removeItem("Token");
       await AsyncStorage.removeItem("RefreshToken");
-      // await GoogleSignin.signOut();
+      await GoogleSignin.signOut();
 
       setUser(null);
       Toast.show({
