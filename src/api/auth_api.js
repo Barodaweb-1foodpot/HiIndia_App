@@ -292,3 +292,64 @@ export const deleteUserAccount = async (participantId) => {
     throw error;
   }
 };
+
+export const handleAppleLogin = async (idToken) => {
+  try {
+    console.log("[handleAppleLogin] Handling Apple login with token");
+    const res = await axios.post(
+      `${API_BASE_URL}/participantHandleAppleLogin`,
+      { id_token: idToken },
+      { validateStatus: () => true }
+    );
+    console.log("[handleAppleLogin] Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("[handleAppleLogin] Error during Apple login:", error);
+    Toast.show({
+      type: "error",
+      text1: "Apple Login Error",
+      text2: "Something went wrong during Apple login.",
+    });
+    throw error;
+  }
+};
+
+export const verifyAppleToken = async (identityToken, setUser) => {
+  try {
+    console.log("[verifyAppleToken] Verifying Apple token");
+    const response = await handleAppleLogin(identityToken);
+    console.log("[verifyAppleToken] handleAppleLogin response:", response);
+
+    if (response.success) {
+      console.log("[verifyAppleToken] Setting AsyncStorage items for Apple login");
+      await AsyncStorage.setItem("role", response.data._id);
+      await AsyncStorage.setItem("Token", response.token);
+      await AsyncStorage.setItem("RefreshToken", response.refreshToken);
+      
+      // Set the user in context
+      setUser(response.data);
+
+      Toast.show({
+        type: "success",
+        text1: "Login Successful",
+        text2: "Welcome back!",
+      });
+      return true;
+    } else {
+      console.log("[verifyAppleToken] Apple login failed with response:", response);
+      Toast.show({
+        type: "error",
+        text1: response.message || "No Account Found",
+      });
+      return false;
+    }
+  } catch (error) {
+    console.error("[verifyAppleToken] Error during Apple token verification:", error);
+    Toast.show({
+      type: "error",
+      text1: "Apple Token Verification Error",
+      text2: error.message || "Something went wrong during token verification.",
+    });
+    throw error;
+  }
+};

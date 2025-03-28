@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext, useAuthContext } from "../../context/AuthContext";
 import { handleLogin } from "../../api/auth_api";
 import Toast from "react-native-toast-message";
+import { syncUserWithAuth } from "../../api/token_api";
 
 const LoginPinScreen = ({ navigation }) => {
   const { loginEmail } = useAuthContext();
@@ -63,8 +64,14 @@ const LoginPinScreen = ({ navigation }) => {
     const temp = { email: loginEmail, password: finalPin };
     const res = await handleLogin(temp);
     console.log("Response from handleLogin:", res.data);
-    setUser(res.data);
+    
     if (res.isOk) {
+      // Set user in context
+      setUser(res.data);
+      
+      // As a fallback, also sync user data from profile API
+      await syncUserWithAuth(setUser);
+      
       console.log("Login successful:", res);
       Toast.show({
         type: "success",
@@ -85,6 +92,10 @@ const LoginPinScreen = ({ navigation }) => {
         visibilityTime: 2000,
       });
     }
+  };
+
+  const handleSkip = () => {
+    navigation.replace("Tab");
   };
 
   return (
@@ -109,6 +120,14 @@ const LoginPinScreen = ({ navigation }) => {
               >
                 <Ionicons name="chevron-back" size={30} color="#FFF" />
               </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={handleSkip}
+              >
+                <Text style={styles.skipButtonText}>Skip</Text>
+              </TouchableOpacity>
+              
               <Image
                 source={require("../../../assets/logo.png")}
                 style={styles.logo}
@@ -213,12 +232,31 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 50,
     height: 200,
+    position: "relative",
   },
   backButton: {
     position: "absolute",
     top: 45,
     left: 16,
-    zIndex: 1,
+    zIndex: 10,
+  },
+  skipButton: {
+    position: "absolute",
+    top: 45,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 7,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  skipButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    fontWeight: "500",
   },
   logo: {
     width: "100%",

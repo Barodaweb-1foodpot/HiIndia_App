@@ -127,9 +127,32 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       StatusBar.setBarStyle("dark-content");
-      reloadProfile();
+      
+      // Check if we're authenticated but user context is empty
+      const checkAndSyncAuth = async () => {
+        try {
+          const participantId = await AsyncStorage.getItem("role");
+          // If we have a role stored but no user in context, try to load user data
+          if (participantId && !user) {
+            console.log("[ProfileScreen] Found role but no user in context, syncing...");
+            const userData = await fetchProfile(participantId);
+            if (userData && userData._id) {
+              console.log("[ProfileScreen] Setting user in context:", userData);
+              setUser(userData);
+            }
+          }
+          
+          // Always reload profile data
+          reloadProfile();
+        } catch (err) {
+          console.error("[ProfileScreen] Error syncing auth state:", err);
+        }
+      };
+      
+      checkAndSyncAuth();
+      
       return () => {};
-    }, [reloadProfile])
+    }, [reloadProfile, user, setUser])
   );
 
   useEffect(() => {
@@ -207,6 +230,24 @@ export default function ProfileScreen() {
       navigation.navigate("App", { screen: "EditProfile" });
     }
   }, [profileData, navigation]);
+
+  // If user is not logged in, display a login prompt
+  if (!user) {
+    return (
+      <View style={styles.notLoggedInContainer}>
+        <StatusBar barStyle="dark-content" />
+        <Text style={styles.notLoggedInText}>
+          Please log in to view your profile
+        </Text>
+        <TouchableOpacity 
+          style={styles.loginButton}
+          onPress={() => navigation.navigate("Auth", { screen: "Login" })}
+        >
+          <Text style={styles.loginButtonText}>Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screenContainer}>
@@ -428,5 +469,32 @@ const styles = StyleSheet.create({
     color: "#E3000F",
     fontWeight: "500",
     fontFamily: "Poppins-Regular",
+  },
+  notLoggedInContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  notLoggedInText: {
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    color: "#333333",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: "#E3000F",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    marginTop: 10,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    textAlign: "center",
   },
 });

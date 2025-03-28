@@ -18,6 +18,10 @@ const Onboarding = ({ navigation }) => {
     navigation.replace("Auth");
   };
 
+  const handleSkip = () => {
+    navigation.replace("Tab");
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
@@ -34,6 +38,13 @@ const Onboarding = ({ navigation }) => {
       />
 
       <View style={styles.content}>
+        <TouchableOpacity 
+          style={styles.skipButton} 
+          onPress={handleSkip}
+        >
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <Image
             source={require("../../assets/logo.png")}
@@ -91,10 +102,30 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
     paddingHorizontal: 20,
+    marginTop: -20,
   },
   logo: {
     width: "100%",
     height: height * 0.09,
+  },
+  skipButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 15 : 30,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 7,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignSelf: 'flex-end',
+  },
+  skipButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    fontWeight: "500",
   },
   textContent: {
     paddingHorizontal: 25,

@@ -28,6 +28,7 @@ import {
 
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
+import { CheckAccessToken } from "../api/token_api";
 
 // Custom components
 import Header from "../components/Header";
@@ -251,15 +252,24 @@ export default function HomeScreen({ navigation }) {
     setSelectedCity("All");
   };
 
-  const handleBookNow = (event) => {
+  const handleBookNow = async (event) => {
     if (event.hasExternalLink && event.externalLink) {
       Linking.openURL(event.externalLink);
-    } else {
-      navigation.navigate("App", {
-        screen: "BuyTicket",
-        params: { eventDetail: event },
-      });
+      return;
     }
+    
+    const isAuthenticated = await CheckAccessToken();
+    if (!isAuthenticated) {
+      // Redirect to Login if not authenticated
+      navigation.navigate("Auth", { screen: "Login" });
+      return;
+    }
+    
+    // If authenticated, proceed to buy ticket flow
+    navigation.navigate("App", {
+      screen: "BuyTicket",
+      params: { eventDetail: event },
+    });
   };
 
   return (

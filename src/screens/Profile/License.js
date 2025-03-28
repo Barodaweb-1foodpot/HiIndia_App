@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,39 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  LogBox,
+  YellowBox,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import RenderHtml from 'react-native-render-html';
+import { useWindowDimensions } from 'react-native';
 
-export default function License({ navigation }) {
+// More aggressive warning suppression
+LogBox.ignoreAllLogs(); // Disable all yellow box warnings
+YellowBox.ignoreWarnings(['Support for defaultProps']);
+
+export default function License({ route, navigation }) {
+  const { data } = route.params;
+  const { width } = useWindowDimensions();
+
+  useEffect(() => {
+    // Ensure warnings are suppressed when component mounts
+    LogBox.ignoreLogs([
+      'Support for defaultProps will be removed from function components',
+      'Support for defaultProps will be removed from memo components',
+    ]);
+  }, []);
+
+  // Custom renderer for headings to make them more compact
+  const renderers = {
+    h1: ({ children }) => (
+      <Text style={styles.heading}>{children}</Text>
+    ),
+    h2: ({ children }) => (
+      <Text style={styles.subheading}>{children}</Text>
+    ),
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
@@ -22,70 +51,81 @@ export default function License({ navigation }) {
         >
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>License Agreement</Text>
+        <Text style={styles.headerTitle}>Terms & Conditions</Text>
       </View>
 
       {/* Main Content */}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.introText}>
-          Please read the following terms carefully before using the App.
-        </Text>
-
-        {/* 1. Grant of License */}
-        <Text style={styles.subHeader}>1. Grant of License</Text>
-        <Text style={styles.paragraph}>
-          The Company grants you a limited, non-exclusive, revocable license to
-          download, install, and use the App on your personal device solely for
-          personal, non-commercial purposes, subject to the terms of this
-          Agreement.
-        </Text>
-
-        {/* 2. Restrictions */}
-        <Text style={styles.subHeader}>2. Restrictions</Text>
-        <Text style={styles.paragraph}>
-          You agree not to:
-          {"\n"}• Modify, reverse-engineer, decompile, or disassemble the App.
-          {"\n"}• Use the App for any illegal, harmful, or unauthorized purpose.
-          {"\n"}• Rent, lease, sublicense, distribute, or transfer the App to
-          any third party.
-          {"\n"}• Copy or reproduce any part of the App, except as permitted by
-          this Agreement or applicable law.
-          {"\n"}• Attempt to gain unauthorized access to the App or its
-          associated systems or networks.
-        </Text>
-
-        {/* 3. Ownership */}
-        <Text style={styles.subHeader}>3. Ownership</Text>
-        <Text style={styles.paragraph}>
-          The App, including all intellectual property, logos, designs, code, or
-          content, is the sole property of the Company or its licensors. This
-          Agreement does not grant you any ownership rights to the App.
-        </Text>
-
-        {/* 4. User Responsibilities */}
-        <Text style={styles.subHeader}>4. User Responsibilities</Text>
-        <Text style={styles.paragraph}>
-          • You are responsible for maintaining the confidentiality of your
-          account credentials and for all activity under your account.
-          {"\n"}• You must ensure that your use of the App complies with all
-          applicable laws and regulations.
-        </Text>
-
-        {/* 5. Termination (Optional) */}
-        <Text style={styles.subHeader}>5. Termination</Text>
-        <Text style={styles.paragraph}>
-          The Company may terminate or suspend your access to the App at any
-          time, without notice or liability, if you breach this Agreement or
-          engage in any prohibited activity.
-        </Text>
-
-        {/* 6. Changes to Agreement (Optional) */}
-        <Text style={styles.subHeader}>6. Changes to Agreement</Text>
-        <Text style={styles.paragraph}>
-          The Company reserves the right to modify or replace this Agreement at
-          any time. Your continued use of the App after any such changes
-          constitutes acceptance of the revised Agreement.
-        </Text>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {data?.Description ? (
+          <RenderHtml
+            contentWidth={width - 30}
+            source={{ html: data.Description }}
+            renderers={renderers}
+            enableCSSInlineProcessing={true}
+            tagsStyles={{
+              p: {
+                fontSize: 14,
+                color: '#4B5563',
+                lineHeight: 18,
+                marginVertical: 4,
+                fontFamily: 'Poppins-Regular',
+              },
+              strong: {
+                fontFamily: 'Poppins-SemiBold',
+                color: '#1F2937',
+              },
+              h1: {
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#1F2937',
+                marginTop: 14,
+                marginBottom: 2,
+                fontFamily: 'Poppins-Bold',
+              },
+              h2: {
+                fontSize: 15,
+                fontWeight: '600',
+                color: '#1F2937',
+                marginTop: 10,
+                marginBottom: 2,
+                fontFamily: 'Poppins-SemiBold',
+              },
+              ul: {
+                marginLeft: 0,
+                marginVertical: 2,
+              },
+              li: {
+                fontSize: 14,
+                color: '#4B5563',
+                marginVertical: 2,
+                fontFamily: 'Poppins-Regular',
+              },
+              a: {
+                color: '#E3000F',
+                textDecorationLine: 'none',
+              },
+              div: {
+                marginVertical: 0,
+              },
+              span: {
+                fontFamily: 'Poppins-Regular',
+              },
+              br: {
+                height: 4,
+              },
+              body: {
+                fontFamily: 'Poppins-Regular',
+              }
+            }}
+          />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.paragraph}>Loading content...</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -94,52 +134,62 @@ export default function License({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 65 : 40,
+    paddingTop: Platform.OS === "ios" ? 40 : 10,
     backgroundColor: "#fff",
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
-    width: 35,
-    height: 35,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#000",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
     color: "#1F2937",
     marginLeft: 8,
     fontFamily: "Poppins-Bold",
   },
-  introText: {
-    fontSize: 16,
-    color: "#1F2937",
-    marginBottom: 16,
-    marginTop: 14,
-    lineHeight: 20,
-    fontFamily: "Poppins-Medium",
+  contentContainer: {
+    paddingBottom: 15,
   },
-  subHeader: {
+  heading: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 6,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    fontFamily: 'Poppins-Bold',
     marginTop: 12,
-    fontFamily: "Poppins-SemiBold",
+    marginBottom: 2,
+  },
+  subheading: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Poppins-SemiBold',
+    marginTop: 10,
+    marginBottom: 2,
   },
   paragraph: {
     fontSize: 14,
     color: "#4B5563",
-    lineHeight: 20,
-    marginBottom: 8,
+    lineHeight: 18,
     fontFamily: "Poppins-Regular",
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
 });

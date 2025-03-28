@@ -23,6 +23,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getTickets } from "../api/ticket_api";
 import { formatEventDateTime } from "../helper/helper_Function";
 import { API_BASE_URL_UPLOADS } from "@env";
+import { CheckAccessToken } from "../api/token_api";
 
 // Import reusable components
 import Header from "../components/Header";
@@ -64,16 +65,26 @@ export default function TicketScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
+      checkAuthAndFetch();
       return () => {};
     }, [])
   );
 
-  // Removed the "blur" listener that reset expandedOrders to {}.
+  const checkAuthAndFetch = async () => {
+    const authResult = await CheckAccessToken();
+    setIsAuthenticated(authResult);
+    if (authResult) {
+      fetchTickets();
+    } else {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTickets();
@@ -436,6 +447,27 @@ ${ticketsInfo}
       </LinearGradient>
     </Animated.View>
   );
+
+  // If user is not logged in, display a login prompt
+  if (isAuthenticated === false) {
+    return (
+      <View style={styles.notLoggedInContainer}>
+        <StatusBar barStyle="light-content" />
+        <Header title="My Tickets" navigation={navigation} />
+        <View style={styles.notLoggedInContent}>
+          <Text style={styles.notLoggedInText}>
+            Please log in to view your tickets
+          </Text>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => navigation.navigate("Auth", { screen: "Login" })}
+          >
+            <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -914,5 +946,35 @@ const styles = StyleSheet.create({
     color: "#777",
     marginTop: 50,
     fontSize: 16,
+  },
+  notLoggedInContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  notLoggedInContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  notLoggedInText: {
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: "#E3000F",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    marginTop: 10,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    textAlign: "center",
   },
 });
