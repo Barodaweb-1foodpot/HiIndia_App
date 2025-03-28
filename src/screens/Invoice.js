@@ -84,6 +84,7 @@ export default function Invoice({ route, navigation }) {
       if (response.isOk && response.data && response.data.length > 0) {
         const firstTicket = response.data[0];
         console.log("First Ticket Data:", firstTicket);
+        console.log("Payment ID Details:", firstTicket.payment_id);
 
         // Use the totals passed via route if available; otherwise use from API
         const totals =
@@ -95,6 +96,20 @@ export default function Invoice({ route, navigation }) {
                 total: firstTicket.total || 0,
               };
         console.log("Totals:", totals);
+
+        // Extract payment status
+        let paymentStatus = "Completed"; // Default value
+        if (firstTicket.payment_id) {
+          // Check if payment_id is an object with paymentStatus directly
+          if (typeof firstTicket.payment_id === 'object' && firstTicket.payment_id.paymentStatus) {
+            paymentStatus = firstTicket.payment_id.paymentStatus;
+          }
+          // If payment_id is an array or has a different structure
+          else if (Array.isArray(firstTicket.payment_idDetails) && firstTicket.payment_idDetails.length > 0) {
+            paymentStatus = firstTicket.payment_idDetails[0].paymentStatus || "Completed";
+          }
+        }
+        console.log("Payment Status:", paymentStatus);
 
         // Construct the object we'll display on the invoice.
         const orderDetailsData = {
@@ -120,7 +135,9 @@ export default function Invoice({ route, navigation }) {
           total: totals.total,
           orderDate: firstTicket.orderDate || "",
           paymentMethod: firstTicket.paymentMethod || "Credit Card",
-          paymentId: firstTicket.paymentId || `PAY-${Math.floor(Math.random() * 100000)}`, // Add payment ID
+          paymentId: firstTicket.paymentId || `PAY-${Math.floor(Math.random() * 100000)}`,
+          // Use the extracted payment status
+          payment_idDetails: [{ paymentStatus }]
         };
         console.log("Final Order Data:", orderDetailsData);
         setOrderData(orderDetailsData);
@@ -332,7 +349,7 @@ export default function Invoice({ route, navigation }) {
             <div class="right">
               <h2>Payment Information</h2>
               <p><strong>Payment ID:</strong> ${orderData.paymentId || ''}</p>
-              <p><strong>Status:</strong> ${orderData?.payment_idDetails?.[0]?.paymentStatus}</p>
+              <p><strong>Status:</strong> ${orderData?.payment_idDetails?.[0]?.paymentStatus || 'Completed'}</p>
             </div>
           </div>
 
