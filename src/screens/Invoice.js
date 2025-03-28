@@ -18,7 +18,7 @@ import * as Print from "expo-print";
 import { getTicketsByOrderId } from "../api/ticket_api";
 
 /**
- * Format the event’s start and end date/time in a friendlier format.
+ * Format the event's start and end date/time in a friendlier format.
  * Now includes "at" between the date and time (e.g., "Sep 29, 2025 at 7:00 PM - 11:00 PM").
  */
 const formatEventDateTime = (startDate, endDate) => {
@@ -79,8 +79,11 @@ export default function Invoice({ route, navigation }) {
     try {
       setLoading(true);
       const response = await getTicketsByOrderId(orderId);
+      console.log("API Response:", response);
+      
       if (response.isOk && response.data && response.data.length > 0) {
         const firstTicket = response.data[0];
+        console.log("First Ticket Data:", firstTicket);
 
         // Use the totals passed via route if available; otherwise use from API
         const totals =
@@ -91,6 +94,7 @@ export default function Invoice({ route, navigation }) {
                 couponDiscount: firstTicket.couponDiscount || 0,
                 total: firstTicket.total || 0,
               };
+        console.log("Totals:", totals);
 
         // Construct the object we'll display on the invoice.
         const orderDetailsData = {
@@ -107,18 +111,21 @@ export default function Invoice({ route, navigation }) {
           purchaseDate: firstTicket.createdAt || firstTicket.date || "",
           tickets: response.data.map((ticket) => ({
             name: ticket.name || "Guest",
-            type:
-              ticket.TicketType?.TicketType || ticket.type || "Standard",
+            type: ticket.TicketType?.TicketType || ticket.type || "Standard",
             price: Number(ticket.price || ticket.total || 0),
+            ticketId: ticket.ticketId || `TKT-${Math.floor(Math.random() * 10000)}`, // Add ticketId to each ticket
           })),
           totalRate: totals.totalRate,
           couponDiscount: totals.couponDiscount,
           total: totals.total,
           orderDate: firstTicket.orderDate || "",
           paymentMethod: firstTicket.paymentMethod || "Credit Card",
+          paymentId: firstTicket.paymentId || `PAY-${Math.floor(Math.random() * 100000)}`, // Add payment ID
         };
+        console.log("Final Order Data:", orderDetailsData);
         setOrderData(orderDetailsData);
       } else {
+        console.log("No invoice data found in response");
         alert("No invoice data found.");
       }
     } catch (error) {
@@ -155,6 +162,9 @@ export default function Invoice({ route, navigation }) {
             </td>
             <td style="padding: 12px 8px; border: 1px solid #e0e0e0;">
               ${ticket.type}
+            </td>
+            <td style="padding: 12px 8px; border: 1px solid #e0e0e0;">
+              ${ticket.ticketId || ''}
             </td>
             <td style="padding: 12px 8px; border: 1px solid #e0e0e0; text-align: right;">
               $${ticket.price.toFixed(2)}
@@ -321,18 +331,19 @@ export default function Invoice({ route, navigation }) {
             </div>
             <div class="right">
               <h2>Payment Information</h2>
-              <p><strong>Payment Method:</strong> ${orderData.paymentMethod}</p>
-              <p><strong>Status:</strong> Paid</p>
+              <p><strong>Payment ID:</strong> ${orderData.paymentId || ''}</p>
+              <p><strong>Status:</strong> ${orderData?.payment_idDetails?.[0]?.paymentStatus}</p>
             </div>
           </div>
 
           <table>
             <thead>
               <tr>
-                <th style="width: 10%;">No.</th>
-                <th style="width: 40%;">Attendee</th>
-                <th style="width: 25%;">Ticket Type</th>
-                <th style="width: 25%;">Price</th>
+                <th style="width: 8%;">No.</th>
+                <th style="width: 30%;">Attendee</th>
+                <th style="width: 20%;">Ticket Type</th>
+                <th style="width: 20%;">Ticket ID</th>
+                <th style="width: 22%;">Price</th>
               </tr>
             </thead>
             <tbody>
@@ -354,7 +365,7 @@ export default function Invoice({ route, navigation }) {
 
           <div class="footer">
             <p>Thank you for your purchase!</p>
-            <p>For any questions, please contact support@hiindia.com</p>
+            <p>For any questions, please contact advt@hiindia.com</p>
           </div>
 
         </div>
@@ -398,7 +409,7 @@ Tickets:
 ${orderData.tickets
   .map(
     (ticket, index) =>
-      `${index + 1}. ${ticket.name} - ${ticket.type} - $${Number(ticket.price).toFixed(2)}`
+      `${index + 1}. ${ticket.name} - ${ticket.type} - Ticket ID: ${ticket.ticketId || 'N/A'} - $${Number(ticket.price).toFixed(2)}`
   )
   .join("\n")}
 
@@ -530,38 +541,25 @@ Thank you for your purchase!
             {/* Tickets Section */}
             <View style={styles.ticketsContainer}>
               <Text style={styles.sectionTitle}>Tickets</Text>
-              <View style={styles.ticketHeader}>
-                <Text style={[styles.ticketHeaderText, { flex: 1.5 }]}>
-                  Attendee
-                </Text>
-                <Text style={[styles.ticketHeaderText, { flex: 1 }]}>
-                  Type
-                </Text>
-                <Text
-                  style={[
-                    styles.ticketHeaderText,
-                    { flex: 1, textAlign: "right" },
-                  ]}
-                >
-                  Price
-                </Text>
-              </View>
+              
               {orderData.tickets.map((ticket, index) => (
-                <View key={index} style={styles.ticketRow}>
-                  <Text style={[styles.ticketText, { flex: 1.5 }]}>
-                    {ticket.name}
-                  </Text>
-                  <View style={[styles.ticketTypeContainer, { flex: 1 }]}>
-                    <Text style={styles.ticketTypeText}>{ticket.type}</Text>
+                <View key={index} style={styles.ticketCard}>
+                  <View style={styles.ticketCardHeader}>
+                    <Text style={styles.ticketCardName}>{ticket.name}</Text>
+                    <View style={styles.ticketTypeBadge}>
+                      <Text style={styles.ticketTypeText}>{ticket.type}</Text>
+                    </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.ticketText,
-                      { flex: 1, textAlign: "right", fontWeight: "600" },
-                    ]}
-                  >
-                    ${Number(ticket.price).toFixed(2)}
-                  </Text>
+                  
+                  <View style={styles.ticketCardBody}>
+                    <View style={styles.ticketDetail}>
+                      <Text style={styles.ticketDetailLabel}>Ticket ID</Text>
+                      <Text style={styles.ticketDetailValue}>{ticket.ticketId || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.ticketPrice}>
+                      <Text style={styles.ticketPriceValue}>${Number(ticket.price).toFixed(2)}</Text>
+                    </View>
+                  </View>
                 </View>
               ))}
             </View>
@@ -603,15 +601,15 @@ Thank you for your purchase!
               </View>
               <View style={styles.paymentInfoBody}>
                 <View style={styles.paymentInfoRow}>
-                  <Text style={styles.paymentInfoLabel}>Method</Text>
+                  <Text style={styles.paymentInfoLabel}>Payment ID</Text>
                   <Text style={styles.paymentInfoValue}>
-                    {orderData.paymentMethod}
+                    {orderData.paymentId || 'N/A'}
                   </Text>
                 </View>
                 <View style={styles.paymentInfoRow}>
                   <Text style={styles.paymentInfoLabel}>Status</Text>
                   <View style={styles.paymentStatusContainer}>
-                    <Text style={styles.paymentStatusText}>Paid</Text>
+                    <Text style={styles.paymentStatusText}>{orderData?.payment_idDetails?.[0]?.paymentStatus}</Text>
                   </View>
                 </View>
               </View>
@@ -621,7 +619,7 @@ Thank you for your purchase!
             <View style={styles.footer}>
               <Text style={styles.footerText}>Thank you for your purchase!</Text>
               <Text style={styles.footerSubText}>
-                For any questions, please contact support@hiindia.com
+                For any questions, please contact advt@hiindia.com
               </Text>
             </View>
           </LinearGradient>
@@ -836,44 +834,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#111827",
+    marginBottom: 16,
+  },
+  ticketCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    marginBottom: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  ticketCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
-  ticketHeader: {
-    flexDirection: "row",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  ticketHeaderText: {
-    fontSize: 13,
+  ticketCardName: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#4B5563",
+    color: "#111827",
   },
-  ticketRow: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    alignItems: "center",
-  },
-  ticketText: {
-    fontSize: 14,
-    color: "#1F2937",
-  },
-  ticketTypeContainer: {
-    backgroundColor: "#F3F4F6",
+  ticketTypeBadge: {
+    backgroundColor: "#E3000F15",
     paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: "#E3000F30",
   },
   ticketTypeText: {
     fontSize: 12,
-    color: "#4B5563",
+    color: "#E3000F",
+    fontWeight: "600",
+  },
+  ticketCardBody: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  ticketDetail: {
+    flex: 1,
+  },
+  ticketDetailLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 4,
+  },
+  ticketDetailValue: {
+    fontSize: 14,
+    color: "#1F2937",
     fontWeight: "500",
+  },
+  ticketPrice: {
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  ticketPriceValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
   },
   // Summary
   summaryContainer: {

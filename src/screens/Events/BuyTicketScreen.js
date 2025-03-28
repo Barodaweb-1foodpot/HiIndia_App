@@ -813,30 +813,57 @@ export default function BuyTicketScreen({ route }) {
               </View>
               <ScrollView style={styles.ticketTypesList}>
                 {eventDetail?.IsPaid &&
-                  eventDetail?.eventRates?.map((item, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.ticketTypeOption}
-                      onPress={() => handleTicketTypeSelect(item)}
-                    >
-                      <View style={styles.ticketTypeContent}>
-                        <View style={styles.ticketDetailsContainer}>
-                          <Text style={styles.ticketTypeTitle}>
-                            {item.TicketTypeDetail.TicketType}
-                          </Text>
-                          <Text style={styles.ticketTypeDescription}>
-                            {item.TicketTypeDetail.Description ||
-                              "Standard admission ticket"}
-                          </Text>
+                  (eventDetail?.eventRates?.filter((item) => {
+                      // If it's not the Early Bird ticket, show it as-is
+                      if (item.TicketTypeDetail?.TicketType !== "Early Bird") return true;
+
+                      // For Early Bird, check if current date is within range
+                      const now = new Date();
+                      const start = new Date(item.earlyBirdStartDate);
+                      const end = new Date(item.earlyBirdEndDate);
+                      return now >= start && now <= end;
+                    }).length > 0 ? (
+                    eventDetail?.eventRates
+                      ?.filter((item) => {
+                        // If it's not the Early Bird ticket, show it as-is
+                        if (item.TicketTypeDetail?.TicketType !== "Early Bird") return true;
+
+                        // For Early Bird, check if current date is within range
+                        const now = new Date();
+                        const start = new Date(item.earlyBirdStartDate);
+                        const end = new Date(item.earlyBirdEndDate);
+                        return now >= start && now <= end;
+                      })
+                      .map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.ticketTypeOption}
+                        onPress={() => handleTicketTypeSelect(item)}
+                      >
+                        <View style={styles.ticketTypeContent}>
+                          <View style={styles.ticketDetailsContainer}>
+                            <Text style={styles.ticketTypeTitle}>
+                              {item.TicketTypeDetail.TicketType}
+                            </Text>
+                            <Text style={styles.ticketTypeDescription}>
+                              {item.TicketTypeDetail.Description ||
+                                "Standard admission ticket"}
+                            </Text>
+                          </View>
+                          <View style={styles.ticketPriceContainer}>
+                            <Text style={styles.ticketTypePrice}>
+                              {eventDetail?.countryDetail?.[0]?.Currency}{" "}
+                              {item.ratesForParticipant}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={styles.ticketPriceContainer}>
-                          <Text style={styles.ticketTypePrice}>
-                            {eventDetail?.countryDetail?.[0]?.Currency}{" "}
-                            {item.ratesForParticipant}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <View style={styles.noTicketsContainer}>
+                      <Ionicons name="ticket-outline" size={36} color="#CCCCCC" />
+                      <Text style={styles.noTicketsText}>No tickets available</Text>
+                    </View>
                   ))}
               </ScrollView>
             </View>
@@ -1575,5 +1602,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  noTicketsContainer: {
+    paddingVertical: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noTicketsText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#666666",
+    marginTop: 12,
   },
 });

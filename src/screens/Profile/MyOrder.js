@@ -87,7 +87,7 @@ export default function MyOrdersScreen({ navigation }) {
       const url = `${API_BASE_URL}/auth/get/allEventRegisterTicket/${id}`;
       console.log("Fetching orders from:", url);
 
-      const response = await axios.get(url);
+      const response = await axios.post(url);
       const allOrders = response.data.data || [];
 
       // Filter orders based on active tab
