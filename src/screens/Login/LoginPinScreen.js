@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext, useAuthContext } from "../../context/AuthContext";
@@ -23,6 +24,7 @@ const LoginPinScreen = ({ navigation }) => {
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef([...Array(6)].map(() => React.createRef()));
   const [isPinVisible, setIsPinVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
@@ -59,6 +61,7 @@ const LoginPinScreen = ({ navigation }) => {
   };
 
   const handleSubmitPin = async () => {
+    setIsLoading(true);
     const finalPin = pin.join("");
     console.log("Submitting PIN for login:", finalPin);
     const temp = { email: loginEmail, password: finalPin };
@@ -73,16 +76,12 @@ const LoginPinScreen = ({ navigation }) => {
       await syncUserWithAuth(setUser);
       
       console.log("Login successful:", res);
-      Toast.show({
-        type: "success",
-        text1: "Email entered successfully",
-        position: "bottom",
-        visibilityTime: 2000,
-      });
+      // Navigate directly without showing success toast
       setTimeout(() => {
         console.log("Navigating to Tab screen");
         navigation.navigate("Tab");
-      }, 2000);
+        setIsLoading(false);
+      }, 300);
     } else {
       console.log("Login failed:", res);
       Toast.show({
@@ -90,7 +89,9 @@ const LoginPinScreen = ({ navigation }) => {
         text1: res.message,
         position: "bottom",
         visibilityTime: 2000,
+        bottomOffset: 60,
       });
+      setIsLoading(false);
     }
   };
 
@@ -194,16 +195,21 @@ const LoginPinScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.loginButton}
                 onPress={() => {
-                  if (pin.join("").length === 6) {
+                  if (pin.join("").length === 6 && !isLoading) {
                     console.log("PIN complete, submitting form");
                     handleSubmitPin();
-                  } else {
+                  } else if (!isLoading) {
                     console.log("PIN incomplete. Current PIN:", pin);
                   }
                 }}
                 activeOpacity={0.8}
+                disabled={isLoading}
               >
-                <Text style={styles.loginButtonText}>Login</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Login</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

@@ -22,6 +22,8 @@ export const handleLogin = async (values) => {
         type: "success",
         text1: "Login Successful",
         text2: "Welcome back!",
+        position: "bottom",
+        bottomOffset: 60,
       });
       return res.data;
     } else {
@@ -257,6 +259,8 @@ export const verifyGoogleToken = async (token) => {
           type: "success",
           text1: "Login Successful",
           text2: "Welcome back!",
+          position: "bottom",
+          bottomOffset: 60,
         });
         return true;
       } else {
@@ -345,6 +349,8 @@ export const verifyAppleToken = async (identityToken, setUser) => {
         type: "success",
         text1: "Login Successful",
         text2: "Welcome back!",
+        position: "bottom",
+        bottomOffset: 60,
       });
       return true;
     } else {
