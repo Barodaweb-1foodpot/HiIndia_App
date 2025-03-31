@@ -35,6 +35,7 @@ import Header from "../components/Header";
 import SkeletonLoader from "../components/SkeletonLoader";
 import BlurWrapper from "../components/BlurWrapper";
 import FilterPanel from "../components/FilterPanel";
+import LoginPromptModal from "../components/LoginPromptModal";
 
 import Checkbox from "expo-checkbox";
 
@@ -89,6 +90,10 @@ export default function HomeScreen({ navigation }) {
 
   // For pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add new state for login modal
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -260,8 +265,9 @@ export default function HomeScreen({ navigation }) {
     
     const isAuthenticated = await CheckAccessToken();
     if (!isAuthenticated) {
-      // Redirect to Login if not authenticated
-      navigation.navigate("Auth", { screen: "Login" });
+      // Show login modal instead of direct navigation
+      setSelectedEvent(event);
+      setLoginModalVisible(true);
       return;
     }
     
@@ -270,6 +276,12 @@ export default function HomeScreen({ navigation }) {
       screen: "BuyTicket",
       params: { eventDetail: event },
     });
+  };
+
+  const handleLoginContinue = () => {
+    setLoginModalVisible(false);
+    // Navigate to login screen
+    navigation.navigate("Auth", { screen: "Login" });
   };
 
   return (
@@ -512,6 +524,13 @@ export default function HomeScreen({ navigation }) {
           )}
         </ScrollView>
       </View>
+      
+      {/* Login Prompt Modal */}
+      <LoginPromptModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onContinue={handleLoginContinue}
+      />
     </View>
   );
 }

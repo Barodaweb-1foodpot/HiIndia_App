@@ -132,20 +132,34 @@ export default function ProfileScreen() {
       const checkAndSyncAuth = async () => {
         try {
           const participantId = await AsyncStorage.getItem("role");
+          // If no ID stored, user is not logged in - just return silently
+          if (!participantId) {
+            console.log("[ProfileScreen] No user ID found in storage, user not logged in");
+            return;
+          }
+          
           // If we have a role stored but no user in context, try to load user data
           if (participantId && !user) {
             console.log("[ProfileScreen] Found role but no user in context, syncing...");
-            const userData = await fetchProfile(participantId);
-            if (userData && userData._id) {
-              console.log("[ProfileScreen] Setting user in context:", userData);
-              setUser(userData);
+            try {
+              const userData = await fetchProfile(participantId);
+              if (userData && userData._id) {
+                console.log("[ProfileScreen] Setting user in context:", userData);
+                setUser(userData);
+              }
+            } catch (error) {
+              console.error("[ProfileScreen] Error fetching profile data:", error);
+              // Don't show any toast errors here, just log to console
             }
           }
           
-          // Always reload profile data
-          reloadProfile();
+          // Only reload profile if user is authenticated
+          if (user) {
+            reloadProfile();
+          }
         } catch (err) {
           console.error("[ProfileScreen] Error syncing auth state:", err);
+          // Don't show any toast errors - just log to console
         }
       };
       

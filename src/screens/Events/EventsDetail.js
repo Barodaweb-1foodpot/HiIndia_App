@@ -23,6 +23,7 @@ import { CheckAccessToken } from "../../api/token_api";
 
 // Import custom SkeletonLoader component
 import SkeletonLoader from "../../components/SkeletonLoader";
+import LoginPromptModal from "../../components/LoginPromptModal";
 
 const { width } = Dimensions.get("window");
 
@@ -97,6 +98,7 @@ export default function EventsDetail({ navigation, route }) {
   const [selectedTab, setSelectedTab] = useState("Event Catalogue");
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
 
   const { eventDetail } = route.params || {};
 
@@ -241,7 +243,7 @@ export default function EventsDetail({ navigation, route }) {
     setTitleReadMore((prev) => !prev);
   }, []);
 
-  // Add a handler for the Buy Ticket button
+  // Update the handler for the Buy Ticket button
   const handleBuyTicket = useCallback(async () => {
     if (eventDetail.hasExternalLink && eventDetail.externalLink) {
       Linking.openURL(eventDetail.externalLink);
@@ -250,8 +252,8 @@ export default function EventsDetail({ navigation, route }) {
     
     const isAuthenticated = await CheckAccessToken();
     if (!isAuthenticated) {
-      // Redirect to Login if not authenticated
-      navigation.navigate("Auth", { screen: "Login" });
+      // Show login modal instead of direct navigation
+      setLoginModalVisible(true);
       return;
     }
     
@@ -260,6 +262,12 @@ export default function EventsDetail({ navigation, route }) {
       eventDetail: eventDetail,
     });
   }, [eventDetail, navigation]);
+
+  const handleLoginContinue = () => {
+    setLoginModalVisible(false);
+    // Navigate to login screen
+    navigation.navigate("Auth", { screen: "Login" });
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -652,6 +660,12 @@ export default function EventsDetail({ navigation, route }) {
           </View>
         )}
       </View>
+
+      <LoginPromptModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onContinue={handleLoginContinue}
+      />
     </View>
   );
 }

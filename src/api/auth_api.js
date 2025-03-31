@@ -154,6 +154,13 @@ export const fetchProfile = async (participantId) => {
   try {
     console.log("[fetchProfile] Fetching profile for participantId:", participantId);
     const token = await AsyncStorage.getItem("Token");
+    
+    // If no token is available, return early without showing an error toast
+    if (!token) {
+      console.log("[fetchProfile] No auth token available, user likely not logged in");
+      return null;
+    }
+    
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`,
       {
@@ -167,11 +174,16 @@ export const fetchProfile = async (participantId) => {
     return res.data;
   } catch (error) {
     console.error("[fetchProfile] Error fetching profile:", error);
-    Toast.show({
-      type: "error",
-      text1: "Profile Error",
-      text2: "Unable to fetch profile data.",
-    });
+    // Only show toast for specific errors, not for auth-related issues
+    const isAuthError = error.response && (error.response.status === 401 || error.response.status === 403);
+    
+    if (!isAuthError) {
+      Toast.show({
+        type: "error",
+        text1: "Profile Error",
+        text2: "Unable to fetch profile data.",
+      });
+    }
     throw error;
   }
 };

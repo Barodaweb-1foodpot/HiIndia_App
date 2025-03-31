@@ -13,6 +13,7 @@ import {
   Animated,
   RefreshControl,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -21,11 +22,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { fetchEvents, getEventCategoriesByPartner } from "../api/event_api";
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
+import { CheckAccessToken } from "../api/token_api";
 
 // Import custom components
 import Header from "../components/Header";
 import SkeletonLoader from "../components/SkeletonLoader";
 import BlurWrapper from "../components/BlurWrapper";
+import LoginPromptModal from "../components/LoginPromptModal";
 
 /**
  * EventImage - Displays an image with a skeleton loader while loading
@@ -191,7 +194,7 @@ const CategoryCard = React.memo(({ item, navigation }) => {
  * OtherEventCard - Displays a single event card (from the allEvent data)
  * with the same style as HomeScreen cards.
  */
-const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
+const OtherEventCard = React.memo(({ item, navigation, onShare, onBookNow }) => {
   const eventImageUri = item.EventImage
     ? `${API_BASE_URL_UPLOADS}/${item.EventImage}`
     : undefined;
@@ -248,12 +251,7 @@ const OtherEventCard = React.memo(({ item, navigation, onShare }) => {
         <View style={styles.registerContainer}>
           <TouchableOpacity
             style={styles.registerButton}
-            onPress={() =>
-              navigation.navigate("App", {
-                screen: "EventsDetail",
-                params: { eventDetail: item },
-              })
-            }
+            onPress={() => onBookNow(item)}
           >
             <Text style={styles.registerText}>Book Now</Text>
           </TouchableOpacity>
@@ -275,6 +273,8 @@ export default function EventsScreen({ navigation }) {
   const [allEvent, setAllEvent] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -385,6 +385,33 @@ export default function EventsScreen({ navigation }) {
     setRefreshing(false);
   };
 
+  const handleBookNow = async (event) => {
+    if (event.hasExternalLink && event.externalLink) {
+      Linking.openURL(event.externalLink);
+      return;
+    }
+    
+    const isAuthenticated = await CheckAccessToken();
+    if (!isAuthenticated) {
+      // Show login modal instead of direct navigation
+      setSelectedEvent(event);
+      setLoginModalVisible(true);
+      return;
+    }
+    
+    // If authenticated, proceed to buy ticket flow
+    navigation.navigate("App", {
+      screen: "BuyTicket",
+      params: { eventDetail: event },
+    });
+  };
+
+  const handleLoginContinue = () => {
+    setLoginModalVisible(false);
+    // Navigate to login screen
+    navigation.navigate("Auth", { screen: "Login" });
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -478,12 +505,20 @@ export default function EventsScreen({ navigation }) {
                   item={item}
                   navigation={navigation}
                   onShare={shareEvent}
+                  onBookNow={handleBookNow}
                 />
               ))}
             </>
           )}
         </ScrollView>
       </View>
+      
+      {/* Login Prompt Modal */}
+      <LoginPromptModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onContinue={handleLoginContinue}
+      />
     </View>
   );
 }
@@ -764,11 +799,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginLeft: 6,
     fontSize: 12,
-  },
-  registerContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingLeft: 8,
   },
   registerContainer: {
     justifyContent: "center",
