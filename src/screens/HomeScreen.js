@@ -506,15 +506,17 @@ export default function HomeScreen({ navigation }) {
                           </View>
                         </View>
 
-                        {/* Book Now button */}
-                        <View style={styles.registerContainer}>
-                          <TouchableOpacity
-                            style={styles.registerButton}
-                            onPress={() => handleBookNow(event)}
-                          >
-                            <Text style={styles.registerText}>Book Now</Text>
-                          </TouchableOpacity>
-                        </View>
+                        {/* Book Now button - only show for Upcoming events */}
+                        {activeTab === "Upcoming" && (
+                          <View style={styles.registerContainer}>
+                            <TouchableOpacity
+                              style={styles.registerButton}
+                              onPress={() => handleBookNow(event)}
+                            >
+                              <Text style={styles.registerText}>Book Now</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </BlurWrapper>
                     </View>
                   );
