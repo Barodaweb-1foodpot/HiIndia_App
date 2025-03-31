@@ -28,12 +28,14 @@ import {
 
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
+import { CheckAccessToken } from "../api/token_api";
 
 // Custom components
 import Header from "../components/Header";
 import SkeletonLoader from "../components/SkeletonLoader";
 import BlurWrapper from "../components/BlurWrapper";
 import FilterPanel from "../components/FilterPanel";
+import LoginPromptModal from "../components/LoginPromptModal";
 
 import Checkbox from "expo-checkbox";
 
@@ -88,6 +90,10 @@ export default function HomeScreen({ navigation }) {
 
   // For pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add new state for login modal
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -251,15 +257,31 @@ export default function HomeScreen({ navigation }) {
     setSelectedCity("All");
   };
 
-  const handleBookNow = (event) => {
+  const handleBookNow = async (event) => {
     if (event.hasExternalLink && event.externalLink) {
       Linking.openURL(event.externalLink);
-    } else {
-      navigation.navigate("App", {
-        screen: "BuyTicket",
-        params: { eventDetail: event },
-      });
+      return;
     }
+    
+    const isAuthenticated = await CheckAccessToken();
+    if (!isAuthenticated) {
+      // Show login modal instead of direct navigation
+      setSelectedEvent(event);
+      setLoginModalVisible(true);
+      return;
+    }
+    
+    // If authenticated, proceed to buy ticket flow
+    navigation.navigate("App", {
+      screen: "BuyTicket",
+      params: { eventDetail: event },
+    });
+  };
+
+  const handleLoginContinue = () => {
+    setLoginModalVisible(false);
+    // Navigate to login screen
+    navigation.navigate("Auth", { screen: "Login" });
   };
 
   return (
@@ -484,15 +506,17 @@ export default function HomeScreen({ navigation }) {
                           </View>
                         </View>
 
-                        {/* Book Now button */}
-                        <View style={styles.registerContainer}>
-                          <TouchableOpacity
-                            style={styles.registerButton}
-                            onPress={() => handleBookNow(event)}
-                          >
-                            <Text style={styles.registerText}>Book Now</Text>
-                          </TouchableOpacity>
-                        </View>
+                        {/* Book Now button - only show for Upcoming events */}
+                        {activeTab === "Upcoming" && (
+                          <View style={styles.registerContainer}>
+                            <TouchableOpacity
+                              style={styles.registerButton}
+                              onPress={() => handleBookNow(event)}
+                            >
+                              <Text style={styles.registerText}>Book Now</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </BlurWrapper>
                     </View>
                   );
@@ -502,6 +526,13 @@ export default function HomeScreen({ navigation }) {
           )}
         </ScrollView>
       </View>
+      
+      {/* Login Prompt Modal */}
+      <LoginPromptModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onContinue={handleLoginContinue}
+      />
     </View>
   );
 }

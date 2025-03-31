@@ -19,9 +19,11 @@ import { formatEventDateTime } from "../../helper/helper_Function";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as WebBrowser from "expo-web-browser";
+import { CheckAccessToken } from "../../api/token_api";
 
 // Import custom SkeletonLoader component
 import SkeletonLoader from "../../components/SkeletonLoader";
+import LoginPromptModal from "../../components/LoginPromptModal";
 
 const { width } = Dimensions.get("window");
 
@@ -96,6 +98,7 @@ export default function EventsDetail({ navigation, route }) {
   const [selectedTab, setSelectedTab] = useState("Event Catalogue");
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
 
   const { eventDetail } = route.params || {};
 
@@ -239,6 +242,32 @@ export default function EventsDetail({ navigation, route }) {
     console.log("Toggling title read more state");
     setTitleReadMore((prev) => !prev);
   }, []);
+
+  // Update the handler for the Buy Ticket button
+  const handleBuyTicket = useCallback(async () => {
+    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
+      Linking.openURL(eventDetail.externalLink);
+      return;
+    }
+    
+    const isAuthenticated = await CheckAccessToken();
+    if (!isAuthenticated) {
+      // Show login modal instead of direct navigation
+      setLoginModalVisible(true);
+      return;
+    }
+    
+    // If authenticated, proceed to buy ticket flow
+    navigation.navigate("BuyTicket", {
+      eventDetail: eventDetail,
+    });
+  }, [eventDetail, navigation]);
+
+  const handleLoginContinue = () => {
+    setLoginModalVisible(false);
+    // Navigate to login screen
+    navigation.navigate("Auth", { screen: "Login" });
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -622,13 +651,7 @@ export default function EventsDetail({ navigation, route }) {
                   style={styles.buyButton}
                   onPress={() => {
                     console.log("Buy Ticket button pressed");
-                    if (eventDetail.hasExternalLink && eventDetail.externalLink) {
-                      Linking.openURL(eventDetail.externalLink);
-                    } else {
-                      navigation.navigate("BuyTicket", {
-                        eventDetail: eventDetail,
-                      });
-                    }
+                    handleBuyTicket();
                   }}
                 >
                   <Text style={styles.buyButtonText}>Buy Ticket</Text>
@@ -637,6 +660,12 @@ export default function EventsDetail({ navigation, route }) {
           </View>
         )}
       </View>
+
+      <LoginPromptModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onContinue={handleLoginContinue}
+      />
     </View>
   );
 }

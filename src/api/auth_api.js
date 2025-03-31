@@ -22,6 +22,8 @@ export const handleLogin = async (values) => {
         type: "success",
         text1: "Login Successful",
         text2: "Welcome back!",
+        position: "bottom",
+        bottomOffset: 60,
       });
       return res.data;
     } else {
@@ -154,6 +156,13 @@ export const fetchProfile = async (participantId) => {
   try {
     console.log("[fetchProfile] Fetching profile for participantId:", participantId);
     const token = await AsyncStorage.getItem("Token");
+    
+    // If no token is available, return early without showing an error toast
+    if (!token) {
+      console.log("[fetchProfile] No auth token available, user likely not logged in");
+      return null;
+    }
+    
     const res = await axios.get(
       `${API_BASE_URL}/auth/get/participant/${participantId}`,
       {
@@ -167,11 +176,16 @@ export const fetchProfile = async (participantId) => {
     return res.data;
   } catch (error) {
     console.error("[fetchProfile] Error fetching profile:", error);
-    Toast.show({
-      type: "error",
-      text1: "Profile Error",
-      text2: "Unable to fetch profile data.",
-    });
+    // Only show toast for specific errors, not for auth-related issues
+    const isAuthError = error.response && (error.response.status === 401 || error.response.status === 403);
+    
+    if (!isAuthError) {
+      Toast.show({
+        type: "error",
+        text1: "Profile Error",
+        text2: "Unable to fetch profile data.",
+      });
+    }
     throw error;
   }
 };
@@ -245,6 +259,8 @@ export const verifyGoogleToken = async (token) => {
           type: "success",
           text1: "Login Successful",
           text2: "Welcome back!",
+          position: "bottom",
+          bottomOffset: 60,
         });
         return true;
       } else {
@@ -288,6 +304,69 @@ export const deleteUserAccount = async (participantId) => {
       type: "error",
       text1: "Delete Account Error",
       text2: "Something went wrong while deleting your account.",
+    });
+    throw error;
+  }
+};
+
+export const handleAppleLogin = async (idToken) => {
+  try {
+    console.log("[handleAppleLogin] Handling Apple login with token");
+    const res = await axios.post(
+      `${API_BASE_URL}/participantHandleAppleLogin`,
+      { id_token: idToken },
+      { validateStatus: () => true }
+    );
+    console.log("[handleAppleLogin] Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("[handleAppleLogin] Error during Apple login:", error);
+    Toast.show({
+      type: "error",
+      text1: "Apple Login Error",
+      text2: "Something went wrong during Apple login.",
+    });
+    throw error;
+  }
+};
+
+export const verifyAppleToken = async (identityToken, setUser) => {
+  try {
+    console.log("[verifyAppleToken] Verifying Apple token");
+    const response = await handleAppleLogin(identityToken);
+    console.log("[verifyAppleToken] handleAppleLogin response:", response);
+
+    if (response.success) {
+      console.log("[verifyAppleToken] Setting AsyncStorage items for Apple login");
+      await AsyncStorage.setItem("role", response.data._id);
+      await AsyncStorage.setItem("Token", response.token);
+      await AsyncStorage.setItem("RefreshToken", response.refreshToken);
+      
+      // Set the user in context
+      setUser(response.data);
+
+      Toast.show({
+        type: "success",
+        text1: "Login Successful",
+        text2: "Welcome back!",
+        position: "bottom",
+        bottomOffset: 60,
+      });
+      return true;
+    } else {
+      console.log("[verifyAppleToken] Apple login failed with response:", response);
+      Toast.show({
+        type: "error",
+        text1: response.message || "No Account Found",
+      });
+      return false;
+    }
+  } catch (error) {
+    console.error("[verifyAppleToken] Error during Apple token verification:", error);
+    Toast.show({
+      type: "error",
+      text1: "Apple Token Verification Error",
+      text2: error.message || "Something went wrong during token verification.",
     });
     throw error;
   }

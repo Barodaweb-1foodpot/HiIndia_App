@@ -53,3 +53,31 @@ export const CheckAccessToken = async () => {
     throw new Error(error);
   }
 };
+
+// Helper function to synchronize authentication state with user context
+// This can be called after Apple Sign In or any other auth method
+export const syncUserWithAuth = async (setUserFunc) => {
+  try {
+    console.log("[syncUserWithAuth] Syncing user context with authentication state");
+    const isAuthenticated = await CheckAccessToken();
+    
+    if (isAuthenticated) {
+      const participantId = await AsyncStorage.getItem("role");
+      if (participantId) {
+        // Import dynamically to avoid circular dependency
+        const { fetchProfile } = require('./auth_api');
+        const userData = await fetchProfile(participantId);
+        
+        if (userData && userData._id) {
+          console.log("[syncUserWithAuth] Setting user in context:", userData);
+          setUserFunc(userData);
+          return true;
+        }
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error("[syncUserWithAuth] Error syncing user with auth:", error);
+    return false;
+  }
+};

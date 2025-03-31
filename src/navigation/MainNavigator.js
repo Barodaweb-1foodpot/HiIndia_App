@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import * as Font from "expo-font";
 import SplashScreen from "../screens/SplashScreen";
@@ -7,6 +7,9 @@ import AuthNavigator from "./AuthNavigator";
 import ScreenNavigator from "./ScreenNavigator";
 import TabNavigator from "./TabNavigator";
 import { CheckAccessToken } from "../api/token_api";
+import { AuthContext } from "../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetchProfile } from "../api/auth_api";
 
 const Stack = createStackNavigator();
 
@@ -14,6 +17,7 @@ const MainNavigator = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(null); 
+  const { setUser } = useContext(AuthContext);
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -30,6 +34,23 @@ const MainNavigator = () => {
         const res = await CheckAccessToken();
         console.log("Authentication check result:", res);
         setIsAuthenticated(res);
+        
+        // Load user data into context if authenticated
+        if (res) {
+          const participantId = await AsyncStorage.getItem("role");
+          if (participantId) {
+            try {
+              const userData = await fetchProfile(participantId);
+              if (userData && userData._id) {
+                console.log("[MainNavigator] Setting user in context:", userData);
+                setUser(userData);
+              }
+            } catch (err) {
+              console.error("[MainNavigator] Error loading user data:", err);
+            }
+          }
+        }
+        
         setFontsLoaded(true);
       } catch (error) {
         console.error("[MainNavigator] Error loading assets:", error);

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   Text,
@@ -34,9 +34,13 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import axios from "axios";
 import { API_BASE_URL } from "@env";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { syncUserWithAuth } from "../../api/token_api";
+import { AuthContext } from "../../context/AuthContext";
+import { verifyAppleToken } from "../../api/auth_api";
 
 const LoginScreen = ({ navigation }) => {
   const { setLoginEmail } = useAuthContext();
+  const { setUser } = useContext(AuthContext);
 
   const validationSchema = Yup.object().shape({
     email: Yup.string()
@@ -129,32 +133,10 @@ const LoginScreen = ({ navigation }) => {
         });
         return;
       }
-      // Send the identity token to your backend for verification
-      const res = await axios.post(
-        `${API_BASE_URL}/participantHandleAppleLogin`,
-        { id_token: identityToken },
-        {
-         
-          validateStatus: () => true,
-        }
-      );
-      console.log("Apple Login Response:", res.data);
-      if (res.data.success) {
-        await AsyncStorage.setItem("role", res.data.data._id);
-        await AsyncStorage.setItem("Token", res.data.token);
-        await AsyncStorage.setItem("RefreshToken", res.data.refreshToken);
-        Toast.show({
-          type: "success",
-          text1: "Login Successful",
-          text2: "Welcome back!",
-        });
+
+      const success = await verifyAppleToken(identityToken, setUser);
+      if (success) {
         navigation.navigate("Tab");
-      } else if(res.data.status===401) {
-        Toast.show({
-          type: "error",
-          text1: "No Account Found",
-          text2: res.data.message || "Something went wrong.",
-        });
       }
     } catch (error) {
       console.log("Error during Apple Sign-In:", error);
@@ -164,6 +146,10 @@ const LoginScreen = ({ navigation }) => {
         text2: error.message || "Something went wrong.",
       });
     }
+  };
+
+  const handleSkip = () => {
+    navigation.replace("Tab");
   };
 
   return (
@@ -183,6 +169,12 @@ const LoginScreen = ({ navigation }) => {
                 style={styles.logo}
                 resizeMode="contain"
               />
+              <TouchableOpacity 
+                style={styles.skipButton} 
+                onPress={handleSkip}
+              >
+                <Text style={styles.skipButtonText}>Skip</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.whiteContainer}>
@@ -326,9 +318,10 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 50,
     height: 200,
+    position: "relative",
   },
   logo: {
-    width: "100%",
+    width: "80%",
     height: 70,
     marginTop: 20,
   },
@@ -503,6 +496,24 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Medium",
     color: "#FFFFFF",
     marginRight: 32,
+  },
+  skipButton: {
+    position: "absolute",
+    top: 45,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 7,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  skipButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    fontWeight: "500",
   },
 });
 

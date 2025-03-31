@@ -12,20 +12,46 @@ import {
   Keyboard,
   Animated,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-toast-message";
 import { useNavigation } from "@react-navigation/native";
+import { fetchTermsAndConditions } from "../../api/terms_api";
 
 export default function HelpSupport() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const stars = [1, 2, 3, 4, 5];
-
   const scaleAnim = useRef(stars.map(() => new Animated.Value(1))).current;
-
   const navigation = useNavigation();
+
+  // IDs from your backend (these should come from your configuration or environment)
+  const TERMS_ID = '6756969961c762c305e5f3b0';
+  const PRIVACY_ID = '67bc3db4f0f47e4eb3b644f3';
+  const EXCHANGE_ID = '67d93fffc87f48e6f7781ed4';
+
+  const handleNavigation = async (screen, id) => {
+    setLoading(true);
+    try {
+      const data = await fetchTermsAndConditions(id);
+      if (data) {
+        navigation.navigate(screen, { data });
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Unable to load content. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSendFeedback = () => {
     Toast.show({
@@ -68,22 +94,28 @@ export default function HelpSupport() {
         <Text style={styles.headerTitle}>Help/Support</Text>
       </View>
 
-      {/* <TouchableOpacity
-        style={styles.menuItem}
-        onPress={() => setShowFeedbackModal(true)}
-      >
-        <View style={styles.menuLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="star-outline" size={20} color="#1F2937" />
-          </View>
-          <Text style={styles.menuText}>Rate Us/Feedback</Text>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E3000F" />
         </View>
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </TouchableOpacity> */}
+      )}
 
       <TouchableOpacity
         style={styles.menuItem}
-        onPress={() => navigation.navigate("PrivacyPolicy")}
+        onPress={() => handleNavigation("License", TERMS_ID)}
+      >
+        <View style={styles.menuLeft}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="document-text-outline" size={20} color="#1F2937" />
+          </View>
+          <Text style={styles.menuText}>Terms & Conditions</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={() => handleNavigation("PrivacyPolicy", PRIVACY_ID)}
       >
         <View style={styles.menuLeft}>
           <View style={styles.iconContainer}>
@@ -100,13 +132,13 @@ export default function HelpSupport() {
 
       <TouchableOpacity
         style={styles.menuItem}
-        onPress={() => navigation.navigate("License")}
+        onPress={() => handleNavigation("ExchangeAndRefund", EXCHANGE_ID)}
       >
         <View style={styles.menuLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="document-text-outline" size={20} color="#1F2937" />
+            <Ionicons name="refresh-outline" size={20} color="#1F2937" />
           </View>
-          <Text style={styles.menuText}>License Agreement</Text>
+          <Text style={styles.menuText}>Exchange & Refund</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </TouchableOpacity>
@@ -303,5 +335,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     fontFamily: "Poppins-medium",
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    zIndex: 999,
   },
 });

@@ -18,7 +18,7 @@ import { useWindowDimensions } from 'react-native';
 LogBox.ignoreAllLogs(); // Disable all yellow box warnings
 YellowBox.ignoreWarnings(['Support for defaultProps']);
 
-export default function PrivacyPolicy({ route, navigation }) {
+export default function ExchangeAndRefund({ route, navigation }) {
   const { data } = route.params;
   const { width } = useWindowDimensions();
 
@@ -48,7 +48,7 @@ export default function PrivacyPolicy({ route, navigation }) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Privacy Policy</Text>
+        <Text style={styles.headerTitle}>Exchange & Refund</Text>
       </View>
 
       {/* Main Content */}
@@ -189,4 +189,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 20,
   },
-});
+}); 
