@@ -70,7 +70,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
               key={item._id}
               style={styles.dropdownItem}
               onPress={() => {
-                onSelect("+" + item.CountryCode);
+                onSelect("+" + item.CountryCode, item._id);
                 toggleDropdown();
               }}
             >
@@ -86,6 +86,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
 
 const SignUpPage = ({ navigation }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
+  const [selectedCountryId, setSelectedCountryId] = useState("");
   const [countries, setCountries] = useState([]);
   const [isLoading, setIsLoading] = useState(false); // New loading state
   const scrollViewRef = useRef(null);
@@ -182,6 +183,7 @@ const SignUpPage = ({ navigation }) => {
                     password: values.setPin.replace(/_/g, ""),
                     contactNumber: values.phoneNumber,
                     ParticipantCountryCode: selectedCountryCode,
+                    country: selectedCountryId,
                     isMailVerified: false,
                     isContactNumberVerified: false,
                     IsActive: true,
@@ -260,7 +262,10 @@ const SignUpPage = ({ navigation }) => {
                         <View style={styles.phoneInputContainer}>
                           <CountryCodeDropdown
                             selectedCode={selectedCountryCode}
-                            onSelect={setSelectedCountryCode}
+                            onSelect={(code, id) => {
+                              setSelectedCountryCode(code);
+                              setSelectedCountryId(id);
+                            }}
                             countries={countries}
                           />
                           <TextInput

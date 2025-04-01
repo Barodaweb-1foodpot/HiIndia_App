@@ -78,7 +78,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
               key={item._id}
               style={styles.dropdownItem}
               onPress={() => {
-                onSelect("+" + item.CountryCode);
+                onSelect("+" + item.CountryCode, item._id);
                 toggleDropdown();
               }}
             >
@@ -136,6 +136,7 @@ export default function EditProfile({ navigation }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
+  const [countryId, setCountryId] = useState("");
   const [profileImage, setProfileImage] = useState(
     require("../../../assets/placeholder.jpg")
   );
@@ -156,6 +157,7 @@ export default function EditProfile({ navigation }) {
             setPhoneNumber(res.contactNumber || "");
             setEmail(res.emailId || "");
             setCountryCode(res.ParticipantCountryCode || "+91");
+            setCountryId(res.countryId || "");
             if (res.profileImage && res.profileImage.trim() !== "") {
               setProfileImage({
                 uri: `${API_BASE_URL_UPLOADS}/${res.profileImage}`,
@@ -246,10 +248,8 @@ export default function EditProfile({ navigation }) {
   // Before saving, validate that required fields are not empty
   const handleSave = useCallback(async () => {
     if (!validateFields()) {
-      // Get the first empty field to show in the toast
       const emptyField = Object.keys(errors)[0];
       if (emptyField) {
-        // Capitalize the field name and insert space if needed
         const formattedField =
           emptyField.charAt(0).toUpperCase() + emptyField.slice(1);
         Toast.show({
@@ -265,14 +265,13 @@ export default function EditProfile({ navigation }) {
       const participantId = await AsyncStorage.getItem("role");
       if (!participantId) return;
 
-      // Build the FormData payload
       const formData = new FormData();
       formData.append("firstName", firstName);
       formData.append("lastName", lastName);
       formData.append("contactNumber", phoneNumber);
       formData.append("ParticipantCountryCode", countryCode);
+      formData.append("country", countryId);
 
-      // Append the profile image if a new local image is selected
       if (profileImage && profileImage.uri && !profileImage.uri.startsWith("http")) {
         const uriParts = profileImage.uri.split(".");
         const fileType = uriParts[uriParts.length - 1];
@@ -310,7 +309,7 @@ export default function EditProfile({ navigation }) {
         position: "bottom",
       });
     }
-  }, [firstName, lastName, phoneNumber, email, countryCode, profileImage, navigation, errors]);
+  }, [firstName, lastName, phoneNumber, email, countryCode, countryId, profileImage, navigation, errors]);
 
   return (
     <View style={styles.container}>
@@ -407,7 +406,10 @@ export default function EditProfile({ navigation }) {
                 <View style={styles.phoneInputContainer}>
                   <CountryCodeDropdown
                     selectedCode={countryCode}
-                    onSelect={setCountryCode}
+                    onSelect={(code, id) => {
+                      setCountryCode(code);
+                      setCountryId(id);
+                    }}
                     countries={countries}
                   />
                   <TextInput
@@ -544,20 +546,47 @@ const styles = StyleSheet.create({
   phoneInputContainer: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
+    zIndex: 1000,
+  },
+  phoneInput: {
+    flex: 1,
+    height: 48,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E0E0E0",
     borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontFamily: "Poppins-Regular",
+    backgroundColor: "#FFFFFF",
+    color: "#000000",
   },
   dropdownContainer: {
     position: "relative",
     zIndex: 1000,
     width: 78,
   },
+  dropdownList: {
+    position: "absolute",
+    top: 52,
+    left: 0,
+    width: 160,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: "hidden",
+  },
   countryCodeButton: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E0E0E0",
     borderRadius: 8,
     paddingHorizontal: 6,
     height: 48,
@@ -571,28 +600,12 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#000000",
   },
-  dropdownList: {
-    position: "absolute",
-    top: 52,
-    left: 0,
-    width: 160,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: "hidden",
-  },
   dropdownItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: "#E0E0E0",
     width: "100%",
   },
   countryCodeText: {
@@ -607,13 +620,6 @@ const styles = StyleSheet.create({
     color: "#666666",
     flex: 1,
     marginLeft: 8,
-  },
-  phoneInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 14,
-    color: "#1F2937",
-    fontFamily: "Poppins-Regular",
   },
   pinButton: {
     flexDirection: "row",
