@@ -434,6 +434,7 @@ export default function PaymentScreen() {
           TicketType: participant.TicketType,
           isActive: true,
           registrationCharge: participant.registrationCharge,
+          paymentThrough:"app",
         };
       });
       const payload = {

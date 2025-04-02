@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     paddingHorizontal: 16,
     justifyContent: "flex-end",
-    paddingBottom: 16,
+    paddingBottom: 10,
   },
   headerContent: {
     flexDirection: "row",
@@ -34,9 +34,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 160,
-    height: 50,
+    width: 250,
+    height: 60,
     resizeMode: "contain",
+    marginLeft: -26,
   },
   headerIcons: {
     flexDirection: "row",
