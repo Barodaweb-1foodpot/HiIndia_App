@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 40 : 70,
   },
   logo: {
-    width: width * 0.7,
-    height: height * 0.2,
+    width: width * 0.9,
+    height: height * 0.4,
     marginBottom: 10,
   },
   footerContainer: {

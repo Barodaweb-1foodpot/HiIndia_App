@@ -106,11 +106,12 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: "100%",
-    height: height * 0.09,
+    top: Platform.OS === "ios" ? 10 : 25,
+    height:Platform.OS === "ios" ? 100 : 110,
   },
   skipButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 15 : 30,
+    top: Platform.OS === "ios" ? 15 : 40,
     right: 20,
     zIndex: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
