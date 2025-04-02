@@ -697,6 +697,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000",
+    marginVertical: 16,
+  },
   // OtherEventCard (HomeScreen style)
   eventCard: {
     borderRadius: 16,

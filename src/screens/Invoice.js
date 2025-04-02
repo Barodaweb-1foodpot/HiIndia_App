@@ -10,12 +10,14 @@ import {
   Platform,
   Share,
   Image,
+  Modal,
 } from "react-native";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { getTicketsByOrderId } from "../api/ticket_api";
+import { WebView } from "react-native-webview";
 
 /**
  * Format the event's start and end date/time in a friendlier format.
@@ -65,6 +67,10 @@ const formatPurchaseDate = (dateString) => {
 export default function Invoice({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [orderData, setOrderData] = useState(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [invoiceHtml, setInvoiceHtml] = useState("");
+  const [pdfUri, setPdfUri] = useState(null);
+  const [pdfFilename, setPdfFilename] = useState("");
 
   // Get the orderId and optionally orderDetails (totals) from route params
   const { orderId, orderDetails: routeOrderDetails = {} } = route.params || {
@@ -396,18 +402,51 @@ export default function Invoice({ route, navigation }) {
     try {
       setLoading(true);
       const html = generateInvoiceHTML();
+      setInvoiceHtml(html);
+      
       const { uri } = await Print.printToFileAsync({ html });
-      const filename = `invoice_${orderData.id}.pdf`;
-      await Sharing.shareAsync(uri, {
-        mimeType: "application/pdf",
-        dialogTitle: filename,
-      });
+      
+      // Create a more descriptive filename with event name and order ID
+      // Sanitize the event name to remove special characters that might cause issues in filenames
+      const sanitizedEventName = orderData.eventName
+        .replace(/[^a-zA-Z0-9 ]/g, '')  // Remove special characters
+        .replace(/\s+/g, '_');          // Replace spaces with underscores
+      
+      const filename = `HiIndia_${sanitizedEventName}_${orderData.id}.pdf`;
+      
+      setPdfUri(uri);
+      setPdfFilename(filename);
       setLoading(false);
+      
+      // Show preview instead of immediately sharing
+      setPreviewVisible(true);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
       setLoading(false);
     }
+  };
+  
+  // Handle confirming to share the PDF after preview
+  const handleConfirmShare = async () => {
+    if (pdfUri) {
+      try {
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: "application/pdf",
+          dialogTitle: pdfFilename,
+        });
+      } catch (error) {
+        console.error("Error sharing invoice:", error);
+        alert("Failed to share invoice. Please try again.");
+      } finally {
+        setPreviewVisible(false);
+      }
+    }
+  };
+  
+  // Close preview modal without sharing
+  const handleCancelShare = () => {
+    setPreviewVisible(false);
   };
 
   // Share invoice details as plain text
@@ -471,6 +510,48 @@ Thank you for your purchase!
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      
+      {/* PDF Preview Modal */}
+      <Modal
+        visible={previewVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={handleCancelShare}
+      >
+        <View style={styles.previewContainer}>
+          <View style={styles.previewHeader}>
+            <Text style={styles.previewTitle}>Invoice Preview</Text>
+            <TouchableOpacity onPress={handleCancelShare}>
+              <Ionicons name="close" size={24} color="#111827" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.previewContent}>
+            <WebView
+              source={{ html: invoiceHtml }}
+              style={styles.webView}
+              scalesPageToFit={true}
+            />
+          </View>
+          
+          <View style={styles.previewActions}>
+            <TouchableOpacity 
+              style={[styles.previewButton, styles.cancelButton]} 
+              onPress={handleCancelShare}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.previewButton, styles.confirmButton]} 
+              onPress={handleConfirmShare}
+            >
+              <Text style={styles.confirmButtonText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header with back button */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -519,7 +600,7 @@ Thank you for your purchase!
                 {/* This local logo is just for the on-screen UI.
                     The PDF uses the remote logo on the left. */}
                 <Image
-                  source={require("../../assets/Hi.png")}
+                  source={require("../../assets/HiIndia.png")}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
@@ -617,12 +698,12 @@ Thank you for your purchase!
                 </Text>
               </View>
               <View style={styles.paymentInfoBody}>
-                <View style={styles.paymentInfoRow}>
+                {/* <View style={styles.paymentInfoRow}>
                   <Text style={styles.paymentInfoLabel}>Payment ID</Text>
                   <Text style={styles.paymentInfoValue}>
                     {orderData.paymentId || 'N/A'}
                   </Text>
-                </View>
+                </View> */}
                 <View style={styles.paymentInfoRow}>
                   <Text style={styles.paymentInfoLabel}>Status</Text>
                   <View style={styles.paymentStatusContainer}>
@@ -1020,5 +1101,60 @@ const styles = StyleSheet.create({
   footerSubText: {
     fontSize: 13,
     color: "#6B7280",
+  },
+  // Preview styles
+  previewContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  previewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  previewContent: {
+    flex: 1,
+  },
+  webView: {
+    flex: 1,
+  },
+  previewActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  previewButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  cancelButton: {
+    backgroundColor: "#F3F4F6",
+  },
+  confirmButton: {
+    backgroundColor: "#000000",
+  },
+  cancelButtonText: {
+    color: "#4B5563",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  confirmButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

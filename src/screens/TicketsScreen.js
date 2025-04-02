@@ -66,14 +66,19 @@ export default function TicketScreen({ navigation }) {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
-      checkAuthAndFetch();
+      
+      if (!dataLoaded) {
+        checkAuthAndFetch();
+      }
+      
       return () => {};
-    }, [])
+    }, [dataLoaded])
   );
 
   const checkAuthAndFetch = async () => {
@@ -85,10 +90,6 @@ export default function TicketScreen({ navigation }) {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchTickets();
-  }, []);
 
   const fetchTickets = async (isRefresh = false) => {
     if (!isRefresh) {
@@ -134,6 +135,7 @@ export default function TicketScreen({ navigation }) {
         console.log("Transformed Tickets:", transformedTickets);
 
         setTickets(transformedTickets);
+        setDataLoaded(true);
 
         // Make each ticket expanded by default:
         const initialExpanded = {};
@@ -143,9 +145,11 @@ export default function TicketScreen({ navigation }) {
         setExpandedOrders(initialExpanded);
       } else {
         setTickets([]);
+        setDataLoaded(true);
       }
     } catch (error) {
       console.error("Error fetching tickets: ", error);
+      setDataLoaded(true);
     } finally {
       if (!isRefresh) {
         setLoading(false);
@@ -489,7 +493,10 @@ ${ticketsInfo}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
             refreshing={refreshing}
-            onRefresh={() => fetchTickets(true)}
+            onRefresh={() => {
+              setDataLoaded(false);
+              fetchTickets(true);
+            }}
             renderItem={renderTicket}
             ListEmptyComponent={<Text style={styles.noTicketsText}>No tickets found</Text>}
           />

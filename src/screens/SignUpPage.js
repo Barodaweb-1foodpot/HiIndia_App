@@ -129,7 +129,12 @@ const SignUpPage = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+        animated={true}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
