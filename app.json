@@ -3,7 +3,7 @@
     "name": "HiIndia",
     "slug": "HiIndia_App",
     "scheme": "hiindiaapp",
-    "version": "1.0.0",
+    "version": "0.0.05",
     "orientation": "portrait",
     "icon": "./assets/icon1.jpg",
     "userInterfaceStyle": "light",
@@ -11,8 +11,9 @@
     "newArchEnabled": true,
     "splash": {},
     "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
-      "bundleIdentifier": "com.deep_1012.HiIndia_App",
+      "bundleIdentifier": "com.hiindia.app",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -34,14 +35,11 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
-      [
-        "@react-native-google-signin/google-signin"
-      ]
+      "expo-font"
     ],
     "extra": {
       "eas": {
-        "projectId": "12097d52-a643-46a9-85ec-1b2b469c02df"
+        "projectId": "2f46a03f-7ae4-4b07-85e5-e01810dac880"
       }
     }
   }
