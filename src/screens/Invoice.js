@@ -336,7 +336,7 @@ export default function Invoice({ route, navigation }) {
           <div class="header-section">
             <div class="header-left">
               <img 
-                src="https://fronthiindia.barodaweb.org/_next/static/media/Hi-India%20Logo.bacafd6b.png"
+                src="https://hiindiaevents.com/_next/static/media/logoNew.acedc591.png"
                 alt="Hi India Logo"
               />
             </div>

@@ -11,12 +11,12 @@ import {
   YellowBox,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import RenderHtml from 'react-native-render-html';
-import { useWindowDimensions } from 'react-native';
+import RenderHtml from "react-native-render-html";
+import { useWindowDimensions } from "react-native";
 
 // More aggressive warning suppression
 LogBox.ignoreAllLogs(); // Disable all yellow box warnings
-YellowBox.ignoreWarnings(['Support for defaultProps']);
+YellowBox.ignoreWarnings(["Support for defaultProps"]);
 
 export default function PrivacyPolicy({ route, navigation }) {
   const { data } = route.params;
@@ -25,34 +25,38 @@ export default function PrivacyPolicy({ route, navigation }) {
   useEffect(() => {
     // Ensure warnings are suppressed when component mounts
     LogBox.ignoreLogs([
-      'Support for defaultProps will be removed from function components',
-      'Support for defaultProps will be removed from memo components',
+      "Support for defaultProps will be removed from function components",
+      "Support for defaultProps will be removed from memo components",
     ]);
   }, []);
 
   // Custom renderer for headings to make them more compact
   const renderers = {
-    h1: ({ children }) => (
-      <Text style={styles.heading}>{children}</Text>
-    ),
-    h2: ({ children }) => (
-      <Text style={styles.subheading}>{children}</Text>
-    ),
+    h1: ({ children }) => <Text style={styles.heading}>{children}</Text>,
+    h2: ({ children }) => <Text style={styles.subheading}>{children}</Text>,
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
       </View>
 
       {/* Main Content */}
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
@@ -65,30 +69,30 @@ export default function PrivacyPolicy({ route, navigation }) {
             tagsStyles={{
               p: {
                 fontSize: 14,
-                color: '#4B5563',
+                color: "#4B5563",
                 lineHeight: 18,
                 marginVertical: 4,
-                fontFamily: 'Poppins-Regular',
+                fontFamily: "Poppins-Regular",
               },
               strong: {
-                fontFamily: 'Poppins-SemiBold',
-                color: '#1F2937',
+                fontFamily: "Poppins-SemiBold",
+                color: "#1F2937",
               },
               h1: {
                 fontSize: 16,
-                fontWeight: 'bold',
-                color: '#1F2937',
+                fontWeight: "bold",
+                color: "#1F2937",
                 marginTop: 14,
                 marginBottom: 2,
-                fontFamily: 'Poppins-Bold',
+                fontFamily: "Poppins-Bold",
               },
               h2: {
                 fontSize: 15,
-                fontWeight: '600',
-                color: '#1F2937',
+                fontWeight: "600",
+                color: "#1F2937",
                 marginTop: 10,
                 marginBottom: 2,
-                fontFamily: 'Poppins-SemiBold',
+                fontFamily: "Poppins-SemiBold",
               },
               ul: {
                 marginLeft: 0,
@@ -96,26 +100,26 @@ export default function PrivacyPolicy({ route, navigation }) {
               },
               li: {
                 fontSize: 14,
-                color: '#4B5563',
+                color: "#4B5563",
                 marginVertical: 2,
-                fontFamily: 'Poppins-Regular',
+                fontFamily: "Poppins-Regular",
               },
               a: {
-                color: '#E3000F',
-                textDecorationLine: 'none',
+                color: "#E3000F",
+                textDecorationLine: "none",
               },
               div: {
                 marginVertical: 0,
               },
               span: {
-                fontFamily: 'Poppins-Regular',
+                fontFamily: "Poppins-Regular",
               },
               br: {
                 height: 4,
               },
               body: {
-                fontFamily: 'Poppins-Regular',
-              }
+                fontFamily: "Poppins-Regular",
+              },
             }}
           />
         ) : (
@@ -131,7 +135,7 @@ export default function PrivacyPolicy({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 40 : 10,
+    paddingTop: Platform.OS === "ios" ? 40 : 40,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
   },
@@ -141,7 +145,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   backButton: {
     width: 32,
@@ -164,17 +168,17 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Poppins-Bold',
+    fontWeight: "bold",
+    color: "#1F2937",
+    fontFamily: "Poppins-Bold",
     marginTop: 12,
     marginBottom: 2,
   },
   subheading: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-    fontFamily: 'Poppins-SemiBold',
+    fontWeight: "600",
+    color: "#1F2937",
+    fontFamily: "Poppins-SemiBold",
     marginTop: 10,
     marginBottom: 2,
   },
@@ -185,8 +189,8 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
   },
   loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 20,
   },
 });

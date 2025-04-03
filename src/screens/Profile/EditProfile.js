@@ -13,6 +13,8 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   StatusBar,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-toast-message";
@@ -31,63 +33,57 @@ import SkeletonLoader from "../../components/SkeletonLoader";
 // CountryCodeDropdown component remains unchanged
 const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const animatedHeight = useRef(new Animated.Value(0)).current;
-
-  const toggleDropdown = useCallback(() => {
-    const toValue = isOpen ? 0 : 200;
-    Animated.timing(animatedHeight, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-    setIsOpen((prev) => !prev);
-  }, [isOpen, animatedHeight]);
 
   return (
     <View style={styles.dropdownContainer}>
       <TouchableOpacity
         style={styles.countryCodeButton}
-        onPress={toggleDropdown}
+        onPress={() => setIsOpen(true)}
       >
         <Text style={styles.countryCodeButtonText}>{selectedCode}</Text>
         <Ionicons
-          name={isOpen ? "chevron-up" : "chevron-down"}
+          name="chevron-down"
           size={16}
           color="#000"
         />
       </TouchableOpacity>
-      <Animated.View
-        style={[
-          styles.dropdownList,
-          {
-            maxHeight: animatedHeight,
-            opacity: animatedHeight.interpolate({
-              inputRange: [0, 200],
-              outputRange: [0, 1],
-            }),
-          },
-        ]}
+
+      <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
       >
-        <ScrollView
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsOpen(false)}
         >
-          {countries.map((item) => (
-            <TouchableOpacity
-              key={item._id}
-              style={styles.dropdownItem}
-              onPress={() => {
-                onSelect("+" + item.CountryCode, item._id);
-                toggleDropdown();
-              }}
-            >
-              <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
-              <Text style={styles.countryNameText}>{item.CountryName}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Animated.View>
+          <View style={styles.modalDropdownContainer}>
+            <View style={styles.modalDropdownHeader}>
+              <Text style={styles.modalDropdownTitle}>Select Country Code</Text>
+              <TouchableOpacity onPress={() => setIsOpen(false)}>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalDropdownScrollView}>
+              {countries.map((item) => (
+                <TouchableOpacity
+                  key={item._id}
+                  style={styles.modalDropdownItem}
+                  onPress={() => {
+                    onSelect("+" + item.CountryCode, item._id);
+                    setIsOpen(false);
+                  }}
+                >
+                  <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+                  <Text style={styles.countryNameText}>{item.CountryName}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -135,7 +131,7 @@ export default function EditProfile({ navigation }) {
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
-  const [countryCode, setCountryCode] = useState("+91");
+  const [countryCode, setCountryCode] = useState(null);
   const [countryId, setCountryId] = useState("");
   const [profileImage, setProfileImage] = useState(
     require("../../../assets/placeholder.jpg")
@@ -143,6 +139,7 @@ export default function EditProfile({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [countries, setCountries] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load user data from API and AsyncStorage
   useEffect(() => {
@@ -157,7 +154,7 @@ export default function EditProfile({ navigation }) {
             setPhoneNumber(res.contactNumber || "");
             setEmail(res.emailId || "");
             setCountryCode(res.ParticipantCountryCode || "+91");
-            setCountryId(res.countryId || "");
+            setCountryId(res.country || null);
             if (res.profileImage && res.profileImage.trim() !== "") {
               setProfileImage({
                 uri: `${API_BASE_URL_UPLOADS}/${res.profileImage}`,
@@ -261,9 +258,15 @@ export default function EditProfile({ navigation }) {
       }
       return;
     }
+    
+    setIsSubmitting(true);
+    
     try {
       const participantId = await AsyncStorage.getItem("role");
-      if (!participantId) return;
+      if (!participantId) {
+        setIsSubmitting(false);
+        return;
+      }
 
       const formData = new FormData();
       formData.append("firstName", firstName);
@@ -293,6 +296,7 @@ export default function EditProfile({ navigation }) {
         });
         navigation.goBack();
       } else {
+        setIsSubmitting(false);
         Toast.show({
           type: "error",
           text1: "Update Failed",
@@ -301,6 +305,7 @@ export default function EditProfile({ navigation }) {
         });
       }
     } catch (error) {
+      setIsSubmitting(false);
       console.error("Error updating profile:", error);
       Toast.show({
         type: "error",
@@ -406,9 +411,9 @@ export default function EditProfile({ navigation }) {
                 <View style={styles.phoneInputContainer}>
                   <CountryCodeDropdown
                     selectedCode={countryCode}
-                    onSelect={(code, id) => {
+                    onSelect={(code, _id) => {
                       setCountryCode(code);
-                      setCountryId(id);
+                      setCountryId(_id);
                     }}
                     countries={countries}
                   />
@@ -447,8 +452,16 @@ export default function EditProfile({ navigation }) {
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
               </TouchableOpacity> */}
             </View>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save</Text>
+            <TouchableOpacity 
+              style={styles.saveButton} 
+              onPress={handleSave}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </TouchableWithoutFeedback>
@@ -566,22 +579,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     width: 78,
   },
-  dropdownList: {
-    position: "absolute",
-    top: 52,
-    left: 0,
-    width: 160,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: "hidden",
-  },
   countryCodeButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -600,10 +597,40 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#000000",
   },
-  dropdownItem: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDropdownContainer: {
+    width: '80%',
+    maxHeight: '70%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 5,
+  },
+  modalDropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalDropdownTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    color: "#000000",
+  },
+  modalDropdownScrollView: {
+    maxHeight: 300,
+  },
+  modalDropdownItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
     width: "100%",

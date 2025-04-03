@@ -3,7 +3,7 @@
     "name": "HiIndia",
     "slug": "HiIndia_App",
     "scheme": "hiindiaapp",
-    "version": "0.0.06",
+    "version": "0.0.08",
     "orientation": "portrait",
     "icon": "./assets/icon1.jpg",
     "userInterfaceStyle": "light",
@@ -49,6 +49,9 @@
       ]
     ],
     "extra": {
+      "eas": {
+        "projectId": "12097d52-a643-46a9-85ec-1b2b469c02df"
+      }
     }
   }
 }
