@@ -85,7 +85,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
 };
 
 const SignUpPage = ({ navigation }) => {
-  const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
+  const [selectedCountryCode, setSelectedCountryCode] = useState(null);
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [countries, setCountries] = useState([]);
   const [isLoading, setIsLoading] = useState(false); // New loading state
@@ -115,7 +115,7 @@ const SignUpPage = ({ navigation }) => {
     lastName: Yup.string().required("Last Name is required"),
     phoneNumber: Yup.string()
       .required("Phone Number is required")
-      .matches(/^\d{10}$/, "Phone Number must be 10 digits"),
+      .matches(/^\d{6,10}$/, "Phone Number must be between 6-10 digits"),
     email: Yup.string()
       .email("Enter a valid email")
       .required("Email is required"),
@@ -192,9 +192,20 @@ const SignUpPage = ({ navigation }) => {
                     isMailVerified: false,
                     isContactNumberVerified: false,
                     IsActive: true,
-                  };
-
+                  }; 
+                  if (!selectedCountryCode) {
+                    Toast.show({
+                      type: "error",
+                      text1: "Validation Error",
+                      text2: "Please select a country code",
+                      position: "bottom",
+                    });
+                    setIsLoading(false); // Reset loading state
+                    return;
+                  }
+                  console.log("------------------------payload", payload);
                   try {
+                    setIsLoading(true); // Set loading state before API call
                     const response = await handleSignup(payload);
                     if (response.isOk) {
                       Toast.show({
@@ -267,9 +278,10 @@ const SignUpPage = ({ navigation }) => {
                         <View style={styles.phoneInputContainer}>
                           <CountryCodeDropdown
                             selectedCode={selectedCountryCode}
-                            onSelect={(code, id) => {
+                            onSelect={(code, _id) => {
+                              console.log("------------------------code", _id);
                               setSelectedCountryCode(code);
-                              setSelectedCountryId(id);
+                              setSelectedCountryId(_id);
                             }}
                             countries={countries}
                           />
@@ -392,7 +404,15 @@ const SignUpPage = ({ navigation }) => {
                       {/* Continue Button that triggers a Modal */}
                       <TouchableOpacity
                         style={styles.continueButton}
-                        onPress={() => setModalVisible(true)}
+                        onPress={async () => {
+                          // Validate form before showing modal
+                          const isValid = await handleSubmit();
+                          if (!Object.keys(errors).length && selectedCountryCode) {
+                            setModalVisible(true);
+                          } else {
+                            setIsLoading(false);
+                          }
+                        }}
                         disabled={isLoading}
                       >
                         {isLoading ? (
@@ -410,7 +430,10 @@ const SignUpPage = ({ navigation }) => {
                 visible={modalVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => {
+                  setModalVisible(false);
+                  setIsLoading(false);
+                }}
               >
                 <View style={styles.modalContainer}>
                   <View style={styles.modalContent}>
@@ -420,10 +443,11 @@ const SignUpPage = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.modalButton}
                       onPress={() => {
-                        setModalVisible(false);
-                        setIsLoading(true);
-                        // Trigger Formik submission via the stored ref
-                        formSubmitRef.current && formSubmitRef.current();
+                        if (formSubmitRef.current) {
+                          setModalVisible(false);
+                          setIsLoading(true);
+                          formSubmitRef.current();
+                        }
                       }}
                     >
                       <Text style={styles.modalButtonText}>Ok</Text>
