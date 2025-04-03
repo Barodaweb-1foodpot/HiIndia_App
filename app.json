@@ -20,7 +20,8 @@
         ],
         "ASAuthorizationAppleID": {
           "AppleSignIn": true
-        }
+        },
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -37,11 +38,19 @@
     "plugins": [
       "expo-font",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
-        "projectId": "12097d52-a643-46a9-85ec-1b2b469c02df"
+        "projectId": "2f46a03f-7ae4-4b07-85e5-e01810dac880"
       }
     }
   }
