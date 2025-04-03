@@ -22,64 +22,57 @@ import Toast from "react-native-toast-message";
 
 const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const animatedHeight = useRef(new Animated.Value(0)).current;
-
-  const toggleDropdown = () => {
-    const toValue = isOpen ? 0 : 200;
-    Animated.timing(animatedHeight, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-    setIsOpen(!isOpen);
-  };
 
   return (
     <View style={styles.dropdownContainer}>
       <TouchableOpacity
         style={styles.countryCodeButton}
-        onPress={toggleDropdown}
+        onPress={() => setIsOpen(true)}
       >
         <Text style={styles.countryCodeButtonText}>{selectedCode}</Text>
         <Ionicons
-          name={isOpen ? "chevron-up" : "chevron-down"}
+          name="chevron-down"
           size={16}
           color="#000"
         />
       </TouchableOpacity>
 
-      <Animated.View
-        style={[
-          styles.dropdownList,
-          {
-            maxHeight: animatedHeight,
-            opacity: animatedHeight.interpolate({
-              inputRange: [0, 200],
-              outputRange: [0, 1],
-            }),
-          },
-        ]}
+      <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
       >
-        <ScrollView
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsOpen(false)}
         >
-          {countries.map((item) => (
-            <TouchableOpacity
-              key={item._id}
-              style={styles.dropdownItem}
-              onPress={() => {
-                onSelect("+" + item.CountryCode, item._id);
-                toggleDropdown();
-              }}
-            >
-              <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
-              <Text style={styles.countryNameText}>{item.CountryName}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Animated.View>
+          <View style={styles.modalDropdownContainer}>
+            <View style={styles.modalDropdownHeader}>
+              <Text style={styles.modalDropdownTitle}>Select Country Code</Text>
+              <TouchableOpacity onPress={() => setIsOpen(false)}>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalDropdownScrollView}>
+              {countries.map((item) => (
+                <TouchableOpacity
+                  key={item._id}
+                  style={styles.modalDropdownItem}
+                  onPress={() => {
+                    onSelect("+" + item.CountryCode, item._id);
+                    setIsOpen(false);
+                  }}
+                >
+                  <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+                  <Text style={styles.countryNameText}>{item.CountryName}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -88,7 +81,8 @@ const SignUpPage = ({ navigation }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState(null);
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [countries, setCountries] = useState([]);
-  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [isLoading, setIsLoading] = useState(false);
+  const [countryCodeError, setCountryCodeError] = useState(null);
   const scrollViewRef = useRef(null);
   // Create refs for each digit input in the two PIN fields
   const inputRefsSetPin = useRef([...Array(6)].map(() => React.createRef()));
@@ -194,13 +188,8 @@ const SignUpPage = ({ navigation }) => {
                     IsActive: true,
                   }; 
                   if (!selectedCountryCode) {
-                    Toast.show({
-                      type: "error",
-                      text1: "Validation Error",
-                      text2: "Please select a country code",
-                      position: "bottom",
-                    });
-                    setIsLoading(false); // Reset loading state
+                    setCountryCodeError("Country Code is required");
+                    setIsLoading(false);
                     return;
                   }
                   console.log("------------------------payload", payload);
@@ -282,6 +271,7 @@ const SignUpPage = ({ navigation }) => {
                               console.log("------------------------code", _id);
                               setSelectedCountryCode(code);
                               setSelectedCountryId(_id);
+                              setCountryCodeError(null);
                             }}
                             countries={countries}
                           />
@@ -296,6 +286,9 @@ const SignUpPage = ({ navigation }) => {
                             maxLength={10}
                           />
                         </View>
+                        {countryCodeError && (
+                          <Text style={styles.errorText}>{countryCodeError}</Text>
+                        )}
                         {touched.phoneNumber && errors.phoneNumber && (
                           <Text style={styles.errorText}>
                             {errors.phoneNumber}
@@ -404,14 +397,31 @@ const SignUpPage = ({ navigation }) => {
                       {/* Continue Button that triggers a Modal */}
                       <TouchableOpacity
                         style={styles.continueButton}
-                        onPress={async () => {
-                          // Validate form before showing modal
-                          const isValid = await handleSubmit();
-                          if (!Object.keys(errors).length && selectedCountryCode) {
-                            setModalVisible(true);
+                        onPress={() => {
+                          // Set loading state
+                          setIsLoading(true);
+                          
+                          // Touch all fields to trigger validation
+                          Object.keys(values).forEach(field => setFieldTouched(field, true));
+                          
+                          // Check for country code
+                          if (!selectedCountryCode) {
+                            setCountryCodeError("Country Code is required");
                           } else {
-                            setIsLoading(false);
+                            setCountryCodeError(null);
                           }
+                          
+                          // Check for form errors
+                          const hasErrors = Object.keys(errors).length > 0 || !selectedCountryCode;
+                          
+                          if (hasErrors) {
+                            // If there are errors, reset loading state
+                            setIsLoading(false);
+                            return;
+                          }
+                          
+                          // If valid, show modal
+                          setModalVisible(true);
                         }}
                         disabled={isLoading}
                       >
@@ -576,22 +586,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     width: 78,
   },
-  dropdownList: {
-    position: "absolute",
-    top: 52,
-    left: 0,
-    width: 160,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: "hidden",
-  },
   countryCodeButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -610,10 +604,40 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Regular",
     color: "#000000",
   },
-  dropdownItem: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDropdownContainer: {
+    width: '80%',
+    maxHeight: '70%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 5,
+  },
+  modalDropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalDropdownTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins-Medium",
+    color: "#000000",
+  },
+  modalDropdownScrollView: {
+    maxHeight: 300,
+  },
+  modalDropdownItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
     width: "100%",
