@@ -30,11 +30,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
         onPress={() => setIsOpen(true)}
       >
         <Text style={styles.countryCodeButtonText}>{selectedCode}</Text>
-        <Ionicons
-          name="chevron-down"
-          size={16}
-          color="#000"
-        />
+        <Ionicons name="chevron-down" size={16} color="#000" />
       </TouchableOpacity>
 
       <Modal
@@ -43,7 +39,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsOpen(false)}
@@ -65,7 +61,9 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
                     setIsOpen(false);
                   }}
                 >
-                  <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+                  <Text style={styles.countryCodeText}>
+                    +{item.CountryCode}
+                  </Text>
                   <Text style={styles.countryNameText}>{item.CountryName}</Text>
                 </TouchableOpacity>
               ))}
@@ -86,7 +84,9 @@ const SignUpPage = ({ navigation }) => {
   const scrollViewRef = useRef(null);
   // Create refs for each digit input in the two PIN fields
   const inputRefsSetPin = useRef([...Array(6)].map(() => React.createRef()));
-  const inputRefsConfirmPin = useRef([...Array(6)].map(() => React.createRef()));
+  const inputRefsConfirmPin = useRef(
+    [...Array(6)].map(() => React.createRef())
+  );
   // State for modal visibility
   const [modalVisible, setModalVisible] = useState(false);
   // Ref to store Formik's handleSubmit function
@@ -108,8 +108,8 @@ const SignUpPage = ({ navigation }) => {
     firstName: Yup.string().required("First Name is required"),
     lastName: Yup.string().required("Last Name is required"),
     phoneNumber: Yup.string()
-      .required("Phone Number is required")
-      .matches(/^\d{6,10}$/, "Phone Number must be between 6-10 digits"),
+      .matches(/^\d{6,10}$/, "Phone Number must be between 6-10 digits")
+      .nullable(),
     email: Yup.string()
       .email("Enter a valid email")
       .required("Email is required"),
@@ -170,7 +170,7 @@ const SignUpPage = ({ navigation }) => {
                   lastName: "",
                   phoneNumber: "",
                   email: "",
-                  setPin: "______", 
+                  setPin: "______",
                   confirmPin: "______",
                 }}
                 validationSchema={validationSchema}
@@ -180,21 +180,26 @@ const SignUpPage = ({ navigation }) => {
                     lastName: values.lastName,
                     emailId: values.email.toLowerCase(),
                     password: values.setPin.replace(/_/g, ""),
-                    contactNumber: values.phoneNumber,
-                    ParticipantCountryCode: selectedCountryCode,
-                    country: selectedCountryId,
+                    contactNumber: values.phoneNumber || "",
+                    ParticipantCountryCode: selectedCountryCode || "",
+                    country: selectedCountryId || "",
                     isMailVerified: false,
                     isContactNumberVerified: false,
                     IsActive: true,
-                  }; 
-                  if (!selectedCountryCode) {
-                    setCountryCodeError("Country Code is required");
-                    setIsLoading(false);
-                    return;
-                  }
+                  };
+
                   console.log("------------------------payload", payload);
                   try {
                     setIsLoading(true); // Set loading state before API call
+
+                    // Prepare final payload - handle optional phone fields
+                    if (!values.phoneNumber) {
+                      // If no phone number, set contact fields to empty
+                      payload.contactNumber = "";
+                      payload.ParticipantCountryCode = "";
+                      payload.country = "";
+                    }
+
                     const response = await handleSignup(payload);
                     if (response.isOk) {
                       Toast.show({
@@ -245,7 +250,9 @@ const SignUpPage = ({ navigation }) => {
                           value={values.firstName}
                         />
                         {touched.firstName && errors.firstName && (
-                          <Text style={styles.errorText}>{errors.firstName}</Text>
+                          <Text style={styles.errorText}>
+                            {errors.firstName}
+                          </Text>
                         )}
 
                         {/* Last Name */}
@@ -259,11 +266,16 @@ const SignUpPage = ({ navigation }) => {
                           value={values.lastName}
                         />
                         {touched.lastName && errors.lastName && (
-                          <Text style={styles.errorText}>{errors.lastName}</Text>
+                          <Text style={styles.errorText}>
+                            {errors.lastName}
+                          </Text>
                         )}
 
                         {/* Phone Number + Country Code */}
-                        <Text style={styles.inputLabel}>Phone Number</Text>
+                        <Text style={styles.inputLabel}>
+                          Phone Number{" "}
+                          <Text style={styles.optionalText}>(Optional)</Text>
+                        </Text>
                         <View style={styles.phoneInputContainer}>
                           <CountryCodeDropdown
                             selectedCode={selectedCountryCode}
@@ -286,9 +298,6 @@ const SignUpPage = ({ navigation }) => {
                             maxLength={10}
                           />
                         </View>
-                        {countryCodeError && (
-                          <Text style={styles.errorText}>{countryCodeError}</Text>
-                        )}
                         {touched.phoneNumber && errors.phoneNumber && (
                           <Text style={styles.errorText}>
                             {errors.phoneNumber}
@@ -324,7 +333,9 @@ const SignUpPage = ({ navigation }) => {
                               keyboardType="phone-pad"
                               maxLength={1}
                               value={
-                                values.setPin[index] === "_" ? "" : values.setPin[index]
+                                values.setPin[index] === "_"
+                                  ? ""
+                                  : values.setPin[index]
                               }
                               onChangeText={(digit) => {
                                 let newPin = values.setPin.split("");
@@ -364,7 +375,9 @@ const SignUpPage = ({ navigation }) => {
                               keyboardType="phone-pad"
                               maxLength={1}
                               value={
-                                values.confirmPin[index] === "_" ? "" : values.confirmPin[index]
+                                values.confirmPin[index] === "_"
+                                  ? ""
+                                  : values.confirmPin[index]
                               }
                               onChangeText={(digit) => {
                                 let newPin = values.confirmPin.split("");
@@ -372,7 +385,9 @@ const SignUpPage = ({ navigation }) => {
                                 const joined = newPin.join("");
                                 setFieldValue("confirmPin", joined);
                                 if (digit && index < 5) {
-                                  inputRefsConfirmPin.current[index + 1].focus();
+                                  inputRefsConfirmPin.current[
+                                    index + 1
+                                  ].focus();
                                 }
                               }}
                               onKeyPress={(e) => {
@@ -381,7 +396,9 @@ const SignUpPage = ({ navigation }) => {
                                   values.confirmPin[index] === "_" &&
                                   index > 0
                                 ) {
-                                  inputRefsConfirmPin.current[index - 1].focus();
+                                  inputRefsConfirmPin.current[
+                                    index - 1
+                                  ].focus();
                                 }
                               }}
                             />
@@ -400,26 +417,24 @@ const SignUpPage = ({ navigation }) => {
                         onPress={() => {
                           // Set loading state
                           setIsLoading(true);
-                          
+
                           // Touch all fields to trigger validation
-                          Object.keys(values).forEach(field => setFieldTouched(field, true));
-                          
-                          // Check for country code
-                          if (!selectedCountryCode) {
-                            setCountryCodeError("Country Code is required");
-                          } else {
-                            setCountryCodeError(null);
-                          }
-                          
-                          // Check for form errors
-                          const hasErrors = Object.keys(errors).length > 0 || !selectedCountryCode;
-                          
+                          Object.keys(values).forEach((field) =>
+                            setFieldTouched(field, true)
+                          );
+
+                          // Phone number is optional, so clear any country code error
+                          setCountryCodeError(null);
+
+                          // Check for form errors (excluding phone number validation)
+                          const hasErrors = Object.keys(errors).length > 0;
+
                           if (hasErrors) {
                             // If there are errors, reset loading state
                             setIsLoading(false);
                             return;
                           }
-                          
+
                           // If valid, show modal
                           setModalVisible(true);
                         }}
@@ -428,7 +443,9 @@ const SignUpPage = ({ navigation }) => {
                         {isLoading ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                          <Text style={styles.continueButtonText}>Continue</Text>
+                          <Text style={styles.continueButtonText}>
+                            Continue
+                          </Text>
                         )}
                       </TouchableOpacity>
                     </>
@@ -453,10 +470,17 @@ const SignUpPage = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.modalButton}
                       onPress={() => {
+                        setModalVisible(false);
+                        // Ensure we're using the current form submission function
                         if (formSubmitRef.current) {
-                          setModalVisible(false);
-                          setIsLoading(true);
-                          formSubmitRef.current();
+                          console.log("Submitting form from modal OK button");
+                          // Execute after modal is closed to avoid state conflicts
+                          setTimeout(() => {
+                            formSubmitRef.current();
+                          }, 100);
+                        } else {
+                          console.error("Form submit function not available");
+                          setIsLoading(false);
                         }
                       }}
                     >
@@ -606,25 +630,25 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalDropdownContainer: {
-    width: '80%',
-    maxHeight: '70%',
-    backgroundColor: '#FFFFFF',
+    width: "80%",
+    maxHeight: "70%",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 5,
   },
   modalDropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   modalDropdownTitle: {
     fontSize: 16,
@@ -718,5 +742,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontFamily: "Poppins-Medium",
+  },
+  optionalText: {
+    fontSize: 12,
+    fontFamily: "Poppins-Regular",
+    color: "#888888",
   },
 });

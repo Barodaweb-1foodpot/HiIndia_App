@@ -41,11 +41,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
         onPress={() => setIsOpen(true)}
       >
         <Text style={styles.countryCodeButtonText}>{selectedCode}</Text>
-        <Ionicons
-          name="chevron-down"
-          size={16}
-          color="#000"
-        />
+        <Ionicons name="chevron-down" size={16} color="#000" />
       </TouchableOpacity>
 
       <Modal
@@ -54,7 +50,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsOpen(false)}
@@ -76,7 +72,9 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
                     setIsOpen(false);
                   }}
                 >
-                  <Text style={styles.countryCodeText}>+{item.CountryCode}</Text>
+                  <Text style={styles.countryCodeText}>
+                    +{item.CountryCode}
+                  </Text>
                   <Text style={styles.countryNameText}>{item.CountryName}</Text>
                 </TouchableOpacity>
               ))}
@@ -140,6 +138,9 @@ export default function EditProfile({ navigation }) {
   const [countries, setCountries] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [galleryPermissionGranted, setGalleryPermissionGranted] =
+    useState(false);
 
   // Load user data from API and AsyncStorage
   useEffect(() => {
@@ -169,6 +170,14 @@ export default function EditProfile({ navigation }) {
             });
           }
         }
+
+        // Check if gallery permission was previously granted
+        const permission = await AsyncStorage.getItem(
+          "galleryPermissionGranted"
+        );
+        if (permission === "true") {
+          setGalleryPermissionGranted(true);
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {
@@ -191,7 +200,19 @@ export default function EditProfile({ navigation }) {
     loadCountries();
   }, []);
 
-  const handlePickImage = useCallback(async () => {
+  const requestGalleryAccess = useCallback(async () => {
+    // Check if we already have permission stored
+    if (galleryPermissionGranted) {
+      // If permission already granted, directly open gallery
+      openGallery();
+      return;
+    }
+
+    // Otherwise show the permission modal
+    setShowPermissionModal(true);
+  }, [galleryPermissionGranted]);
+
+  const openGallery = async () => {
     try {
       const permissionResult =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -204,12 +225,14 @@ export default function EditProfile({ navigation }) {
         });
         return;
       }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
       });
+
       if (!result.canceled && result.assets?.length) {
         setProfileImage({ uri: result.assets[0].uri });
         Toast.show({
@@ -227,6 +250,23 @@ export default function EditProfile({ navigation }) {
         text2: "Failed to pick image.",
         position: "bottom",
       });
+    }
+  };
+
+  const handlePickImage = useCallback(async () => {
+    setShowPermissionModal(false);
+
+    try {
+      // Remember user's permission choice
+      await AsyncStorage.setItem("galleryPermissionGranted", "true");
+      setGalleryPermissionGranted(true);
+
+      // Open gallery
+      openGallery();
+    } catch (error) {
+      console.error("Error saving permission state:", error);
+      // Still try to open gallery even if saving the state failed
+      openGallery();
     }
   }, []);
 
@@ -258,9 +298,9 @@ export default function EditProfile({ navigation }) {
       }
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const participantId = await AsyncStorage.getItem("role");
       if (!participantId) {
@@ -275,7 +315,11 @@ export default function EditProfile({ navigation }) {
       formData.append("ParticipantCountryCode", countryCode);
       formData.append("country", countryId);
 
-      if (profileImage && profileImage.uri && !profileImage.uri.startsWith("http")) {
+      if (
+        profileImage &&
+        profileImage.uri &&
+        !profileImage.uri.startsWith("http")
+      ) {
         const uriParts = profileImage.uri.split(".");
         const fileType = uriParts[uriParts.length - 1];
         formData.append("profileImage", {
@@ -314,7 +358,17 @@ export default function EditProfile({ navigation }) {
         position: "bottom",
       });
     }
-  }, [firstName, lastName, phoneNumber, email, countryCode, countryId, profileImage, navigation, errors]);
+  }, [
+    firstName,
+    lastName,
+    phoneNumber,
+    email,
+    countryCode,
+    countryId,
+    profileImage,
+    navigation,
+    errors,
+  ]);
 
   return (
     <View style={styles.container}>
@@ -335,7 +389,7 @@ export default function EditProfile({ navigation }) {
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.profileImageContainer}>
-              <TouchableOpacity onPress={handlePickImage}>
+              <TouchableOpacity onPress={requestGalleryAccess}>
                 <ProfileImage
                   source={
                     typeof profileImage === "string"
@@ -347,7 +401,7 @@ export default function EditProfile({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cameraButton}
-                onPress={handlePickImage}
+                onPress={requestGalleryAccess}
               >
                 <Ionicons name="camera" size={20} color="#000" />
               </TouchableOpacity>
@@ -356,10 +410,7 @@ export default function EditProfile({ navigation }) {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>First Name</Text>
                 <TextInput
-                  style={[
-                    styles.input,
-                    errors.firstName && styles.errorInput,
-                  ]}
+                  style={[styles.input, errors.firstName && styles.errorInput]}
                   value={firstName}
                   onChangeText={(text) => {
                     setFirstName(text);
@@ -375,10 +426,7 @@ export default function EditProfile({ navigation }) {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Last Name</Text>
                 <TextInput
-                  style={[
-                    styles.input,
-                    errors.lastName && styles.errorInput,
-                  ]}
+                  style={[styles.input, errors.lastName && styles.errorInput]}
                   value={lastName}
                   onChangeText={(text) => {
                     setLastName(text);
@@ -452,8 +500,8 @@ export default function EditProfile({ navigation }) {
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
               </TouchableOpacity> */}
             </View>
-            <TouchableOpacity 
-              style={styles.saveButton} 
+            <TouchableOpacity
+              style={styles.saveButton}
               onPress={handleSave}
               disabled={isSubmitting}
             >
@@ -466,6 +514,44 @@ export default function EditProfile({ navigation }) {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      {/* Permission Modal */}
+      <Modal
+        visible={showPermissionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPermissionModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPermissionModal(false)}
+        >
+          <View style={styles.permissionModalContainer}>
+            <View style={styles.permissionModalContent}>
+              <Text style={styles.permissionModalTitle}>Gallery Access</Text>
+              <Text style={styles.permissionModalText}>
+                We need access to your photo gallery to update your profile
+                picture. Do you want to continue?
+              </Text>
+              <View style={styles.permissionButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.permissionButton, styles.cancelButton]}
+                  onPress={() => setShowPermissionModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.permissionButton, styles.allowButton]}
+                  onPress={handlePickImage}
+                >
+                  <Text style={styles.allowButtonText}>Allow</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -599,25 +685,25 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalDropdownContainer: {
-    width: '80%',
-    maxHeight: '70%',
-    backgroundColor: '#FFFFFF',
+    width: "80%",
+    maxHeight: "70%",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 5,
   },
   modalDropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   modalDropdownTitle: {
     fontSize: 16,
@@ -689,6 +775,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     fontFamily: "Poppins-SemiBold",
+  },
+  permissionModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  permissionModalContent: {
+    width: "80%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  permissionModalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 12,
+    fontFamily: "Poppins-Bold",
+    textAlign: "center",
+  },
+  permissionModalText: {
+    fontSize: 14,
+    color: "#4B5563",
+    marginBottom: 20,
+    fontFamily: "Poppins-Regular",
+    textAlign: "center",
+  },
+  permissionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  permissionButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: "#F3F4F6",
+  },
+  cancelButtonText: {
+    color: "#4B5563",
+    fontSize: 14,
+    fontWeight: "500",
+    fontFamily: "Poppins-Medium",
+  },
+  allowButton: {
+    backgroundColor: "#E3000F",
+  },
+  allowButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+    fontFamily: "Poppins-Medium",
   },
 });
 
