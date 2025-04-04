@@ -154,7 +154,7 @@ export default function EditProfile({ navigation }) {
             setLastName(res.lastName || "");
             setPhoneNumber(res.contactNumber || "");
             setEmail(res.emailId || "");
-            setCountryCode(res.ParticipantCountryCode || "+91");
+            setCountryCode(res.ParticipantCountryCode || "");
             setCountryId(res.country || null);
             if (res.profileImage && res.profileImage.trim() !== "") {
               setProfileImage({
@@ -275,7 +275,6 @@ export default function EditProfile({ navigation }) {
     const newErrors = {};
     if (!firstName.trim()) newErrors.firstName = "Please fill this field";
     if (!lastName.trim()) newErrors.lastName = "Please fill this field";
-    if (!phoneNumber.trim()) newErrors.phoneNumber = "Please fill this field";
     if (!email.trim()) newErrors.email = "Please fill this field";
 
     setErrors(newErrors);
@@ -311,9 +310,18 @@ export default function EditProfile({ navigation }) {
       const formData = new FormData();
       formData.append("firstName", firstName);
       formData.append("lastName", lastName);
-      formData.append("contactNumber", phoneNumber);
-      formData.append("ParticipantCountryCode", countryCode);
-      formData.append("country", countryId);
+      
+      // Handle optional phone fields
+      if (phoneNumber && phoneNumber.trim() !== "") {
+        formData.append("contactNumber", phoneNumber);
+        if (countryCode) formData.append("ParticipantCountryCode", countryCode);
+        if (countryId) formData.append("country", countryId);
+      } else {
+        // If phone is empty, set empty values for phone-related fields
+        formData.append("contactNumber", "");
+        formData.append("ParticipantCountryCode", "");
+        // Don't send country field at all if it's empty
+      }
 
       if (
         profileImage &&
@@ -455,7 +463,7 @@ export default function EditProfile({ navigation }) {
                 )}
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone Number</Text>
+                <Text style={styles.label}>Phone Number <Text style={styles.optionalText}>(Optional)</Text></Text>
                 <View style={styles.phoneInputContainer}>
                   <CountryCodeDropdown
                     selectedCode={countryCode}
@@ -836,6 +844,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     fontFamily: "Poppins-Medium",
+  },
+  optionalText: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontFamily: "Poppins-Regular",
   },
 });
 
