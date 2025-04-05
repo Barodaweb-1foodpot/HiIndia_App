@@ -239,7 +239,7 @@ export const handleGoogleLogin = async (email) => {
   }
 };
 
-export const verifyGoogleToken = async (token) => {
+export const verifyGoogleToken = async (token, setUser) => {
   try {
     console.log("[verifyGoogleToken] Verifying Google token:", token);
     const res = await axios.post(`${API_BASE_URL}/verify/googleToken`, { token });
@@ -254,6 +254,9 @@ export const verifyGoogleToken = async (token) => {
         await AsyncStorage.setItem("role", response.data._id);
         await AsyncStorage.setItem("Token", response.token);
         await AsyncStorage.setItem("RefreshToken", response.refreshToken);
+        
+        // Set the user in context
+        setUser(response.data);
 
         Toast.show({
           type: "success",
@@ -266,8 +269,8 @@ export const verifyGoogleToken = async (token) => {
       } else {
         console.log("[verifyGoogleToken] Google login failed with response:", response);
         Toast.show({
-          type: "success",
-          text1: response.message,
+          type: "error",
+          text1: response.message || "No Account Found",
         });
         return false;
       }
@@ -277,7 +280,7 @@ export const verifyGoogleToken = async (token) => {
     Toast.show({
       type: "error",
       text1: "Google Token Verification Error",
-      text2: "Something went wrong during token verification.",
+      text2: error.message || "Something went wrong during token verification.",
     });
     throw new Error(error);
   }

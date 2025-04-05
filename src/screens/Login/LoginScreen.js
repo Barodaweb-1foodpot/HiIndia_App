@@ -18,17 +18,17 @@ import * as Yup from "yup";
 
 import Toast from "react-native-toast-message";
 import { useAuthContext } from "../../context/AuthContext";
-// import {
-//   GoogleSignin,
-//   statusCodes,
-// } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 
-// import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
+import { handleGoogleLogin, verifyGoogleToken } from "../../api/auth_api";
 
-// GoogleSignin.configure({
-//   webClientId:
-//     "936625231687-ddktg6euin84vs3i5d96fatjpar3f78s.apps.googleusercontent.com",
-// });
+GoogleSignin.configure({
+  webClientId:
+    "519553318229-ap9onoassbvvun70j4n65ii0acic9egj.apps.googleusercontent.com",
+});
 
 import * as AppleAuthentication from "expo-apple-authentication";
 import axios from "axios";
@@ -76,11 +76,9 @@ const LoginScreen = ({ navigation }) => {
           return;
         }
 
-        //  idToken to backend to verify
-        const verificationResult = await verifyGoogleToken(idToken);
-        console.log("Google token verification result:", verificationResult);
-
-        if (verificationResult === true) {
+        // Verify token and set user state
+        const success = await verifyGoogleToken(idToken, setUser);
+        if (success) {
           navigation.navigate("Tab");
         }
       } else {
@@ -247,7 +245,7 @@ const LoginScreen = ({ navigation }) => {
                         <View style={styles.divider} />
                       </View>
 
-                      {/* <TouchableOpacity
+                      <TouchableOpacity
                         style={styles.socialButton}
                         onPress={handleGoogleSignIn}
                       >
@@ -258,7 +256,7 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.socialButtonText}>
                           Continue with Google
                         </Text>
-                      </TouchableOpacity>  */}
+                      </TouchableOpacity> 
 
                       <TouchableOpacity
                         style={styles.appleButton}
