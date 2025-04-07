@@ -26,7 +26,7 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
-      "package": "com.hiindia.app",
+      "package": "com.deep_1012.HiIndia_App",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon1.jpg",
         "backgroundColor": "#000"
