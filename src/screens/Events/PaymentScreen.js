@@ -307,6 +307,7 @@ export default function PaymentScreen() {
         console.log("Event is free – no payment required");
         Toast.show({ type: "success", text1: "Registration successful!" });
         // Keep loader active until redirect
+        
         setTimeout(() => {
           console.log(
             "Redirecting to Tickets tab after free event registration"
@@ -318,7 +319,9 @@ export default function PaymentScreen() {
       const { clientSecret, orderId } = registerResponse;
       if (clientSecret === "Free") {
         console.log("Event is free – no payment required");
-        Toast.show({ type: "success", text1: "Registration successful!" });
+        Toast.show({ type: "success", text1: "Registration successful!" }); 
+        await handleSendMail(orderId);
+
         setTimeout(() => {
           console.log(
             "Redirecting to Tickets tab after free event registration"

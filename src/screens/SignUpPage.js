@@ -76,7 +76,7 @@ const CountryCodeDropdown = ({ selectedCode, onSelect, countries }) => {
 };
 
 const SignUpPage = ({ navigation }) => {
-  const [selectedCountryCode, setSelectedCountryCode] = useState(null);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("+");
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [countries, setCountries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,7 +109,7 @@ const SignUpPage = ({ navigation }) => {
     lastName: Yup.string().required("Last Name is required"),
     phoneNumber: Yup.string()
       .matches(/^\d{6,10}$/, "Phone Number must be between 6-10 digits")
-      .nullable(),
+      .required("Phone Number is required"),
     email: Yup.string()
       .email("Enter a valid email")
       .required("Email is required"),
@@ -175,14 +175,26 @@ const SignUpPage = ({ navigation }) => {
                 }}
                 validationSchema={validationSchema}
                 onSubmit={async (values) => {
+                  // Ensure country code is selected
+                  if (!selectedCountryCode || selectedCountryCode === "+" || selectedCountryId === "") {
+                    Toast.show({
+                      type: "error",
+                      text1: "Country Code Required",
+                      text2: "Please select a country code",
+                      position: "bottom",
+                    });
+                    setIsLoading(false);
+                    return;
+                  }
+                  
                   const payload = {
                     firstName: values.firstName,
                     lastName: values.lastName,
                     emailId: values.email.toLowerCase(),
                     password: values.setPin.replace(/_/g, ""),
-                    contactNumber: values.phoneNumber || "",
-                    ParticipantCountryCode: selectedCountryCode || "",
-                    country: selectedCountryId || "",
+                    contactNumber: values.phoneNumber,
+                    ParticipantCountryCode: selectedCountryCode,
+                    country: selectedCountryId,
                     isMailVerified: false,
                     isContactNumberVerified: false,
                     IsActive: true,
@@ -191,14 +203,6 @@ const SignUpPage = ({ navigation }) => {
                   console.log("------------------------payload", payload);
                   try {
                     setIsLoading(true); // Set loading state before API call
-
-                    // Prepare final payload - handle optional phone fields
-                    if (!values.phoneNumber) {
-                      // If no phone number, set contact fields to empty
-                      payload.contactNumber = "";
-                      payload.ParticipantCountryCode = "";
-                      payload.country = "";
-                    }
 
                     const response = await handleSignup(payload);
                     if (response.isOk) {
@@ -273,8 +277,7 @@ const SignUpPage = ({ navigation }) => {
 
                         {/* Phone Number + Country Code */}
                         <Text style={styles.inputLabel}>
-                          Phone Number{" "}
-                          <Text style={styles.optionalText}>(Optional)</Text>
+                          Phone Number
                         </Text>
                         <View style={styles.phoneInputContainer}>
                           <CountryCodeDropdown
@@ -423,10 +426,16 @@ const SignUpPage = ({ navigation }) => {
                             setFieldTouched(field, true)
                           );
 
-                          // Phone number is optional, so clear any country code error
-                          setCountryCodeError(null);
+                          // Validate country code is selected
+                          if (!selectedCountryCode || selectedCountryCode === "+" || selectedCountryId === "") {
+                            setCountryCodeError("Please select a country code");
+                            setIsLoading(false);
+                            return;
+                          } else {
+                            setCountryCodeError(null);
+                          }
 
-                          // Check for form errors (excluding phone number validation)
+                          // Check for form errors
                           const hasErrors = Object.keys(errors).length > 0;
 
                           if (hasErrors) {

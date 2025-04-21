@@ -433,9 +433,9 @@ export default function HomeScreen({ navigation }) {
 
                   return (
                     <View key={index} style={styles.eventCard}>
-                      {!event.IsPaid &&
-                      !event.hasExternalLink &&
-                      event.externalLink !== "" ? (
+                      {!event.IsPaid  &&
+                      !event.hasExternalLink  &&
+                      event.externalLink === "" ? (
                         <View style={[styles.badge, styles.freeBadge]}>
                           <Text style={styles.badgeText}>Free</Text>
                         </View>

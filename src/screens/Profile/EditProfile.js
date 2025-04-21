@@ -463,7 +463,7 @@ export default function EditProfile({ navigation }) {
                 )}
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone Number <Text style={styles.optionalText}>(Optional)</Text></Text>
+                <Text style={styles.label}>Phone Number</Text>
                 <View style={styles.phoneInputContainer}>
                   <CountryCodeDropdown
                     selectedCode={countryCode}
@@ -853,3 +853,5 @@ const styles = StyleSheet.create({
 });
 
 export { EditProfile };
+
+// <Text style={styles.optionalText}>(Optional)</Text>
