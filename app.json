@@ -3,7 +3,7 @@
     "name": "HiIndia",
     "slug": "HiIndia_App",
     "scheme": "hiindiaapp",
-    "version": "0.0.08",
+    "version": "0.0.09",
     "orientation": "portrait",
     "icon": "./assets/icon1.jpg",
     "userInterfaceStyle": "light",
@@ -15,14 +15,17 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.hiindia.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
         "ASAuthorizationAppleID": {
           "AppleSignIn": true
         },
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "HiIndia needs access to your photo library to allow you to select a profile picture.",
         "NSPhotoLibraryAddUsageDescription": "HiIndia needs access to your photo library to save selected images."
-      }
+      },
+      "appleTeamId": "B89S3KN9P9"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
