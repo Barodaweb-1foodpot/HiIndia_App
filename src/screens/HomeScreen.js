@@ -18,6 +18,7 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
+import { checkForUpdate, showUpdateAlert } from "../utils/versionCheck";
 
 import {
   fetchEvents,
@@ -99,6 +100,21 @@ export default function HomeScreen({ navigation }) {
     React.useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
+
+      // Check for updates when HomeScreen comes into focus
+      const checkAppVersion = async () => {
+        try {
+          const updateNeeded = await checkForUpdate();
+          if (updateNeeded) {
+            showUpdateAlert();
+          }
+        } catch (error) {
+          console.error("Error checking app version:", error);
+        }
+      };
+
+      checkAppVersion();
+
       return () => {};
     }, [])
   );
@@ -262,7 +278,7 @@ export default function HomeScreen({ navigation }) {
       Linking.openURL(event.externalLink);
       return;
     }
-    
+
     const isAuthenticated = await CheckAccessToken();
     if (!isAuthenticated) {
       // Show login modal instead of direct navigation
@@ -270,7 +286,7 @@ export default function HomeScreen({ navigation }) {
       setLoginModalVisible(true);
       return;
     }
-    
+
     // If authenticated, proceed to buy ticket flow
     navigation.navigate("App", {
       screen: "BuyTicket",
@@ -433,8 +449,8 @@ export default function HomeScreen({ navigation }) {
 
                   return (
                     <View key={index} style={styles.eventCard}>
-                      {!event.IsPaid  &&
-                      !event.hasExternalLink  &&
+                      {!event.IsPaid &&
+                      !event.hasExternalLink &&
                       event.externalLink === "" ? (
                         <View style={[styles.badge, styles.freeBadge]}>
                           <Text style={styles.badgeText}>Free</Text>
@@ -526,7 +542,7 @@ export default function HomeScreen({ navigation }) {
           )}
         </ScrollView>
       </View>
-      
+
       {/* Login Prompt Modal */}
       <LoginPromptModal
         visible={loginModalVisible}

@@ -1,5 +1,11 @@
 // screens/ProfileScreen.js
-import React, { useState, useCallback, useMemo, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useContext,
+} from "react";
 import {
   View,
   Text,
@@ -22,6 +28,7 @@ import { deleteUserAccount } from "../api/auth_api";
 import { AuthContext } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
 import SkeletonLoader from "../components/SkeletonLoader";
+import { getCurrentVersion } from "../utils/versionCheck";
 
 import ShareModal from "../components/ShareModal";
 import LogoutModal from "../components/LogoutModal";
@@ -51,7 +58,10 @@ const ProfileImage = React.memo(({ source, style }) => {
     <View style={style}>
       {isRemote && !loaded && (
         <SkeletonLoader
-          style={[StyleSheet.absoluteFill, { borderRadius: style?.borderRadius || 0 }]}
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: style?.borderRadius || 0 },
+          ]}
         />
       )}
       <Image
@@ -68,12 +78,17 @@ export default function ProfileScreen() {
   const { profileData, reloadProfile } = useProfile();
   const navigation = useNavigation();
   const { setUser, user } = useContext(AuthContext);
+  const appVersion = getCurrentVersion();
 
   // Consolidated modal state
   const [activeModal, setActiveModal] = useState(null);
 
   const profileImageSource = useMemo(() => {
-    if (!profileData || !profileData.profileImage || !profileData.profileImage.trim()) {
+    if (
+      !profileData ||
+      !profileData.profileImage ||
+      !profileData.profileImage.trim()
+    ) {
       return require("../../assets/placeholder.jpg");
     }
     return { uri: `${API_BASE_URL_UPLOADS}/${profileData.profileImage}` };
@@ -84,75 +99,96 @@ export default function ProfileScreen() {
     []
   );
 
-  const handleShareOption = useCallback(async (option) => {
-    try {
-      switch (option) {
-        case "copyLink":
-          await Clipboard.setStringAsync(shareMessage);
-          Toast.show({
-            type: "success",
-            text1: "Link copied!",
-            text2: "Invite link copied to clipboard.",
-          });
-          break;
-        case "whatsapp":
-          Linking.openURL(`whatsapp://send?text=${encodeURIComponent(shareMessage)}`);
-          break;
-        case "facebook":
-          await Share.share({ message: shareMessage });
-          break;
-        case "email":
-          Linking.openURL(`mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(shareMessage)}`);
-          break;
-        case "linkedin":
-          await Share.share({ message: shareMessage });
-          break;
-        case "twitter":
-          Linking.openURL(`twitter://post?message=${encodeURIComponent(shareMessage)}`);
-          break;
-        default:
-          break;
+  const handleShareOption = useCallback(
+    async (option) => {
+      try {
+        switch (option) {
+          case "copyLink":
+            await Clipboard.setStringAsync(shareMessage);
+            Toast.show({
+              type: "success",
+              text1: "Link copied!",
+              text2: "Invite link copied to clipboard.",
+            });
+            break;
+          case "whatsapp":
+            Linking.openURL(
+              `whatsapp://send?text=${encodeURIComponent(shareMessage)}`
+            );
+            break;
+          case "facebook":
+            await Share.share({ message: shareMessage });
+            break;
+          case "email":
+            Linking.openURL(
+              `mailto:?subject=HiIndia%20Event&body=${encodeURIComponent(
+                shareMessage
+              )}`
+            );
+            break;
+          case "linkedin":
+            await Share.share({ message: shareMessage });
+            break;
+          case "twitter":
+            Linking.openURL(
+              `twitter://post?message=${encodeURIComponent(shareMessage)}`
+            );
+            break;
+          default:
+            break;
+        }
+        setActiveModal(null);
+      } catch (error) {
+        console.error("Error sharing event:", error);
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Something went wrong with sharing.",
+        });
       }
-      setActiveModal(null);
-    } catch (error) {
-      console.error("Error sharing event:", error);
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Something went wrong with sharing.",
-      });
-    }
-  }, [shareMessage]);
+    },
+    [shareMessage]
+  );
 
   useFocusEffect(
     useCallback(() => {
       StatusBar.setBarStyle("dark-content");
-      
+
       // Check if we're authenticated but user context is empty
       const checkAndSyncAuth = async () => {
         try {
           const participantId = await AsyncStorage.getItem("role");
           // If no ID stored, user is not logged in - just return silently
           if (!participantId) {
-            console.log("[ProfileScreen] No user ID found in storage, user not logged in");
+            console.log(
+              "[ProfileScreen] No user ID found in storage, user not logged in"
+            );
             return;
           }
-          
+
           // If we have a role stored but no user in context, try to load user data
           if (participantId && !user) {
-            console.log("[ProfileScreen] Found role but no user in context, syncing...");
+            console.log(
+              "[ProfileScreen] Found role but no user in context, syncing..."
+            );
             try {
               const userData = await fetchProfile(participantId);
               if (userData && userData._id) {
-                console.log("[ProfileScreen] Setting user in context:", userData);
+                console.log(
+                  "[ProfileScreen] Setting user in context:",
+                  userData
+                );
                 setUser(userData);
               }
             } catch (error) {
-              console.error("[ProfileScreen] Error fetching profile data:", error);
+              console.error(
+                "[ProfileScreen] Error fetching profile data:",
+                error
+              );
               // Don't show any toast errors here, just log to console
             }
           }
-          
+
           // Only reload profile if user is authenticated
           if (user) {
             reloadProfile();
@@ -162,9 +198,9 @@ export default function ProfileScreen() {
           // Don't show any toast errors - just log to console
         }
       };
-      
+
       checkAndSyncAuth();
-      
+
       return () => {};
     }, [reloadProfile, user, setUser])
   );
@@ -253,7 +289,7 @@ export default function ProfileScreen() {
         <Text style={styles.notLoggedInText}>
           Please log in to view your profile
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.loginButton}
           onPress={() => navigation.navigate("Auth", { screen: "Login" })}
         >
@@ -265,7 +301,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screenContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent animated />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+        animated
+      />
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>My Profile</Text>
       </View>
@@ -273,11 +314,16 @@ export default function ProfileScreen() {
       {/* Profile section is now fixed (not scrollable) */}
       <View style={styles.profileSection}>
         <TouchableOpacity onPress={handleProfileImagePress}>
-          <ProfileImage source={profileImageSource} style={styles.profileImage} />
+          <ProfileImage
+            source={profileImageSource}
+            style={styles.profileImage}
+          />
         </TouchableOpacity>
         <View style={styles.profileInfo}>
           <Text style={styles.userName}>
-            {profileData ? `${profileData.firstName} ${profileData.lastName}` : "Your Name"}
+            {profileData
+              ? `${profileData.firstName} ${profileData.lastName}`
+              : "Your Name"}
           </Text>
           <Text style={styles.userEmail}>
             {profileData ? profileData.emailId : "Your Email"}
@@ -286,7 +332,10 @@ export default function ProfileScreen() {
       </View>
 
       {/* Scrollable menu items */}
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 130 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 130 }}
+      >
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("App", { screen: "EditProfile" })}
@@ -360,6 +409,11 @@ export default function ProfileScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
+
+        {/* App Version Footer */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>Version {appVersion}</Text>
+        </View>
       </ScrollView>
 
       {/* Render Modals */}
@@ -510,5 +564,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins-Medium",
     textAlign: "center",
+  },
+  versionContainer: {
+    marginTop: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+  },
+  versionText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontFamily: "Poppins-Regular",
   },
 });
