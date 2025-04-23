@@ -285,6 +285,7 @@ export default function PaymentScreen() {
 
   // Handle the complete payment process
   const handleMakePayment = async () => {
+    setIsLoading(true);
     console.log("Starting payment process...");
     const tokenValid = await CheckAccessToken();
     if (!tokenValid) {
@@ -299,7 +300,6 @@ export default function PaymentScreen() {
       return;
     }
     try {
-      setIsLoading(true);
       // Register the event and get the client secret for payment
       const registerResponse = await handleRegister();
       // Handle free event case
@@ -338,7 +338,6 @@ export default function PaymentScreen() {
           false
         );
         Toast.show({ type: "error", text1: "Failed to create PaymentIntent" });
-        setIsLoading(false);
         return;
       }
       console.log("Client secret received:", clientSecret);
@@ -357,7 +356,6 @@ export default function PaymentScreen() {
           text1: "PaymentSheet init failed",
           text2: initError.message,
         });
-        setIsLoading(false);
         return;
       }
       // Present the PaymentSheet to the user
@@ -370,7 +368,6 @@ export default function PaymentScreen() {
           text1: "Payment error",
           text2: paymentError.message,
         });
-        setIsLoading(false);
         return;
       }
       console.log("Payment successful!");
@@ -388,8 +385,6 @@ export default function PaymentScreen() {
           console.log("Redirecting to Tickets tab after payment");
           navigation.navigate("Tab", { screen: "Tickets" });
         }, 1000);
-      } else {
-        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error during payment process:", error);
@@ -398,6 +393,7 @@ export default function PaymentScreen() {
         text1: "Payment error",
         text2: error.message,
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -407,7 +403,7 @@ export default function PaymentScreen() {
     try {
       console.log("Registering event...");
       const tokenValid = await CheckAccessToken();
-      if (!tokenValid) {
+      if (!tokenValid) {  
         console.log("Token check failed during registration");
         Toast.show({
           type: "error",
