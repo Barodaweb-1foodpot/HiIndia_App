@@ -9,12 +9,12 @@ const APP_STORE_ID = "com.hiindia.app"; // Your App Store ID (iOS bundle identif
 const PLAY_STORE_PACKAGE = "com.deep_1012.HiIndia_App"; // Your Play Store package name
 
 const STORE_URLS = {
-  ios: `https://itunes.apple.com/lookup?id=YOUR_NUMERIC_APP_ID`, // Replace YOUR_NUMERIC_APP_ID with actual ID
+  ios: `https://itunes.apple.com/lookup?bundleId=${APP_STORE_ID}`, // Updated to use bundleId
   android: `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE}`,
 };
 
 const STORE_LINK_URLS = {
-  ios: `https://apps.apple.com/app/id${APP_STORE_ID}`,
+  ios: `https://apps.apple.com/app/hi-india/${APP_STORE_ID}`, // Update this with your actual App Store URL
   android: `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE}`,
 };
 
@@ -34,10 +34,10 @@ export const initializeRemoteConfig = async () => {
   try {
     // Set default values for remote config (fallback values)
     await remoteConfig().setDefaults({
-      [REMOTE_CONFIG_KEYS.MIN_VERSION_IOS]: "0.0.09",
-      [REMOTE_CONFIG_KEYS.MIN_VERSION_ANDROID]: "0.0.09",
-      [REMOTE_CONFIG_KEYS.RECOMMENDED_VERSION_IOS]: "0.0.09",
-      [REMOTE_CONFIG_KEYS.RECOMMENDED_VERSION_ANDROID]: "0.0.09",
+      [REMOTE_CONFIG_KEYS.MIN_VERSION_IOS]: "1.0.0",
+      [REMOTE_CONFIG_KEYS.MIN_VERSION_ANDROID]: "1.0.0",
+      [REMOTE_CONFIG_KEYS.RECOMMENDED_VERSION_IOS]: "1.0.0",
+      [REMOTE_CONFIG_KEYS.RECOMMENDED_VERSION_ANDROID]: "1.0.0",
       [REMOTE_CONFIG_KEYS.FORCE_UPDATE]: "false",
     });
 
@@ -62,7 +62,7 @@ export const initializeRemoteConfig = async () => {
  * @returns {string} Current app version
  */
 export const getCurrentVersion = () => {
-  return Constants.expoConfig?.version || "0.0.09"; // Default to version in app.json
+  return Constants.expoConfig?.version // Default to version in app.json
 };
 
 /**
@@ -254,4 +254,61 @@ export const showUpdateAlert = () => {
     ],
     { cancelable: false } // Make alert non-dismissible
   );
+};
+
+/**
+ * Test function to simulate different version scenarios
+ * @param {Object} testConfig - Configuration for the test
+ * @returns {Promise<boolean>} - Result of the test
+ */
+export const testVersionCheck = async (testConfig = {}) => {
+  try {
+    const {
+      simulatedCurrentVersion = getCurrentVersion(),
+      simulatedMinVersion = "1.0.0",
+      simulatedRecommendedVersion = "1.0.0",
+      simulatedForceUpdate = false,
+    } = testConfig;
+
+    console.log("=== Version Check Test ===");
+    console.log(`Current app version: ${getCurrentVersion()}`);
+    console.log(`Simulated current version: ${simulatedCurrentVersion}`);
+    console.log(`Simulated minimum version: ${simulatedMinVersion}`);
+    console.log(`Simulated recommended version: ${simulatedRecommendedVersion}`);
+    console.log(`Simulated force update: ${simulatedForceUpdate}`);
+
+    // Test version comparison
+    const isUpdateRequired = compareVersions(simulatedCurrentVersion, simulatedMinVersion) < 0;
+    const isUpdateRecommended = compareVersions(simulatedCurrentVersion, simulatedRecommendedVersion) < 0;
+    
+    console.log(`Update required: ${isUpdateRequired}`);
+    console.log(`Update recommended: ${isUpdateRecommended}`);
+    
+    if (isUpdateRequired || (simulatedForceUpdate && isUpdateRecommended)) {
+      console.log("Test result: Update needed");
+      return true;
+    }
+    
+    console.log("Test result: No update needed");
+    return false;
+  } catch (error) {
+    console.error("Error in version check test:", error);
+    return false;
+  }
+};
+
+/**
+ * Log current version information for debugging
+ */
+export const logVersionInfo = () => {
+  const currentVersion = getCurrentVersion();
+  
+  console.log("===== VERSION INFO =====");
+  console.log(`App Name: ${Constants.expoConfig?.name}`);
+  console.log(`Current Version: ${currentVersion}`);
+  console.log(`Build Number: ${Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode}`);
+  console.log(`Platform: ${Platform.OS}`);
+  console.log("========================");
+  
+  return currentVersion;
 };

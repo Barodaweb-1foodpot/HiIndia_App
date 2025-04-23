@@ -18,7 +18,6 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
-import { checkForUpdate, showUpdateAlert } from "../utils/versionCheck";
 
 import {
   fetchEvents,
@@ -30,6 +29,8 @@ import {
 import { API_BASE_URL_UPLOADS } from "@env";
 import { formatEventDateTime } from "../helper/helper_Function";
 import { CheckAccessToken } from "../api/token_api";
+import { getEventSharing } from "../api/eventshare_api";
+import { userAuthenticated } from "../api/auth_api";
 
 // Custom components
 import Header from "../components/Header";
@@ -100,20 +101,6 @@ export default function HomeScreen({ navigation }) {
     React.useCallback(() => {
       StatusBar.setHidden(false);
       StatusBar.setBarStyle("light-content");
-
-      // Check for updates when HomeScreen comes into focus
-      const checkAppVersion = async () => {
-        try {
-          const updateNeeded = await checkForUpdate();
-          if (updateNeeded) {
-            showUpdateAlert();
-          }
-        } catch (error) {
-          console.error("Error checking app version:", error);
-        }
-      };
-
-      checkAppVersion();
 
       return () => {};
     }, [])

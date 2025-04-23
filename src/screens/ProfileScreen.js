@@ -28,7 +28,7 @@ import { deleteUserAccount } from "../api/auth_api";
 import { AuthContext } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
 import SkeletonLoader from "../components/SkeletonLoader";
-import { getCurrentVersion } from "../utils/versionCheck";
+import Constants from "expo-constants";
 
 import ShareModal from "../components/ShareModal";
 import LogoutModal from "../components/LogoutModal";
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
   const { profileData, reloadProfile } = useProfile();
   const navigation = useNavigation();
   const { setUser, user } = useContext(AuthContext);
-  const appVersion = getCurrentVersion();
+  const appVersion = Constants.expoConfig.version;
 
   // Consolidated modal state
   const [activeModal, setActiveModal] = useState(null);
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   versionContainer: {
-    marginTop: 40,
+    marginTop: 10,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
