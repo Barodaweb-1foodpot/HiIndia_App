@@ -310,7 +310,7 @@ export default function EditProfile({ navigation }) {
       const formData = new FormData();
       formData.append("firstName", firstName);
       formData.append("lastName", lastName);
-      
+
       // Handle optional phone fields
       if (phoneNumber && phoneNumber.trim() !== "") {
         formData.append("contactNumber", phoneNumber);
@@ -528,37 +528,27 @@ export default function EditProfile({ navigation }) {
         visible={showPermissionModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowPermissionModal(false)}
+        onRequestClose={() => {}}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPermissionModal(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.permissionModalContainer}>
             <View style={styles.permissionModalContent}>
               <Text style={styles.permissionModalTitle}>Gallery Access</Text>
               <Text style={styles.permissionModalText}>
                 We need access to your photo gallery to update your profile
-                picture. Do you want to continue?
+                picture.
               </Text>
               <View style={styles.permissionButtonsContainer}>
                 <TouchableOpacity
-                  style={[styles.permissionButton, styles.cancelButton]}
-                  onPress={() => setShowPermissionModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.permissionButton, styles.allowButton]}
+                  style={[styles.permissionButton, styles.continueButton]}
                   onPress={handlePickImage}
                 >
-                  <Text style={styles.allowButtonText}>Allow</Text>
+                  <Text style={styles.continueButtonText}>Continue</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
@@ -817,29 +807,20 @@ const styles = StyleSheet.create({
   },
   permissionButtonsContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    marginTop: 10,
   },
   permissionButton: {
-    flex: 1,
+    width: "100%",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 5,
   },
-  cancelButton: {
-    backgroundColor: "#F3F4F6",
-  },
-  cancelButtonText: {
-    color: "#4B5563",
-    fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "Poppins-Medium",
-  },
-  allowButton: {
+  continueButton: {
     backgroundColor: "#E3000F",
   },
-  allowButtonText: {
+  continueButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "500",

@@ -176,7 +176,11 @@ const SignUpPage = ({ navigation }) => {
                 validationSchema={validationSchema}
                 onSubmit={async (values) => {
                   // Ensure country code is selected
-                  if (!selectedCountryCode || selectedCountryCode === "+" || selectedCountryId === "") {
+                  if (
+                    !selectedCountryCode ||
+                    selectedCountryCode === "+" ||
+                    selectedCountryId === ""
+                  ) {
                     Toast.show({
                       type: "error",
                       text1: "Country Code Required",
@@ -186,7 +190,7 @@ const SignUpPage = ({ navigation }) => {
                     setIsLoading(false);
                     return;
                   }
-                  
+
                   const payload = {
                     firstName: values.firstName,
                     lastName: values.lastName,
@@ -214,6 +218,8 @@ const SignUpPage = ({ navigation }) => {
                       });
                       navigation.navigate("Login");
                     } else {
+                      // Show a specific error message based on the response
+                      console.log("Signup error response:", response);
                       Toast.show({
                         type: "error",
                         text1: "Signup Failed",
@@ -223,7 +229,18 @@ const SignUpPage = ({ navigation }) => {
                       setIsLoading(false);
                     }
                   } catch (err) {
-                    console.error(err);
+                    console.error("Signup exception:", err);
+                    // Check if the error has a response with a message
+                    const errorMessage =
+                      err.response?.data?.message ||
+                      "Something went wrong. Please try again later.";
+
+                    Toast.show({
+                      type: "error",
+                      text1: "Signup Error",
+                      text2: errorMessage,
+                      position: "bottom",
+                    });
                     setIsLoading(false);
                   }
                 }}
@@ -276,9 +293,7 @@ const SignUpPage = ({ navigation }) => {
                         )}
 
                         {/* Phone Number + Country Code */}
-                        <Text style={styles.inputLabel}>
-                          Phone Number
-                        </Text>
+                        <Text style={styles.inputLabel}>Phone Number</Text>
                         <View style={styles.phoneInputContainer}>
                           <CountryCodeDropdown
                             selectedCode={selectedCountryCode}
@@ -427,7 +442,11 @@ const SignUpPage = ({ navigation }) => {
                           );
 
                           // Validate country code is selected
-                          if (!selectedCountryCode || selectedCountryCode === "+" || selectedCountryId === "") {
+                          if (
+                            !selectedCountryCode ||
+                            selectedCountryCode === "+" ||
+                            selectedCountryId === ""
+                          ) {
                             setCountryCodeError("Please select a country code");
                             setIsLoading(false);
                             return;
